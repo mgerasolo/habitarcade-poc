@@ -4,7 +4,11 @@ This file provides guidance to Claude Code when working with the habitarcade-poc
 
 ## Overview
 
-Application description here.
+HabitArcade is a gamified habit tracking web application. Users build and maintain habits through arcade-style game mechanics - streaks, points, achievements, and friendly competition.
+
+**Key Integrations:**
+- **Authentik** - SSO login via Helicarrier (low-key integration, optional)
+- **Grafana** - Habit analytics dashboards (low-key, embedded panels)
 
 **Target Environment:** Parker (10.0.0.34)
 **Reserved Port:** 3451
