@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  habitarcade-db:
+    image: postgres:17-alpine
+    container_name: habitarcade-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: habitarcade
+      POSTGRES_USER: habitarcade
+      POSTGRES_PASSWORD: HabitArcade2025!
+    volumes:
+      - habitarcade-db-data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - habitarcade-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U habitarcade -d habitarcade"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  habitarcade-db-data:
+
+networks:
+  habitarcade-network:
+    driver: bridge

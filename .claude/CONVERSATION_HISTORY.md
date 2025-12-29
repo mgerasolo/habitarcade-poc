@@ -6,7 +6,7 @@ All conversations for this project, sorted by recency.
 
 | Conv ID | Title | Status | Last Updated |
 |---------|-------|--------|--------------|
-| (none yet) | - | - | - |
+| conv-20251229-062322 | HabitArcade POC - Implementation Ready | Active | 2025-12-29 |
 
 ## Completed Conversations
 
