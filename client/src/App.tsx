@@ -4,6 +4,7 @@ import { queryClient } from './api';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Today } from './pages/Today';
+import { Habits } from './pages/Habits';
 import { ModalManager } from './components/ModalManager';
 import { useUIStore } from './stores';
 
@@ -15,8 +16,9 @@ function PageRouter() {
       return <Today />;
     case 'dashboard':
       return <Dashboard />;
-    // Future pages can be added here
     case 'habits':
+      return <Habits />;
+    // Future pages can be added here
     case 'tasks':
     case 'projects':
     case 'analytics':
