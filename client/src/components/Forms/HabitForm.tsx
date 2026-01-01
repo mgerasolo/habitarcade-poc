@@ -1,4 +1,5 @@
-import { useForm } from 'react-hook-form';
+import { useState } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
 import { useUIStore } from '../../stores';
@@ -8,18 +9,34 @@ import {
   useDeleteHabit,
   useCategories,
 } from '../../api';
-import type { Category } from '../../types';
+import type { Category, HabitFrequency, HabitLink } from '../../types';
+
+const DAYS_OF_WEEK = [
+  { id: 'monday', label: 'Mon' },
+  { id: 'tuesday', label: 'Tue' },
+  { id: 'wednesday', label: 'Wed' },
+  { id: 'thursday', label: 'Thu' },
+  { id: 'friday', label: 'Fri' },
+  { id: 'saturday', label: 'Sat' },
+  { id: 'sunday', label: 'Sun' },
+];
 
 interface HabitFormData {
   name: string;
   categoryId: string;
   icon: string;
   iconColor: string;
+  description: string;
+  goalTarget: number | null;
+  goalFrequency: HabitFrequency | '';
+  goalDays: string[];
+  links: HabitLink[];
 }
 
 export function HabitForm() {
   const { closeModal, selectedHabit, setSelectedHabit, openIconPicker } = useUIStore();
   const isEditMode = !!selectedHabit;
+  const [activeTab, setActiveTab] = useState<'basic' | 'goals' | 'links'>('basic');
 
   // API hooks
   const createHabit = useCreateHabit();
@@ -35,6 +52,7 @@ export function HabitForm() {
     handleSubmit,
     setValue,
     watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<HabitFormData>({
     defaultValues: {
@@ -42,11 +60,24 @@ export function HabitForm() {
       categoryId: selectedHabit?.categoryId || '',
       icon: selectedHabit?.icon || '',
       iconColor: selectedHabit?.iconColor || '#14b8a6',
+      description: selectedHabit?.description || '',
+      goalTarget: selectedHabit?.goalTarget || null,
+      goalFrequency: selectedHabit?.goalFrequency || '',
+      goalDays: selectedHabit?.goalDays || [],
+      links: selectedHabit?.links || [],
     },
+  });
+
+  // Field array for links
+  const { fields: linkFields, append: appendLink, remove: removeLink } = useFieldArray({
+    control,
+    name: 'links',
   });
 
   const watchedIcon = watch('icon');
   const watchedIconColor = watch('iconColor');
+  const watchedGoalFrequency = watch('goalFrequency');
+  const watchedGoalDays = watch('goalDays');
 
   // Icon picker handler
   const handleIconSelect = (icon: string, color: string) => {
@@ -59,25 +90,39 @@ export function HabitForm() {
     openIconPicker(handleIconSelect);
   };
 
+  // Toggle day selection
+  const toggleDay = (dayId: string) => {
+    const currentDays = watchedGoalDays || [];
+    if (currentDays.includes(dayId)) {
+      setValue('goalDays', currentDays.filter(d => d !== dayId));
+    } else {
+      setValue('goalDays', [...currentDays, dayId]);
+    }
+  };
+
   // Handle form submission
   const onSubmit = async (data: HabitFormData) => {
     try {
+      const habitData = {
+        name: data.name,
+        categoryId: data.categoryId || undefined,
+        icon: data.icon || undefined,
+        iconColor: data.iconColor || undefined,
+        description: data.description || undefined,
+        goalTarget: data.goalTarget || undefined,
+        goalFrequency: data.goalFrequency || undefined,
+        goalDays: data.goalFrequency === 'specific_days' ? data.goalDays : undefined,
+        links: data.links.length > 0 ? data.links : undefined,
+      };
+
       if (isEditMode && selectedHabit) {
         await updateHabit.mutateAsync({
           id: selectedHabit.id,
-          name: data.name,
-          categoryId: data.categoryId || undefined,
-          icon: data.icon || undefined,
-          iconColor: data.iconColor || undefined,
+          ...habitData,
         });
         toast.success('Habit updated successfully');
       } else {
-        await createHabit.mutateAsync({
-          name: data.name,
-          categoryId: data.categoryId || undefined,
-          icon: data.icon || undefined,
-          iconColor: data.iconColor || undefined,
-        });
+        await createHabit.mutateAsync(habitData);
         toast.success('Habit created successfully');
       }
       handleClose();
@@ -178,80 +223,297 @@ export function HabitForm() {
           </div>
         </div>
 
+        {/* Tabs */}
+        <div className="flex border-b border-slate-700">
+          <button
+            type="button"
+            onClick={() => setActiveTab('basic')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'basic'
+                ? 'text-teal-400 border-b-2 border-teal-400 bg-slate-800/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <MuiIcons.Edit style={{ fontSize: 18 }} />
+              Basic Info
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('goals')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'goals'
+                ? 'text-teal-400 border-b-2 border-teal-400 bg-slate-800/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <MuiIcons.Flag style={{ fontSize: 18 }} />
+              Goals
+            </div>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('links')}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === 'links'
+                ? 'text-teal-400 border-b-2 border-teal-400 bg-slate-800/50'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center justify-center gap-2">
+              <MuiIcons.Link style={{ fontSize: 18 }} />
+              Links
+            </div>
+          </button>
+        </div>
+
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="p-5 space-y-5">
-            {/* Name field */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Habit Name <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                {...register('name', { required: 'Habit name is required' })}
-                placeholder="e.g., Morning Exercise"
-                className={`
-                  w-full px-4 py-3 bg-slate-700/50 border rounded-xl text-white
-                  placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500
-                  focus:border-transparent transition-all
-                  ${errors.name ? 'border-red-500' : 'border-slate-600'}
-                `}
-                autoFocus
-              />
-              {errors.name && (
-                <p className="mt-1.5 text-sm text-red-400 flex items-center gap-1">
-                  <MuiIcons.ErrorOutline style={{ fontSize: 16 }} />
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
-
-            {/* Category select */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Category
-              </label>
-              <select
-                {...register('categoryId')}
-                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all appearance-none cursor-pointer"
-              >
-                <option value="">No category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-xs text-slate-500">
-                Group habits by category for better organization
-              </p>
-            </div>
-
-            {/* Icon picker */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Icon & Color
-              </label>
-              <button
-                type="button"
-                onClick={handleOpenIconPicker}
-                className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
-              >
-                {renderIconPreview()}
-                <div className="flex-1 text-left">
-                  <div className="text-white font-medium">
-                    {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
-                  </div>
-                  <div className="text-sm text-slate-400">
-                    {watchedIcon ? 'Click to select a different icon' : 'Select an icon for this habit'}
-                  </div>
+          <div className="p-5 space-y-5 min-h-[300px]">
+            {/* Basic Tab */}
+            {activeTab === 'basic' && (
+              <>
+                {/* Name field */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Habit Name <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    {...register('name', { required: 'Habit name is required' })}
+                    placeholder="e.g., Morning Exercise"
+                    className={`
+                      w-full px-4 py-3 bg-slate-700/50 border rounded-xl text-white
+                      placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500
+                      focus:border-transparent transition-all
+                      ${errors.name ? 'border-red-500' : 'border-slate-600'}
+                    `}
+                    autoFocus
+                  />
+                  {errors.name && (
+                    <p className="mt-1.5 text-sm text-red-400 flex items-center gap-1">
+                      <MuiIcons.ErrorOutline style={{ fontSize: 16 }} />
+                      {errors.name.message}
+                    </p>
+                  )}
                 </div>
-                <MuiIcons.ChevronRight
-                  className="text-slate-400 group-hover:text-white transition-colors"
-                  style={{ fontSize: 24 }}
-                />
-              </button>
-            </div>
+
+                {/* Description */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    {...register('description')}
+                    placeholder="Optional notes about this habit..."
+                    rows={2}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all resize-none"
+                  />
+                </div>
+
+                {/* Category select */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Category
+                  </label>
+                  <select
+                    {...register('categoryId')}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">No category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Icon picker */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Icon & Color
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleOpenIconPicker}
+                    className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
+                  >
+                    {renderIconPreview()}
+                    <div className="flex-1 text-left">
+                      <div className="text-white font-medium">
+                        {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
+                      </div>
+                      <div className="text-sm text-slate-400">
+                        {watchedIcon ? 'Click to select a different icon' : 'Select an icon for this habit'}
+                      </div>
+                    </div>
+                    <MuiIcons.ChevronRight
+                      className="text-slate-400 group-hover:text-white transition-colors"
+                      style={{ fontSize: 24 }}
+                    />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Goals Tab */}
+            {activeTab === 'goals' && (
+              <>
+                {/* Frequency */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Frequency
+                  </label>
+                  <select
+                    {...register('goalFrequency')}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="">No frequency set</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="specific_days">Specific Days</option>
+                  </select>
+                  <p className="mt-1.5 text-xs text-slate-500">
+                    How often do you want to complete this habit?
+                  </p>
+                </div>
+
+                {/* Target count for weekly */}
+                {watchedGoalFrequency === 'weekly' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Target per Week
+                    </label>
+                    <input
+                      type="number"
+                      {...register('goalTarget', { valueAsNumber: true, min: 1, max: 7 })}
+                      placeholder="e.g., 5"
+                      min={1}
+                      max={7}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all"
+                    />
+                    <p className="mt-1.5 text-xs text-slate-500">
+                      How many times per week? (1-7)
+                    </p>
+                  </div>
+                )}
+
+                {/* Specific days selector */}
+                {watchedGoalFrequency === 'specific_days' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Select Days
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {DAYS_OF_WEEK.map((day) => (
+                        <button
+                          key={day.id}
+                          type="button"
+                          onClick={() => toggleDay(day.id)}
+                          className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                            watchedGoalDays?.includes(day.id)
+                              ? 'bg-teal-600 text-white'
+                              : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700 hover:text-white border border-slate-600'
+                          }`}
+                        >
+                          {day.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {watchedGoalDays?.length || 0} day(s) selected
+                    </p>
+                  </div>
+                )}
+
+                {/* Goal summary */}
+                {watchedGoalFrequency && (
+                  <div className="p-4 bg-teal-600/10 border border-teal-600/30 rounded-xl">
+                    <div className="flex items-center gap-2 text-teal-400 font-medium mb-1">
+                      <MuiIcons.Flag style={{ fontSize: 18 }} />
+                      Goal Summary
+                    </div>
+                    <p className="text-slate-300 text-sm">
+                      {watchedGoalFrequency === 'daily' && 'Complete this habit every day'}
+                      {watchedGoalFrequency === 'weekly' && `Complete this habit ${watch('goalTarget') || '?'} times per week`}
+                      {watchedGoalFrequency === 'specific_days' && (
+                        watchedGoalDays?.length
+                          ? `Complete on: ${watchedGoalDays.map(d => d.charAt(0).toUpperCase() + d.slice(1)).join(', ')}`
+                          : 'Select the days you want to complete this habit'
+                      )}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Links Tab */}
+            {activeTab === 'links' && (
+              <>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-slate-300">
+                    Resources & Links
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => appendLink({ title: '', url: '' })}
+                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-teal-400 hover:text-teal-300 hover:bg-teal-600/10 rounded-lg transition-colors"
+                  >
+                    <MuiIcons.Add style={{ fontSize: 18 }} />
+                    Add Link
+                  </button>
+                </div>
+
+                {linkFields.length === 0 ? (
+                  <div className="text-center py-8 text-slate-400">
+                    <MuiIcons.LinkOff style={{ fontSize: 48, opacity: 0.5 }} className="mx-auto mb-2" />
+                    <p>No links added yet</p>
+                    <button
+                      type="button"
+                      onClick={() => appendLink({ title: '', url: '' })}
+                      className="mt-3 text-teal-400 hover:text-teal-300 font-medium text-sm"
+                    >
+                      Add your first link
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {linkFields.map((field, index) => (
+                      <div key={field.id} className="p-3 bg-slate-700/30 border border-slate-600/50 rounded-xl">
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 space-y-2">
+                            <input
+                              {...register(`links.${index}.title`)}
+                              placeholder="Link title (e.g., Workout Video)"
+                              className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                            />
+                            <input
+                              {...register(`links.${index}.url`)}
+                              placeholder="https://..."
+                              className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeLink(index)}
+                            className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-600/10 rounded-lg transition-colors"
+                          >
+                            <MuiIcons.Delete style={{ fontSize: 18 }} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-xs text-slate-500 mt-2">
+                  Add helpful resources like tutorials, apps, or articles related to this habit.
+                </p>
+              </>
+            )}
           </div>
 
           {/* Footer */}

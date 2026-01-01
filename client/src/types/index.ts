@@ -43,6 +43,15 @@ export interface Category {
   updatedAt: string;
 }
 
+// Habit Frequency Type
+export type HabitFrequency = 'daily' | 'weekly' | 'specific_days';
+
+// Habit Link
+export interface HabitLink {
+  title: string;
+  url: string;
+}
+
 // Habit
 export interface Habit {
   id: string;
@@ -51,6 +60,13 @@ export interface Habit {
   category?: Category;
   icon?: string;
   iconColor?: string;
+  // Goal settings
+  goalTarget?: number; // e.g., 5 (times per week)
+  goalFrequency?: HabitFrequency; // 'daily', 'weekly', 'specific_days'
+  goalDays?: string[]; // For specific days: ['monday', 'wednesday', 'friday']
+  // Links/Resources
+  links?: HabitLink[];
+  description?: string;
   sortOrder: number;
   isDeleted: boolean;
   deletedAt?: string;

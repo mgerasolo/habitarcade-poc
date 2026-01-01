@@ -21,6 +21,13 @@ export const habits = pgTable('habits', {
   categoryId: uuid('category_id').references(() => categories.id),
   icon: varchar('icon', { length: 100 }),
   iconColor: varchar('icon_color', { length: 20 }),
+  // Goal settings
+  goalTarget: integer('goal_target'), // e.g., 5 (times per week)
+  goalFrequency: varchar('goal_frequency', { length: 20 }), // 'daily', 'weekly', 'specific_days'
+  goalDays: json('goal_days').$type<string[]>(), // For specific days: ['monday', 'wednesday', 'friday']
+  // Links/Resources
+  links: json('links').$type<{ title: string; url: string }[]>(), // Array of link objects
+  description: text('description'), // Optional description/notes for the habit
   sortOrder: integer('sort_order').default(0),
   isDeleted: boolean('is_deleted').default(false),
   deletedAt: timestamp('deleted_at'),

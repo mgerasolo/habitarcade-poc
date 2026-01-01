@@ -204,23 +204,24 @@ export function ManageHabits() {
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-800 border-b border-slate-700 text-sm font-medium text-slate-400">
-          <div className="col-span-5 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('name')}>
+          <div className="col-span-4 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('name')}>
             Habit
             {sortBy === 'name' && (
               sortDirection === 'asc' ? <MuiIcons.ArrowUpward style={{ fontSize: 16 }} /> : <MuiIcons.ArrowDownward style={{ fontSize: 16 }} />
             )}
           </div>
-          <div className="col-span-3 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('category')}>
+          <div className="col-span-2 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('category')}>
             Category
             {sortBy === 'category' && (
               sortDirection === 'asc' ? <MuiIcons.ArrowUpward style={{ fontSize: 16 }} /> : <MuiIcons.ArrowDownward style={{ fontSize: 16 }} />
             )}
           </div>
-          <div className="col-span-2 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('created')}>
-            Created
-            {sortBy === 'created' && (
-              sortDirection === 'asc' ? <MuiIcons.ArrowUpward style={{ fontSize: 16 }} /> : <MuiIcons.ArrowDownward style={{ fontSize: 16 }} />
-            )}
+          <div className="col-span-3 flex items-center gap-2">
+            <MuiIcons.Flag style={{ fontSize: 16 }} />
+            Goal
+          </div>
+          <div className="col-span-1 flex items-center gap-2">
+            <MuiIcons.Link style={{ fontSize: 16 }} />
           </div>
           <div className="col-span-2 text-right">Actions</div>
         </div>
@@ -250,13 +251,18 @@ export function ManageHabits() {
                 className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-700/30 transition-colors"
               >
                 {/* Habit Name */}
-                <div className="col-span-5 flex items-center gap-3">
+                <div className="col-span-4 flex items-center gap-3">
                   {renderIcon(habit)}
-                  <span className="text-white font-medium">{habit.name}</span>
+                  <div>
+                    <span className="text-white font-medium">{habit.name}</span>
+                    {habit.description && (
+                      <p className="text-xs text-slate-500 truncate max-w-[200px]">{habit.description}</p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Category */}
-                <div className="col-span-3">
+                <div className="col-span-2">
                   {habit.category ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/50 rounded-lg text-sm text-slate-300">
                       <MuiIcons.Category style={{ fontSize: 14 }} />
@@ -267,9 +273,30 @@ export function ManageHabits() {
                   )}
                 </div>
 
-                {/* Created */}
-                <div className="col-span-2 text-sm text-slate-400">
-                  {new Date(habit.createdAt).toLocaleDateString()}
+                {/* Goal */}
+                <div className="col-span-3">
+                  {habit.goalFrequency ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-teal-600/10 border border-teal-600/30 rounded-lg text-sm text-teal-400">
+                      <MuiIcons.Flag style={{ fontSize: 14 }} />
+                      {habit.goalFrequency === 'daily' && 'Daily'}
+                      {habit.goalFrequency === 'weekly' && `${habit.goalTarget || '?'}x/week`}
+                      {habit.goalFrequency === 'specific_days' && `${habit.goalDays?.length || 0} days`}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 text-sm">No goal set</span>
+                  )}
+                </div>
+
+                {/* Links count */}
+                <div className="col-span-1">
+                  {habit.links && habit.links.length > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-700/50 rounded-lg text-sm text-slate-300">
+                      <MuiIcons.Link style={{ fontSize: 14 }} />
+                      {habit.links.length}
+                    </span>
+                  ) : (
+                    <span className="text-slate-500 text-sm">-</span>
+                  )}
                 </div>
 
                 {/* Actions */}
