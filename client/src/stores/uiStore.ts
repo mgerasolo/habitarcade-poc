@@ -12,6 +12,8 @@ type ModalType =
   | 'confirm-delete'
   | null;
 
+export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'projects' | 'analytics';
+
 interface UIStore {
   // Modal state
   activeModal: ModalType;
@@ -28,6 +30,7 @@ interface UIStore {
   currentDate: Date;
   viewMode: 'day' | 'week' | 'month';
   sidebarOpen: boolean;
+  currentPage: PageType;
 
   // Icon picker callback
   onIconSelect: ((icon: string, color: string) => void) | null;
@@ -45,6 +48,7 @@ interface UIStore {
   setCurrentDate: (date: Date) => void;
   setViewMode: (mode: 'day' | 'week' | 'month') => void;
   toggleSidebar: () => void;
+  setCurrentPage: (page: PageType) => void;
 
   openIconPicker: (onSelect: (icon: string, color: string) => void) => void;
 }
@@ -61,6 +65,7 @@ export const useUIStore = create<UIStore>((set) => ({
   currentDate: new Date(),
   viewMode: 'week',
   sidebarOpen: true,
+  currentPage: 'today',
   onIconSelect: null,
 
   // Actions
@@ -76,6 +81,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setCurrentDate: (date) => set({ currentDate: date }),
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+  setCurrentPage: (page) => set({ currentPage: page }),
 
   openIconPicker: (onSelect) => set({
     activeModal: 'icon-picker',
