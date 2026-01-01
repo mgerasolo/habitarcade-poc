@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useUIStore } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
+import { PrioritiesList } from './PrioritiesList';
 
 // Parking Lot types and localStorage key
 interface ParkingLotItem {
@@ -305,40 +306,7 @@ function ParkingLotContent() {
 }
 
 function PrioritiesContent() {
-  const priorities = [
-    { level: 'high', label: 'High Priority', color: 'text-red-400', bgColor: 'bg-red-500/10', count: 3 },
-    { level: 'medium', label: 'Medium Priority', color: 'text-yellow-400', bgColor: 'bg-yellow-500/10', count: 5 },
-    { level: 'low', label: 'Low Priority', color: 'text-blue-400', bgColor: 'bg-blue-500/10', count: 8 },
-  ];
-
-  return (
-    <div className="space-y-4">
-      <p className="text-sm text-slate-400">
-        View and manage your prioritized items at a glance.
-      </p>
-
-      <div className="space-y-3">
-        {priorities.map((priority) => (
-          <div
-            key={priority.level}
-            className={`p-3 rounded-lg ${priority.bgColor} border border-slate-600/50`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className={`text-sm font-medium ${priority.color}`}>
-                {priority.label}
-              </span>
-              <span className="text-xs text-slate-500 bg-slate-700 px-2 py-0.5 rounded-full">
-                {priority.count} items
-              </span>
-            </div>
-            <div className="text-xs text-slate-500">
-              Click to view items
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <PrioritiesList />;
 }
 
 function QuickEntryContent() {
