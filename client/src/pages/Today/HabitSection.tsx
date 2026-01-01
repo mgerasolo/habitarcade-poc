@@ -4,7 +4,6 @@ import { STATUS_COLORS } from '../../types';
 
 interface HabitSectionProps {
   habits: Habit[];
-  today: string;
   getHabitTodayStatus: (habit: Habit) => HabitStatus;
   onHabitToggle: (habit: Habit) => void;
   isLoading: boolean;
@@ -16,7 +15,6 @@ interface HabitSectionProps {
  */
 export function HabitSection({
   habits,
-  today,
   getHabitTodayStatus,
   onHabitToggle,
   isLoading,
