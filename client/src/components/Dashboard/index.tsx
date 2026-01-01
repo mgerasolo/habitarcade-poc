@@ -4,9 +4,9 @@ import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
 import { useDashboardStore } from '../../stores';
 import { WidgetContainer } from './WidgetContainer';
-import { DashboardHeader } from './DashboardHeader';
-import { getWidget } from './WidgetRegistry';
+import { getWidget, useHabitMatrixHeaderControls } from './WidgetRegistry';
 import type { DashboardLayoutItem } from '../../types';
+import type { CustomHeaderControls } from './WidgetContainer';
 
 // Default grid configuration
 const GRID_COLS = 24;
@@ -27,6 +27,17 @@ export function Dashboard() {
   const { layout, setLayout, isEditMode } = useDashboardStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1800);
+
+  // Get header controls for habit-matrix widget
+  const { headerControls: habitMatrixHeaderControls, responsiveDays } = useHabitMatrixHeaderControls();
+
+  // Function to get header controls for a specific widget
+  const getHeaderControls = useCallback((widgetId: string): CustomHeaderControls | undefined => {
+    if (widgetId === 'habit-matrix') {
+      return habitMatrixHeaderControls;
+    }
+    return undefined;
+  }, [habitMatrixHeaderControls]);
 
   // Track container width for responsive grid
   useEffect(() => {
@@ -78,12 +89,9 @@ export function Dashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-teal-900">
-      {/* Dashboard header with controls */}
-      <DashboardHeader />
-
+    <div>
       {/* Grid layout container */}
-      <div ref={containerRef} className="p-4">
+      <div ref={containerRef}>
         <GridLayout
           className="layout"
           layout={layout}
@@ -103,7 +111,12 @@ export function Dashboard() {
         >
           {layout.map((item) => (
             <div key={item.i} className="widget-wrapper">
-              <WidgetContainer widgetId={item.i}>{getWidget(item.i)}</WidgetContainer>
+              <WidgetContainer
+                widgetId={item.i}
+                headerControls={getHeaderControls(item.i)}
+              >
+                {getWidget(item.i, item.i === 'habit-matrix' ? { daysToShow: responsiveDays } : undefined)}
+              </WidgetContainer>
             </div>
           ))}
         </GridLayout>

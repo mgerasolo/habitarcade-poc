@@ -1,4 +1,6 @@
-import { lazy, Suspense, type ReactNode, type ComponentType } from 'react';
+import { lazy, Suspense, type ReactNode, type ComponentType, useState, useCallback } from 'react';
+import { format, addMonths, subMonths } from 'date-fns';
+import type { CustomHeaderControls } from './WidgetContainer';
 
 // Lazy load all widget components for code splitting
 const HabitMatrix = lazy(() => import('../../widgets/HabitMatrix'));
@@ -6,6 +8,139 @@ const WeeklyKanban = lazy(() => import('../../widgets/WeeklyKanban'));
 const TimeBlockPriorities = lazy(() => import('../../widgets/TimeBlockPriorities'));
 const TargetLineGraph = lazy(() => import('../../widgets/TargetLineGraph'));
 const ParkingLot = lazy(() => import('../../widgets/ParkingLot'));
+
+// Days configuration for view toggle
+const DAYS_CONFIG = {
+  mobile: 3,
+  tablet: 7,
+  desktop: 31,
+};
+
+/**
+ * Month selector component for HabitMatrix header
+ */
+function MonthSelector({
+  currentMonth,
+  onPrevMonth,
+  onNextMonth,
+}: {
+  currentMonth: Date;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+}) {
+  return (
+    <div className="flex items-center bg-slate-900/60 rounded-full px-1 py-0.5" data-testid="month-selector">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onPrevMonth();
+        }}
+        className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
+        title="Previous month"
+        data-testid="prev-month"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <span
+        className="px-3 py-0.5 text-sm font-condensed font-medium text-slate-200 min-w-[120px] text-center"
+        data-testid="current-month"
+      >
+        {format(currentMonth, 'MMMM yyyy')}
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onNextMonth();
+        }}
+        className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
+        title="Next month"
+        data-testid="next-month"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+/**
+ * View toggle component for HabitMatrix header
+ */
+function ViewToggle({
+  currentDays,
+  onChange,
+}: {
+  currentDays: number;
+  onChange: (days: number) => void;
+}) {
+  const options = [
+    { label: '3D', days: DAYS_CONFIG.mobile, title: '3 days', testId: 'view-3d' },
+    { label: '7D', days: DAYS_CONFIG.tablet, title: '7 days', testId: 'view-7d' },
+    { label: 'Mo', days: DAYS_CONFIG.desktop, title: 'Month (31 days)', testId: 'view-month' },
+  ];
+
+  return (
+    <div className="flex rounded bg-slate-900/50 p-0.5" data-testid="view-toggle">
+      {options.map(({ label, days, title, testId }) => (
+        <button
+          key={days}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange(days);
+          }}
+          title={title}
+          data-testid={testId}
+          className={`
+            px-2 py-0.5 text-xs font-condensed rounded
+            transition-all duration-150
+            ${currentDays === days
+              ? 'bg-teal-600 text-white shadow'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+            }
+          `}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Hook to manage HabitMatrix header controls state
+ */
+export function useHabitMatrixHeaderControls() {
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+  const [responsiveDays, setResponsiveDays] = useState(DAYS_CONFIG.desktop);
+
+  const navigatePrevMonth = useCallback(() => setCurrentMonth(prev => subMonths(prev, 1)), []);
+  const navigateNextMonth = useCallback(() => setCurrentMonth(prev => addMonths(prev, 1)), []);
+  const handleDaysChange = useCallback((days: number) => setResponsiveDays(days), []);
+
+  const headerControls: CustomHeaderControls = {
+    center: (
+      <MonthSelector
+        currentMonth={currentMonth}
+        onPrevMonth={navigatePrevMonth}
+        onNextMonth={navigateNextMonth}
+      />
+    ),
+    right: (
+      <ViewToggle
+        currentDays={responsiveDays}
+        onChange={handleDaysChange}
+      />
+    ),
+  };
+
+  return {
+    headerControls,
+    responsiveDays,
+  };
+}
 
 /**
  * Widget registry mapping widget IDs to their components
@@ -206,9 +341,10 @@ function UnknownWidget({ widgetId }: { widgetId: string }) {
  * Get a widget component by ID
  *
  * @param widgetId - The unique identifier for the widget
+ * @param props - Optional props to pass to the widget
  * @returns A Suspense-wrapped React node for the widget
  */
-export function getWidget(widgetId: string): ReactNode {
+export function getWidget(widgetId: string, props?: Record<string, unknown>): ReactNode {
   const Widget = WIDGET_REGISTRY[widgetId];
 
   if (!Widget) {
@@ -217,7 +353,7 @@ export function getWidget(widgetId: string): ReactNode {
 
   return (
     <Suspense fallback={<WidgetSkeleton />}>
-      <Widget />
+      <Widget {...props} />
     </Suspense>
   );
 }

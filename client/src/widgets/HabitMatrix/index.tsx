@@ -1,8 +1,12 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG } from './useHabitMatrix';
 import { CategorySection, CategorySectionFlat, CategorySectionSkeleton } from './CategorySection';
 import { DateHeader, DateHeaderCompact } from './DateHeader';
 import { format, addMonths, subMonths } from 'date-fns';
+import type { CustomHeaderControls } from '../../components/Dashboard/WidgetContainer';
+
+// Re-export for use by parent components
+export { DAYS_CONFIG, getResponsiveDays };
 
 // Configuration constants
 const HABIT_NAME_WIDTH_DESKTOP = 140;
@@ -18,6 +22,8 @@ interface HabitMatrixProps {
   flatCategories?: boolean;
   /** Custom class name for the container */
   className?: string;
+  /** Callback to provide header controls to parent */
+  onHeaderControlsReady?: (controls: CustomHeaderControls) => void;
 }
 
 /**
@@ -45,6 +51,7 @@ export function HabitMatrix({
   daysToShow: propDaysToShow,
   flatCategories = false,
   className = '',
+  onHeaderControlsReady,
 }: HabitMatrixProps) {
   // Container ref for measuring width
   const containerRef = useRef<HTMLDivElement>(null);
@@ -111,8 +118,30 @@ export function HabitMatrix({
   }, [containerWidth, daysToShow, habitNameWidth]);
 
   // Month navigation handlers
-  const navigatePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
-  const navigateNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
+  const navigatePrevMonth = useCallback(() => setCurrentMonth(prev => subMonths(prev, 1)), []);
+  const navigateNextMonth = useCallback(() => setCurrentMonth(prev => addMonths(prev, 1)), []);
+  const handleDaysChange = useCallback((days: number) => setResponsiveDays(days), []);
+
+  // Provide header controls to parent via callback
+  useEffect(() => {
+    if (onHeaderControlsReady) {
+      onHeaderControlsReady({
+        center: (
+          <MonthSelector
+            currentMonth={currentMonth}
+            onPrevMonth={navigatePrevMonth}
+            onNextMonth={navigateNextMonth}
+          />
+        ),
+        right: (
+          <ViewToggle
+            currentDays={daysToShow}
+            onChange={handleDaysChange}
+          />
+        ),
+      });
+    }
+  }, [onHeaderControlsReady, currentMonth, navigatePrevMonth, navigateNextMonth, daysToShow, handleDaysChange]);
 
   // Calculate total habits count
   const totalHabits = useMemo(
@@ -123,7 +152,7 @@ export function HabitMatrix({
   // Render loading state
   if (isLoading) {
     return (
-      <div className={`bg-slate-800/80 backdrop-blur rounded-lg p-4 ${className}`}>
+      <div className={`h-full ${className}`} data-testid="habit-matrix-loading">
         <LoadingSkeleton daysCount={daysToShow} />
       </div>
     );
@@ -132,7 +161,7 @@ export function HabitMatrix({
   // Render error state
   if (isError) {
     return (
-      <div className={`bg-slate-800/80 backdrop-blur rounded-lg p-4 ${className}`}>
+      <div className={`h-full ${className}`} data-testid="habit-matrix-error">
         <ErrorState onRetry={() => window.location.reload()} />
       </div>
     );
@@ -141,7 +170,7 @@ export function HabitMatrix({
   // Render empty state
   if (totalHabits === 0) {
     return (
-      <div className={`bg-slate-800/80 backdrop-blur rounded-lg p-4 ${className}`}>
+      <div className={`h-full ${className}`} data-testid="habit-matrix-empty">
         <EmptyState />
       </div>
     );
@@ -153,62 +182,13 @@ export function HabitMatrix({
     <div
       ref={containerRef}
       className={`
-        bg-slate-800/80 backdrop-blur rounded-lg
-        border border-slate-700/50
-        overflow-hidden flex flex-col
+        h-full overflow-hidden flex flex-col
         ${className}
       `}
+      data-testid="habit-matrix"
     >
-      {/* Header bar with month selector centered */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700/50 bg-slate-800/50">
-        {/* Left: Title and habit count */}
-        <div className="flex items-center gap-2 min-w-[120px]">
-          <h3 className="font-condensed font-semibold text-slate-200 text-sm uppercase tracking-wider">
-            Habit Matrix
-          </h3>
-          <span className="text-xs text-slate-500">
-            {totalHabits} habit{totalHabits !== 1 ? 's' : ''}
-          </span>
-        </div>
-
-        {/* Center: Month selector as inlaid pill */}
-        <div className="flex items-center">
-          <div className="flex items-center bg-slate-900/60 rounded-full px-1 py-0.5">
-            <button
-              onClick={navigatePrevMonth}
-              className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
-              title="Previous month"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <span className="px-3 py-0.5 text-sm font-condensed font-medium text-slate-200 min-w-[120px] text-center">
-              {format(currentMonth, 'MMMM yyyy')}
-            </span>
-            <button
-              onClick={navigateNextMonth}
-              className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
-              title="Next month"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Right: View toggle */}
-        <div className="flex items-center gap-1 min-w-[120px] justify-end">
-          <ViewToggle
-            currentDays={daysToShow}
-            onChange={(days) => setResponsiveDays(days)}
-          />
-        </div>
-      </div>
-
-      {/* Matrix content */}
-      <div className="flex-1 p-4 overflow-auto">
+      {/* Matrix content - no internal header, controls are in WidgetContainer */}
+      <div className="flex-1 overflow-auto">
         <div style={{ minWidth: habitNameWidth + (cellSize + 2) * daysToShow + 40 }}>
           {/* Date header row showing day numbers */}
           {isMobile ? (
@@ -241,6 +221,56 @@ export function HabitMatrix({
 }
 
 /**
+ * Month selector component for header
+ */
+function MonthSelector({
+  currentMonth,
+  onPrevMonth,
+  onNextMonth,
+}: {
+  currentMonth: Date;
+  onPrevMonth: () => void;
+  onNextMonth: () => void;
+}) {
+  return (
+    <div className="flex items-center bg-slate-900/60 rounded-full px-1 py-0.5" data-testid="month-selector">
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onPrevMonth();
+        }}
+        className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
+        title="Previous month"
+        data-testid="prev-month"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <span
+        className="px-3 py-0.5 text-sm font-condensed font-medium text-slate-200 min-w-[120px] text-center"
+        data-testid="current-month"
+      >
+        {format(currentMonth, 'MMMM yyyy')}
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onNextMonth();
+        }}
+        className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
+        title="Next month"
+        data-testid="next-month"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+/**
  * View toggle buttons for switching between day views
  */
 function ViewToggle({
@@ -251,18 +281,22 @@ function ViewToggle({
   onChange: (days: number) => void;
 }) {
   const options = [
-    { label: '3D', days: DAYS_CONFIG.mobile, title: '3 days' },
-    { label: '7D', days: DAYS_CONFIG.tablet, title: '7 days' },
-    { label: 'Mo', days: DAYS_CONFIG.desktop, title: 'Month (31 days)' },
+    { label: '3D', days: DAYS_CONFIG.mobile, title: '3 days', testId: 'view-3d' },
+    { label: '7D', days: DAYS_CONFIG.tablet, title: '7 days', testId: 'view-7d' },
+    { label: 'Mo', days: DAYS_CONFIG.desktop, title: 'Month (31 days)', testId: 'view-month' },
   ];
 
   return (
-    <div className="flex rounded bg-slate-900/50 p-0.5">
-      {options.map(({ label, days, title }) => (
+    <div className="flex rounded bg-slate-900/50 p-0.5" data-testid="view-toggle">
+      {options.map(({ label, days, title, testId }) => (
         <button
           key={days}
-          onClick={() => onChange(days)}
+          onClick={(e) => {
+            e.stopPropagation();
+            onChange(days);
+          }}
           title={title}
+          data-testid={testId}
           className={`
             px-2 py-0.5 text-xs font-condensed rounded
             transition-all duration-150

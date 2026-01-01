@@ -1,9 +1,21 @@
 import { useState, useCallback, type ReactNode } from 'react';
 import { useDashboardStore } from '../../stores';
 
+/**
+ * Custom header controls that widgets can provide
+ */
+export interface CustomHeaderControls {
+  /** Controls to display in the center of the header (e.g., month selector) */
+  center?: ReactNode;
+  /** Controls to display on the right side of the header (e.g., view toggle) */
+  right?: ReactNode;
+}
+
 interface WidgetContainerProps {
   widgetId: string;
   children: ReactNode;
+  /** Custom header controls to display in the unified title bar */
+  headerControls?: CustomHeaderControls;
 }
 
 // Widget title mapping
@@ -78,8 +90,9 @@ const WIDGET_ICONS: Record<string, ReactNode> = {
  * - Minimize/maximize toggle
  * - Active state highlighting
  * - Edit mode visual indicators
+ * - Support for custom header controls (center and right sections)
  */
-export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
+export function WidgetContainer({ widgetId, children, headerControls }: WidgetContainerProps) {
   const { isEditMode, activeWidgetId, setActiveWidget } = useDashboardStore();
   const [isMinimized, setIsMinimized] = useState(false);
 
@@ -121,9 +134,10 @@ export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
           select-none flex-shrink-0
           ${isEditMode ? 'cursor-grab active:cursor-grabbing' : 'cursor-default'}
         `}
+        data-testid="widget-header"
       >
-        {/* Title section */}
-        <div className="flex items-center gap-2">
+        {/* Left section: Title */}
+        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
           {icon && (
             <span className={`${isActive ? 'text-teal-400' : 'text-slate-400'} transition-colors`}>
               {icon}
@@ -131,7 +145,7 @@ export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
           )}
           <h3
             className={`
-              font-condensed font-semibold text-sm
+              font-condensed font-semibold text-sm whitespace-nowrap
               ${isActive ? 'text-white' : 'text-slate-200'}
               transition-colors
             `}
@@ -140,8 +154,27 @@ export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
           </h3>
         </div>
 
-        {/* Controls section */}
-        <div className="flex items-center gap-2">
+        {/* Center section: Custom controls (e.g., month selector) */}
+        {headerControls?.center && (
+          <div className="flex items-center justify-center flex-1 px-4" data-testid="header-center-controls">
+            {headerControls.center}
+          </div>
+        )}
+
+        {/* Right section: Custom controls + system controls */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Custom right controls (e.g., view toggle) */}
+          {headerControls?.right && (
+            <div className="flex items-center gap-2" data-testid="header-right-controls">
+              {headerControls.right}
+            </div>
+          )}
+
+          {/* Separator if custom controls exist */}
+          {headerControls?.right && (
+            <div className="h-4 w-px bg-slate-600/50" />
+          )}
+
           {/* Edit mode indicator */}
           {isEditMode && (
             <span className="text-xs text-teal-400/70 font-condensed hidden sm:inline">
@@ -157,7 +190,8 @@ export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
               text-slate-400 hover:text-slate-200
               transition-colors duration-150
             "
-            title={isMinimized ? 'Maximize' : 'Minimize'}
+            title={isMinimized ? 'Expand' : 'Collapse'}
+            data-testid="collapse-toggle"
           >
             {isMinimized ? (
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -183,6 +217,7 @@ export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
               transition-colors duration-150
             "
             title="Widget options"
+            data-testid="widget-menu"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path
@@ -203,6 +238,7 @@ export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
           transition-all duration-200
           ${isMinimized ? 'h-0 p-0 overflow-hidden' : 'p-3'}
         `}
+        data-testid="widget-content"
       >
         {!isMinimized && children}
       </div>
