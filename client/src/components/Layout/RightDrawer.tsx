@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { useUIStore } from '../../stores';
+import { useUIStore, useDashboardStore } from '../../stores';
 import { useTasks } from '../../api';
 import * as MuiIcons from '@mui/icons-material';
 import { PrioritiesList } from './PrioritiesList';
+import { ComponentPicker } from './ComponentPicker';
 import type { Task } from '../../types';
 
 // Parking Lot types and localStorage key
@@ -21,9 +22,10 @@ interface RightDrawerProps {
   overlay?: boolean;
 }
 
-type DrawerTab = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog';
+type DrawerTab = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog' | 'components';
 
-const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons }[] = [
+const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons; editModeOnly?: boolean }[] = [
+  { id: 'components', label: 'Components', icon: 'Widgets', editModeOnly: true },
   { id: 'parking-lot', label: 'Parking Lot', icon: 'LocalParking' },
   { id: 'task-backlog', label: 'Task Backlog', icon: 'Inbox' },
   { id: 'priorities', label: 'Priorities', icon: 'PriorityHigh' },
@@ -33,7 +35,13 @@ const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons }
 
 export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawerProps) {
   const { rightDrawerContent, setRightDrawerContent, closeRightDrawer } = useUIStore();
+  const { isEditMode } = useDashboardStore();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Filter tabs based on edit mode
+  const visibleTabs = useMemo(() => {
+    return DRAWER_TABS.filter(tab => !tab.editModeOnly || isEditMode);
+  }, [isEditMode]);
 
   // Handle click outside to close (only if overlay mode)
   useEffect(() => {
@@ -75,6 +83,8 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
 
   const renderContent = () => {
     switch (rightDrawerContent) {
+      case 'components':
+        return <ComponentPicker />;
       case 'parking-lot':
         return <ParkingLotContent />;
       case 'task-backlog':
@@ -140,7 +150,7 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
 
         {/* Tab navigation */}
         <div className="flex border-b border-slate-700/50 px-2 py-2 gap-1 overflow-x-auto">
-          {DRAWER_TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const IconComponent = MuiIcons[tab.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
             const isActive = rightDrawerContent === tab.id;
 
@@ -155,6 +165,7 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
                     ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25'
                     : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                   }
+                  ${tab.editModeOnly ? 'ring-1 ring-teal-500/30' : ''}
                 `}
                 data-testid={`drawer-tab-${tab.id}`}
                 aria-selected={isActive}

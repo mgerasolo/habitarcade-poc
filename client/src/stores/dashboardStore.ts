@@ -29,6 +29,9 @@ interface DashboardStore {
   resetLayout: () => void;
   updateWidgetPosition: (id: string, updates: Partial<DashboardLayoutItem>) => void;
   toggleWidgetCollapse: (widgetId: string) => void;
+  addWidget: (widgetId: string, defaultSize: { w: number; h: number }, minSize: { w: number; h: number }) => void;
+  removeWidget: (widgetId: string) => void;
+  isWidgetOnDashboard: (widgetId: string) => boolean;
 }
 
 export const useDashboardStore = create<DashboardStore>()(
@@ -81,6 +84,50 @@ export const useDashboardStore = create<DashboardStore>()(
             });
           }
         }
+      },
+
+      addWidget: (widgetId: string, defaultSize: { w: number; h: number }, minSize: { w: number; h: number }) => {
+        const state = get();
+        // Check if widget already exists
+        if (state.layout.some((item) => item.i === widgetId)) {
+          return;
+        }
+
+        // Find the lowest y position to add widget below existing ones
+        const maxY = state.layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+
+        const newWidget: DashboardLayoutItem = {
+          i: widgetId,
+          x: 0,
+          y: maxY,
+          w: defaultSize.w,
+          h: defaultSize.h,
+          minW: minSize.w,
+          minH: minSize.h,
+        };
+
+        set({ layout: [...state.layout, newWidget] });
+      },
+
+      removeWidget: (widgetId: string) => {
+        const state = get();
+        // Remove from layout
+        const newLayout = state.layout.filter((item) => item.i !== widgetId);
+        // Also remove from collapsed widgets if present
+        const newCollapsedWidgets = { ...state.collapsedWidgets };
+        delete newCollapsedWidgets[widgetId];
+
+        set({
+          layout: newLayout,
+          collapsedWidgets: newCollapsedWidgets,
+          // Clear active widget if it was the removed one
+          activeWidgetId: state.activeWidgetId === widgetId ? null : state.activeWidgetId,
+        });
+      },
+
+      isWidgetOnDashboard: (widgetId: string) => {
+        const state = get();
+        return state.layout.some((item) => item.i === widgetId);
       },
 
     }),
