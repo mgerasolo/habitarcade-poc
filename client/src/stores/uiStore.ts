@@ -12,6 +12,8 @@ type ModalType =
   | 'confirm-delete'
   | null;
 
+type RightDrawerContent = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | null;
+
 interface UIStore {
   // Modal state
   activeModal: ModalType;
@@ -28,6 +30,10 @@ interface UIStore {
   currentDate: Date;
   viewMode: 'day' | 'week' | 'month';
   sidebarOpen: boolean;
+
+  // Right drawer state
+  rightDrawerOpen: boolean;
+  rightDrawerContent: RightDrawerContent;
 
   // Icon picker callback
   onIconSelect: ((icon: string, color: string) => void) | null;
@@ -46,6 +52,12 @@ interface UIStore {
   setViewMode: (mode: 'day' | 'week' | 'month') => void;
   toggleSidebar: () => void;
 
+  // Right drawer actions
+  toggleRightDrawer: () => void;
+  openRightDrawer: (content?: RightDrawerContent) => void;
+  closeRightDrawer: () => void;
+  setRightDrawerContent: (content: RightDrawerContent) => void;
+
   openIconPicker: (onSelect: (icon: string, color: string) => void) => void;
 }
 
@@ -61,6 +73,8 @@ export const useUIStore = create<UIStore>((set) => ({
   currentDate: new Date(),
   viewMode: 'week',
   sidebarOpen: true,
+  rightDrawerOpen: false,
+  rightDrawerContent: 'parking-lot',
   onIconSelect: null,
 
   // Actions
@@ -76,6 +90,15 @@ export const useUIStore = create<UIStore>((set) => ({
   setCurrentDate: (date) => set({ currentDate: date }),
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+
+  // Right drawer actions
+  toggleRightDrawer: () => set((state) => ({ rightDrawerOpen: !state.rightDrawerOpen })),
+  openRightDrawer: (content) => set((state) => ({
+    rightDrawerOpen: true,
+    rightDrawerContent: content || state.rightDrawerContent || 'parking-lot'
+  })),
+  closeRightDrawer: () => set({ rightDrawerOpen: false }),
+  setRightDrawerContent: (content) => set({ rightDrawerContent: content }),
 
   openIconPicker: (onSelect) => set({
     activeModal: 'icon-picker',
