@@ -103,30 +103,35 @@ export const CategorySection = memo(function CategorySection({
   const RowComponent = isCompact ? HabitRowCompact : HabitRow;
 
   return (
-    <div className="mb-2">
-      {/* Category header with 20% white overlay */}
+    <div className="mb-2" data-testid="category-section">
+      {/* Category divider line */}
+      <div className="border-t-2 border-slate-600/80 mt-2" data-testid="category-divider" />
+
+      {/* Category header with distinct background */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="
-          w-full flex items-center gap-2 py-1.5 px-2 rounded
-          bg-white/[0.08] hover:bg-white/[0.12]
+          w-full flex items-center gap-2 py-2 px-3 rounded-b
+          bg-slate-700/50 hover:bg-slate-700/70
+          border-x border-b border-slate-600/40
           transition-colors duration-150
           group cursor-pointer
         "
         aria-expanded={!isCollapsed}
         aria-controls={`category-${category?.id || 'uncategorized'}`}
+        data-testid="category-header"
       >
         {/* Collapse indicator */}
         <span
           className={`
-            text-slate-400 group-hover:text-slate-300
+            text-slate-300 group-hover:text-slate-100
             transition-transform duration-200
             ${isCollapsed ? '' : 'rotate-90'}
           `}
         >
           <svg
-            width="12"
-            height="12"
+            width="14"
+            height="14"
             viewBox="0 0 12 12"
             fill="currentColor"
             className="transform"
@@ -138,26 +143,26 @@ export const CategorySection = memo(function CategorySection({
         {/* Category icon */}
         {categoryIcon && (
           <span
-            className="text-sm opacity-80"
+            className="text-base"
             style={{ color: categoryColor }}
           >
             <i className={categoryIcon} />
           </span>
         )}
 
-        {/* Category name */}
-        <span className="font-condensed text-xs font-semibold text-slate-200 uppercase tracking-wider">
+        {/* Category name - bold and prominent */}
+        <span className="font-condensed text-sm font-bold text-slate-100 uppercase tracking-wider" data-testid="category-name">
           {categoryName}
         </span>
 
         {/* Habit count badge */}
-        <span className="text-[10px] text-slate-400 font-condensed">
+        <span className="text-xs text-slate-400 font-condensed">
           {habits.length} habit{habits.length !== 1 ? 's' : ''}
         </span>
 
         {/* Today's progress indicator */}
         {stats.completedToday > 0 && (
-          <span className="ml-auto text-[10px] font-condensed text-emerald-400">
+          <span className="ml-auto text-xs font-condensed text-emerald-400 font-medium">
             {stats.completedToday}/{habits.length} today
           </span>
         )}
@@ -240,22 +245,30 @@ export const CategorySectionFlat = memo(function CategorySectionFlat({
   const RowComponent = isCompact ? HabitRowCompact : HabitRow;
 
   return (
-    <div className="mb-3">
-      {/* Category header - non-interactive with white overlay */}
+    <div className="mb-3" data-testid="category-section-flat">
+      {/* Category header - non-interactive with distinct background */}
       {category && (
-        <div className="flex items-center gap-2 py-1.5 px-2 mb-1 rounded bg-white/[0.08]">
-          {categoryIcon && (
-            <span className="text-sm" style={{ color: categoryColor }}>
-              <i className={categoryIcon} />
+        <>
+          {/* Category divider line */}
+          <div className="border-t-2 border-slate-600/80 mt-2" data-testid="category-divider" />
+
+          <div
+            className="flex items-center gap-2 py-2 px-3 mb-1 rounded-b bg-slate-700/50 border-x border-b border-slate-600/40"
+            data-testid="category-header-flat"
+          >
+            {categoryIcon && (
+              <span className="text-base" style={{ color: categoryColor }}>
+                <i className={categoryIcon} />
+              </span>
+            )}
+            <span className="font-condensed text-sm font-bold text-slate-100 uppercase tracking-wider" data-testid="category-name">
+              {categoryName}
             </span>
-          )}
-          <span className="font-condensed text-xs font-semibold text-slate-200 uppercase tracking-wider">
-            {categoryName}
-          </span>
-          <span className="text-[10px] text-slate-400 font-condensed">
-            {habits.length} habit{habits.length !== 1 ? 's' : ''}
-          </span>
-        </div>
+            <span className="text-xs text-slate-400 font-condensed">
+              {habits.length} habit{habits.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+        </>
       )}
 
       {/* Habit rows */}
