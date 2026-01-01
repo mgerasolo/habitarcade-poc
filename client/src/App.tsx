@@ -12,8 +12,12 @@ import {
   ManageProjects,
   ManageTags,
   ManagePriorities,
+  ManageQuotes,
+  ManageVideos,
   Settings,
 } from './pages/Manage';
+import { Targets } from './pages/Targets';
+import { TimeBlocks } from './pages/TimeBlocks';
 import { ModalManager } from './components/ModalManager';
 import { useUIStore } from './stores';
 
@@ -38,8 +42,16 @@ function PageRouter() {
       return <ManageTags />;
     case 'manage-priorities':
       return <ManagePriorities />;
+    case 'manage-quotes':
+      return <ManageQuotes />;
+    case 'manage-videos':
+      return <ManageVideos />;
     case 'settings':
       return <Settings />;
+    case 'targets':
+      return <Targets />;
+    case 'time-blocks':
+      return <TimeBlocks />;
     // Future pages can be added here
     case 'tasks':
     case 'kanban-status':

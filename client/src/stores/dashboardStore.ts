@@ -3,12 +3,15 @@ import { persist } from 'zustand/middleware';
 import type { DashboardLayoutItem } from '../types';
 
 // Default layout for the dashboard
+// Layout: Wide modules (Habit Matrix, Weekly Tasks) on left, narrow modules on right
 const DEFAULT_LAYOUT: DashboardLayoutItem[] = [
-  { i: 'habit-matrix', x: 0, y: 0, w: 16, h: 12, minW: 8, minH: 6 },
-  { i: 'weekly-kanban', x: 16, y: 0, w: 8, h: 8, minW: 6, minH: 4 },
-  { i: 'time-blocks', x: 16, y: 8, w: 8, h: 8, minW: 4, minH: 4 },
-  { i: 'target-graph', x: 0, y: 12, w: 12, h: 6, minW: 6, minH: 4 },
-  { i: 'parking-lot', x: 12, y: 12, w: 12, h: 6, minW: 4, minH: 3 },
+  // Left column (wide) - 18 columns
+  { i: 'habit-matrix', x: 0, y: 0, w: 18, h: 10, minW: 8, minH: 6 },
+  { i: 'weekly-kanban', x: 0, y: 10, w: 18, h: 8, minW: 6, minH: 4 },
+  // Right column (narrow) - 6 columns
+  { i: 'target-graph', x: 18, y: 0, w: 6, h: 6, minW: 4, minH: 4 },
+  { i: 'time-blocks', x: 18, y: 6, w: 6, h: 6, minW: 4, minH: 4 },
+  { i: 'parking-lot', x: 18, y: 12, w: 6, h: 6, minW: 4, minH: 3 },
 ];
 
 // Height for collapsed widgets (title bar only - approximately 40px at 30px row height)

@@ -16,6 +16,7 @@ interface HabitFormData {
   icon: string;
   iconColor: string;
   isActive: boolean;
+  dailyTarget: string; // String for form input, convert to number on submit
 }
 
 export function HabitForm() {
@@ -44,6 +45,7 @@ export function HabitForm() {
       icon: selectedHabit?.icon || '',
       iconColor: selectedHabit?.iconColor || '#14b8a6',
       isActive: selectedHabit?.isActive ?? true,
+      dailyTarget: selectedHabit?.dailyTarget?.toString() || '',
     },
   });
 
@@ -64,6 +66,9 @@ export function HabitForm() {
   // Handle form submission
   const onSubmit = async (data: HabitFormData) => {
     try {
+      // Convert dailyTarget string to number or undefined
+      const dailyTarget = data.dailyTarget ? parseInt(data.dailyTarget, 10) : undefined;
+
       if (isEditMode && selectedHabit) {
         await updateHabit.mutateAsync({
           id: selectedHabit.id,
@@ -72,6 +77,7 @@ export function HabitForm() {
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           isActive: data.isActive,
+          dailyTarget: dailyTarget || undefined, // Send undefined to clear target
         });
         toast.success('Habit updated successfully');
       } else {
@@ -81,6 +87,7 @@ export function HabitForm() {
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           isActive: data.isActive,
+          dailyTarget,
         });
         toast.success('Habit created successfully');
       }
@@ -228,6 +235,38 @@ export function HabitForm() {
               </select>
               <p className="mt-1.5 text-xs text-slate-500">
                 Group habits by category for better organization
+              </p>
+            </div>
+
+            {/* Daily Target (count-based habit) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Daily Target (Count-Based)
+              </label>
+              <input
+                type="number"
+                {...register('dailyTarget', {
+                  min: { value: 0, message: 'Target must be 0 or greater' },
+                  max: { value: 99, message: 'Target must be 99 or less' },
+                })}
+                placeholder="e.g., 3 for 3x daily"
+                min={0}
+                max={99}
+                className={`
+                  w-full px-4 py-3 bg-slate-700/50 border rounded-xl text-white
+                  placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500
+                  focus:border-transparent transition-all
+                  ${errors.dailyTarget ? 'border-red-500' : 'border-slate-600'}
+                `}
+              />
+              {errors.dailyTarget && (
+                <p className="mt-1.5 text-sm text-red-400 flex items-center gap-1">
+                  <MuiIcons.ErrorOutline style={{ fontSize: 16 }} />
+                  {errors.dailyTarget.message}
+                </p>
+              )}
+              <p className="mt-1.5 text-xs text-slate-500">
+                Set a count target for habits done multiple times daily (e.g., supplements 3x/day). Leave empty for standard yes/no habits.
               </p>
             </div>
 

@@ -1,9 +1,143 @@
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
-import { useHabits, useDeleteHabit, useCategories } from '../../api';
+import { useHabits, useDeleteHabit, useCategories, useImportHabits } from '../../api';
 import { useUIStore } from '../../stores';
 import type { Habit, Category } from '../../types';
+
+/**
+ * Import Habits Modal
+ * Allows users to paste markdown and bulk import habits
+ */
+function ImportHabitsModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [markdown, setMarkdown] = useState('');
+  const importHabits = useImportHabits();
+
+  const exampleMarkdown = `## Morning Routine
+- Wake Up @icon:material:WbSunny @color:#f59e0b
+- Meditate @icon:material:SelfImprovement @color:#8b5cf6
+- Exercise @icon:material:FitnessCenter @color:#ef4444
+
+## Health
+- Drink Water @icon:material:LocalDrink @color:#3b82f6
+- Take Vitamins @icon:material:Medication @color:#22c55e`;
+
+  const handleImport = async () => {
+    if (!markdown.trim()) {
+      toast.error('Please enter some markdown to import');
+      return;
+    }
+
+    try {
+      const result = await importHabits.mutateAsync(markdown);
+      toast.success(result.message);
+      setMarkdown('');
+      onClose();
+    } catch (error) {
+      toast.error('Failed to import habits');
+    }
+  };
+
+  const loadExample = () => {
+    setMarkdown(exampleMarkdown);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <div className="bg-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-700 overflow-hidden">
+        {/* Header */}
+        <div className="p-5 border-b border-slate-700 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-teal-600/20 flex items-center justify-center border border-teal-500/30">
+              <MuiIcons.FileUpload style={{ color: '#14b8a6', fontSize: 22 }} />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-white">Import Habits</h2>
+              <p className="text-sm text-slate-400">Bulk import from markdown</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors flex items-center justify-center"
+          >
+            <MuiIcons.Close style={{ fontSize: 20 }} />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="p-5 space-y-4">
+          {/* Format Info */}
+          <div className="bg-slate-700/30 border border-slate-600/50 rounded-xl p-4">
+            <h3 className="text-sm font-medium text-slate-300 mb-2">Markdown Format:</h3>
+            <pre className="text-xs text-slate-400 font-mono overflow-x-auto">
+{`## Category Name
+- Habit Name @icon:material:IconName @color:#hex`}
+            </pre>
+          </div>
+
+          {/* Markdown Input */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-sm font-medium text-slate-300">
+                Paste your markdown
+              </label>
+              <button
+                onClick={loadExample}
+                className="text-xs text-teal-400 hover:text-teal-300 transition-colors"
+              >
+                Load Example
+              </button>
+            </div>
+            <textarea
+              value={markdown}
+              onChange={(e) => setMarkdown(e.target.value)}
+              placeholder="## Category&#10;- Habit Name @icon:material:Check @color:#14b8a6"
+              className="w-full h-64 px-4 py-3 bg-slate-900/50 border border-slate-600 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent font-mono text-sm resize-none"
+            />
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-700 flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition-colors font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleImport}
+            disabled={importHabits.isPending || !markdown.trim()}
+            className="px-5 py-2.5 rounded-xl bg-teal-600 text-white hover:bg-teal-500 transition-colors font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {importHabits.isPending ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                <MuiIcons.FileUpload style={{ fontSize: 18 }} />
+                Import Habits
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Manage Habits Page
@@ -25,6 +159,7 @@ export function ManageHabits() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'name' | 'category' | 'created'>('name');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [showImportModal, setShowImportModal] = useState(false);
 
   // Filter and sort habits
   const habits = useMemo(() => {
@@ -160,13 +295,22 @@ export function ManageHabits() {
             <p className="text-sm text-slate-400">{habits.length} habits</p>
           </div>
         </div>
-        <button
-          onClick={handleAdd}
-          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white rounded-xl font-medium transition-all shadow-lg shadow-teal-600/20"
-        >
-          <MuiIcons.Add style={{ fontSize: 20 }} />
-          Add Habit
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-all border border-slate-600"
+          >
+            <MuiIcons.FileUpload style={{ fontSize: 20 }} />
+            Import
+          </button>
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-500 hover:to-teal-400 text-white rounded-xl font-medium transition-all shadow-lg shadow-teal-600/20"
+          >
+            <MuiIcons.Add style={{ fontSize: 20 }} />
+            Add Habit
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -312,6 +456,12 @@ export function ManageHabits() {
           </div>
         )}
       </div>
+
+      {/* Import Modal */}
+      <ImportHabitsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+      />
     </div>
   );
 }

@@ -1,7 +1,9 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useCallback } from 'react';
 import type { DateColumn, MatrixHabit } from './useHabitMatrix';
-import { getHabitStatus } from './useHabitMatrix';
+import { getHabitStatus, getEffectiveHabitStatus } from './useHabitMatrix';
 import { StatusCell } from './StatusCell';
+import { useUIStore } from '../../stores';
+import { useSettings } from '../../api';
 
 /**
  * Get color class based on completion percentage
@@ -72,6 +74,15 @@ export const HabitRow = memo(function HabitRow({
   cellSize,
   index = 0,
 }: HabitRowProps) {
+  const { openModal } = useUIStore();
+  const { data: settingsResponse } = useSettings();
+  const autoMarkPink = settingsResponse?.data?.autoMarkPink ?? false;
+
+  // Handler to open habit detail modal
+  const handleHabitClick = useCallback(() => {
+    openModal('habit-detail', habit);
+  }, [openModal, habit]);
+
   // Calculate streak info for visual indicator
   const streakInfo = useMemo(() => {
     let currentStreak = 0;
@@ -121,13 +132,14 @@ export const HabitRow = memo(function HabitRow({
           </span>
         )}
 
-        {/* Habit name - consistent color for all habits */}
-        <span
-          className="font-condensed text-xs truncate text-slate-200 group-hover:text-slate-100 transition-colors duration-150"
-          title={habit.name}
+        {/* Habit name - clickable to open detail modal */}
+        <button
+          onClick={handleHabitClick}
+          className="font-condensed text-xs truncate text-slate-200 group-hover:text-teal-400 transition-colors duration-150 hover:underline cursor-pointer text-left"
+          title={`${habit.name} - Click for details`}
         >
           {habit.name}
-        </span>
+        </button>
 
         {/* Streak indicator */}
         {streakInfo.currentStreak >= 3 && (
@@ -147,9 +159,13 @@ export const HabitRow = memo(function HabitRow({
       {/* Status cells for each date */}
       <div className="flex gap-0.5">
         {dates.map((dateCol, index) => {
-          const status = getHabitStatus(habit, dateCol.date);
+          // Use getEffectiveHabitStatus to apply pink for unfilled past days
+          const status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
           // Extract day of month from date string (YYYY-MM-DD format)
           const dayOfMonth = dateCol.date.split('-')[2].replace(/^0/, '');
+          // Get count for count-based habits
+          const entry = habit.entriesByDate.get(dateCol.date);
+          const currentCount = entry?.count ?? 0;
           return (
             <StatusCell
               key={dateCol.date}
@@ -161,6 +177,8 @@ export const HabitRow = memo(function HabitRow({
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
               size={cellSize}
+              dailyTarget={habit.dailyTarget}
+              currentCount={currentCount}
             />
           );
         })}
@@ -191,6 +209,15 @@ export const HabitRowCompact = memo(function HabitRowCompact({
   cellSize,
   index = 0,
 }: HabitRowProps) {
+  const { openModal } = useUIStore();
+  const { data: settingsResponse } = useSettings();
+  const autoMarkPink = settingsResponse?.data?.autoMarkPink ?? false;
+
+  // Handler to open habit detail modal
+  const handleHabitClick = useCallback(() => {
+    openModal('habit-detail', habit);
+  }, [openModal, habit]);
+
   // Calculate completion percentage for this habit
   const completionPercent = useMemo(
     () => calculateHabitCompletion(habit, dates),
@@ -209,16 +236,24 @@ export const HabitRowCompact = memo(function HabitRowCompact({
             <i className={habit.icon} />
           </span>
         )}
-        <span className="font-condensed text-xs text-slate-200 truncate" title={habit.name}>
+        <button
+          onClick={handleHabitClick}
+          className="font-condensed text-xs text-slate-200 truncate hover:text-teal-400 hover:underline cursor-pointer text-left"
+          title={`${habit.name} - Click for details`}
+        >
           {habit.name}
-        </span>
+        </button>
       </div>
 
       {/* Status cells - larger for touch */}
       <div className="flex gap-1">
         {dates.map((dateCol, index) => {
-          const status = getHabitStatus(habit, dateCol.date);
+          // Use getEffectiveHabitStatus to apply pink for unfilled past days
+          const status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
           const dayOfMonth = dateCol.date.split('-')[2].replace(/^0/, '');
+          // Get count for count-based habits
+          const entry = habit.entriesByDate.get(dateCol.date);
+          const currentCount = entry?.count ?? 0;
           return (
             <StatusCell
               key={dateCol.date}
@@ -230,6 +265,8 @@ export const HabitRowCompact = memo(function HabitRowCompact({
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
               size={cellSize || 20}
+              dailyTarget={habit.dailyTarget}
+              currentCount={currentCount}
             />
           );
         })}

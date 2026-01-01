@@ -13,6 +13,27 @@ interface StatusCellProps {
   isToday: boolean;
   isWeekend?: boolean;
   size?: number;
+  // Count-based habit support
+  dailyTarget?: number;
+  currentCount?: number;
+}
+
+/**
+ * Get progressive green color based on count/target ratio
+ * Returns a green shade from light (#86efac) to dark (#047857) based on progress
+ */
+function getCountBasedColor(count: number, target: number): string {
+  if (target <= 0 || count <= 0) return STATUS_COLORS.empty;
+
+  const ratio = Math.min(count / target, 1); // Cap at 1 (100%)
+
+  // Color stops: 0% = light green, 100% = dark green
+  // We'll interpolate between these colors
+  if (ratio >= 1) return '#047857'; // Full complete - emerald-700
+  if (ratio >= 0.75) return '#059669'; // 75%+ - emerald-600
+  if (ratio >= 0.5) return '#10b981'; // 50%+ - emerald-500
+  if (ratio >= 0.25) return '#34d399'; // 25%+ - emerald-400
+  return '#6ee7b7'; // <25% - emerald-300
 }
 
 /**
@@ -31,6 +52,8 @@ export function StatusCell({
   isToday,
   isWeekend = false,
   size = 16,
+  dailyTarget,
+  currentCount = 0,
 }: StatusCellProps) {
   // State
   const [showTooltip, setShowTooltip] = useState(false);
@@ -46,6 +69,9 @@ export function StatusCell({
   // API mutation
   const updateEntry = useUpdateHabitEntry();
 
+  // Determine if this is a count-based habit
+  const isCountBased = !!dailyTarget && dailyTarget > 0;
+
   // Check if this cell is in the highlighted row/column
   const isHighlightedRow = hoveredCell?.habitId === habitId;
   const isHighlightedColumn = hoveredCell?.dateIndex === dateIndex;
@@ -60,13 +86,27 @@ export function StatusCell({
   }, []);
 
   // Cycle through common statuses (green -> red -> blue -> white)
+  // OR increment count for count-based habits
   const cycleStatus = useCallback(() => {
-    const currentIndex = COMMON_STATUSES.indexOf(status);
-    // If status is not in common statuses, start at complete (green)
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % COMMON_STATUSES.length;
-    const nextStatus = COMMON_STATUSES[nextIndex];
-    updateEntry.mutate({ habitId, date, status: nextStatus });
-  }, [habitId, date, status, updateEntry]);
+    if (isCountBased) {
+      // For count-based habits, increment count (reset after reaching target + 1)
+      const nextCount = currentCount >= (dailyTarget || 1) ? 0 : currentCount + 1;
+      // Determine status based on count
+      const nextStatus: HabitStatus = nextCount === 0
+        ? 'empty'
+        : nextCount >= (dailyTarget || 1)
+          ? 'complete'
+          : 'partial';
+      updateEntry.mutate({ habitId, date, status: nextStatus, count: nextCount });
+    } else {
+      // Standard habit - cycle through statuses
+      const currentIndex = COMMON_STATUSES.indexOf(status);
+      // If status is not in common statuses, start at complete (green)
+      const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % COMMON_STATUSES.length;
+      const nextStatus = COMMON_STATUSES[nextIndex];
+      updateEntry.mutate({ habitId, date, status: nextStatus });
+    }
+  }, [habitId, date, status, updateEntry, isCountBased, currentCount, dailyTarget]);
 
   // Handle direct status selection from tooltip
   const handleStatusSelect = useCallback((newStatus: HabitStatus) => {
@@ -124,19 +164,24 @@ export function StatusCell({
 
   // Determine background color with crosshair highlight
   const getBackgroundColor = () => {
+    // For count-based habits, use progressive green based on count/target
+    const baseColor = isCountBased && currentCount > 0
+      ? getCountBasedColor(currentCount, dailyTarget || 1)
+      : STATUS_COLORS[status];
+
     // If this is the hovered cell itself, show status color with slight emphasis
     if (isHovered) {
-      return STATUS_COLORS[status];
+      return baseColor;
     }
     // If in highlighted row or column, overlay yellow tint
     if (isHighlightedRow || isHighlightedColumn) {
-      if (status === 'empty') {
+      if (status === 'empty' && (!isCountBased || currentCount === 0)) {
         return 'rgba(250, 204, 21, 0.15)'; // Yellow tint on empty
       }
       // For colored cells, we'll use a box-shadow instead
-      return STATUS_COLORS[status];
+      return baseColor;
     }
-    return STATUS_COLORS[status];
+    return baseColor;
   };
 
   // Get box shadow for crosshair effect on colored cells
@@ -152,7 +197,7 @@ export function StatusCell({
   };
 
   return (
-    <div className="relative flex items-center justify-center">
+    <div className={`relative flex items-center justify-center ${showTooltip ? 'z-[100]' : ''}`}>
       <div
         ref={cellRef}
         className={`
@@ -176,7 +221,11 @@ export function StatusCell({
         onMouseLeave={handleMouseLeave}
         role="button"
         tabIndex={0}
-        aria-label={`${date}: ${status}. Click to cycle, hover or right-click for more options.`}
+        aria-label={
+          isCountBased
+            ? `${date}: ${currentCount}/${dailyTarget}. Click to increment.`
+            : `${date}: ${status}. Click to cycle, hover or right-click for more options.`
+        }
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
@@ -184,15 +233,33 @@ export function StatusCell({
           }
         }}
       >
-        {/* Day number - show only when empty */}
-        {status === 'empty' && (
+        {/* Count-based habit: show count number */}
+        {isCountBased && currentCount > 0 && (
           <span
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
               fontSize: size > 20 ? '11px' : '9px',
-              color: 'rgba(0, 0, 0, 0.4)',
-              fontWeight: 500,
+              color: 'rgba(255, 255, 255, 0.9)',
+              fontWeight: 700,
               lineHeight: 1,
+              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+            }}
+          >
+            {currentCount}
+          </span>
+        )}
+        {/* Day number - show always for non-count-based habits with appropriate contrast */}
+        {(!isCountBased || currentCount === 0) && (
+          <span
+            style={{
+              fontFamily: '"Arial Narrow", Arial, sans-serif',
+              fontSize: size > 20 ? '11px' : '9px',
+              color: status === 'empty' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.85)',
+              fontWeight: status === 'empty' ? 500 : 700,
+              lineHeight: 1,
+              textShadow: status !== 'empty' ? '0 1px 2px rgba(0,0,0,0.4)' : 'none',
+              position: 'relative',
+              zIndex: 10,
             }}
           >
             {dayOfMonth}

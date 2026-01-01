@@ -16,6 +16,7 @@ const DEFAULT_SETTINGS: Record<string, unknown> = {
   kanbanDays: 7,
   autoSyncInterval: 30000, // 30 seconds
   notificationsEnabled: false,
+  autoMarkPink: true, // Auto-mark unfilled past days as pink
 };
 
 // GET /api/settings - Get all settings

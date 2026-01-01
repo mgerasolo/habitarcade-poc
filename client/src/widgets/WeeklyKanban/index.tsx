@@ -135,42 +135,49 @@ export function WeeklyKanban() {
 
   return (
     <div className="bg-slate-800/80 backdrop-blur rounded-lg p-4 h-full flex flex-col">
-      {/* Header with week navigation */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
+      {/* Compact title bar with week navigation */}
+      <div className="flex items-center gap-3 mb-2 flex-shrink-0">
+        {/* Title with week range */}
         <div className="flex items-center gap-2">
+          <h2 className="text-sm font-semibold text-white font-condensed">Weekly Tasks</h2>
+          <span className="text-slate-500">·</span>
+          <span className="text-xs text-slate-400 font-condensed">
+            {format(currentWeekStart, 'MMM d')} – {format(weekEnd, 'MMM d')}
+          </span>
+        </div>
+
+        {/* Extending line */}
+        <div className="flex-1 h-px bg-slate-700/50" />
+
+        {/* Week navigation controls */}
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setCurrentWeekStart(subWeeks(currentWeekStart, 1))}
-            className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white"
+            className="p-1 hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-white"
             title="Previous week"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <button
-            onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
-            className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-300 hover:text-white"
-            title="Next week"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        <h2 className="text-lg font-semibold text-white font-condensed">
-          {format(currentWeekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
-        </h2>
-
-        <div className="flex items-center gap-2">
           {!isCurrentWeek && (
             <button
               onClick={goToToday}
-              className="px-3 py-1.5 text-sm bg-teal-600 hover:bg-teal-500 text-white rounded-lg transition-colors"
+              className="px-2 py-0.5 text-[10px] font-medium bg-teal-600/80 hover:bg-teal-500 text-white rounded transition-colors"
+              title="Go to current week"
             >
               Today
             </button>
           )}
+          <button
+            onClick={() => setCurrentWeekStart(addWeeks(currentWeekStart, 1))}
+            className="p-1 hover:bg-slate-700 rounded transition-colors text-slate-400 hover:text-white"
+            title="Next week"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
         </div>
       </div>
 

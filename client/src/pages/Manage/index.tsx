@@ -3,4 +3,6 @@ export { ManageCategories } from './ManageCategories';
 export { ManageProjects } from './ManageProjects';
 export { ManageTags } from './ManageTags';
 export { ManagePriorities } from './ManagePriorities';
+export { ManageQuotes } from './Quotes';
+export { ManageVideos } from './Videos';
 export { Settings } from './Settings';

@@ -3,6 +3,7 @@ import type { Habit, Task, Project, Category, TimeBlock } from '../types';
 
 type ModalType =
   | 'habit-form'
+  | 'habit-detail'
   | 'task-form'
   | 'project-form'
   | 'category-form'
@@ -12,7 +13,7 @@ type ModalType =
   | 'confirm-delete'
   | null;
 
-export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'settings';
+export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'manage-quotes' | 'manage-videos' | 'settings' | 'targets' | 'time-blocks';
 
 type RightDrawerContent = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog' | 'components' | null;
 
@@ -77,7 +78,7 @@ export const useUIStore = create<UIStore>((set) => ({
   currentDate: new Date(),
   viewMode: 'week',
   sidebarOpen: true,
-  currentPage: 'today',
+  currentPage: 'dashboard',
   rightDrawerOpen: false,
   rightDrawerContent: 'parking-lot',
   onIconSelect: null,

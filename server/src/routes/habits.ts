@@ -1,9 +1,65 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { habits, habitEntries } from '../db/schema';
-import { eq, and, gte, lte, desc } from 'drizzle-orm';
+import { habits, habitEntries, categories } from '../db/schema';
+import { eq, and, gte, lte, desc, ilike } from 'drizzle-orm';
 
 const router = Router();
+
+// Markdown import parser
+interface ParsedHabit {
+  name: string;
+  icon?: string;
+  iconColor?: string;
+  categoryName?: string;
+}
+
+function parseMarkdownHabits(markdown: string): ParsedHabit[] {
+  const lines = markdown.split('\n');
+  const parsedHabits: ParsedHabit[] = [];
+  let currentCategory: string | undefined;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    // Check for category header (## Category Name)
+    const categoryMatch = trimmed.match(/^##\s+(.+)$/);
+    if (categoryMatch) {
+      currentCategory = categoryMatch[1].trim();
+      continue;
+    }
+
+    // Check for habit item (- Habit Name @icon:name @color:#hex)
+    const habitMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    if (habitMatch) {
+      const habitLine = habitMatch[1];
+
+      // Extract @icon:value
+      const iconMatch = habitLine.match(/@icon:(\S+)/);
+      const icon = iconMatch ? iconMatch[1] : undefined;
+
+      // Extract @color:#hex
+      const colorMatch = habitLine.match(/@color:(#[0-9a-fA-F]{3,6})/);
+      const iconColor = colorMatch ? colorMatch[1] : undefined;
+
+      // Remove tags from name
+      const name = habitLine
+        .replace(/@icon:\S+/g, '')
+        .replace(/@color:\S+/g, '')
+        .trim();
+
+      if (name) {
+        parsedHabits.push({
+          name,
+          icon,
+          iconColor,
+          categoryName: currentCategory,
+        });
+      }
+    }
+  }
+
+  return parsedHabits;
+}
 
 // GET /api/habits - List all habits (with optional category filter)
 router.get('/', async (req, res) => {
@@ -50,7 +106,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/habits - Create habit
 router.post('/', async (req, res) => {
   try {
-    const { name, categoryId, icon, iconColor, isActive, sortOrder } = req.body;
+    const { name, categoryId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required', code: 'VALIDATION_ERROR' });
@@ -63,6 +119,7 @@ router.post('/', async (req, res) => {
       iconColor,
       isActive: isActive !== undefined ? isActive : true,
       sortOrder,
+      dailyTarget: dailyTarget || null,
     }).returning();
     res.status(201).json({ data: result });
   } catch (error) {
@@ -74,9 +131,18 @@ router.post('/', async (req, res) => {
 // PUT /api/habits/:id - Update habit
 router.put('/:id', async (req, res) => {
   try {
-    const { name, categoryId, icon, iconColor, isActive, sortOrder } = req.body;
+    const { name, categoryId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
     const [result] = await db.update(habits)
-      .set({ name, categoryId, icon, iconColor, isActive, sortOrder, updatedAt: new Date() })
+      .set({
+        name,
+        categoryId,
+        icon,
+        iconColor,
+        isActive,
+        sortOrder,
+        dailyTarget: dailyTarget !== undefined ? (dailyTarget || null) : undefined,
+        updatedAt: new Date(),
+      })
       .where(eq(habits.id, req.params.id))
       .returning();
     if (!result) {
@@ -109,7 +175,7 @@ router.delete('/:id', async (req, res) => {
 // POST /api/habits/:id/entries - Create/update habit entry for a date
 router.post('/:id/entries', async (req, res) => {
   try {
-    const { date, status, notes } = req.body;
+    const { date, status, notes, count } = req.body;
 
     if (!date) {
       return res.status(400).json({ error: 'Date is required', code: 'VALIDATION_ERROR' });
@@ -131,7 +197,12 @@ router.post('/:id/entries', async (req, res) => {
     let result;
     if (existing) {
       [result] = await db.update(habitEntries)
-        .set({ status, notes, updatedAt: new Date() })
+        .set({
+          status,
+          notes,
+          count: count !== undefined ? count : existing.count,
+          updatedAt: new Date(),
+        })
         .where(eq(habitEntries.id, existing.id))
         .returning();
     } else {
@@ -139,6 +210,7 @@ router.post('/:id/entries', async (req, res) => {
         habitId: req.params.id,
         date,
         status: status || 'empty',
+        count: count || 0,
         notes,
       }).returning();
     }
@@ -188,6 +260,114 @@ router.patch('/:id/restore', async (req, res) => {
   } catch (error) {
     console.error('Failed to restore habit:', error);
     res.status(500).json({ error: 'Failed to restore habit', code: 'INTERNAL_ERROR' });
+  }
+});
+
+// POST /api/habits/import - Bulk import habits from markdown
+router.post('/import', async (req, res) => {
+  try {
+    const { markdown } = req.body;
+
+    if (!markdown || typeof markdown !== 'string') {
+      return res.status(400).json({ error: 'Markdown content is required', code: 'VALIDATION_ERROR' });
+    }
+
+    const parsedHabits = parseMarkdownHabits(markdown);
+
+    if (parsedHabits.length === 0) {
+      return res.status(400).json({
+        error: 'No habits found in markdown. Use format: ## Category\\n- Habit Name @icon:name @color:#hex',
+        code: 'VALIDATION_ERROR'
+      });
+    }
+
+    // Track categories to create/find
+    const categoryMap = new Map<string, string>(); // name -> id
+    const createdCategories: string[] = [];
+    const createdHabits: string[] = [];
+
+    // Get max sort order for habits
+    const allHabits = await db.query.habits.findMany();
+    let maxSortOrder = Math.max(0, ...allHabits.map(h => h.sortOrder || 0));
+
+    // Process each parsed habit
+    for (const parsed of parsedHabits) {
+      let categoryId: string | undefined;
+
+      // Handle category
+      if (parsed.categoryName) {
+        // Check cache first
+        if (categoryMap.has(parsed.categoryName)) {
+          categoryId = categoryMap.get(parsed.categoryName);
+        } else {
+          // Look for existing category
+          const existingCategory = await db.query.categories.findFirst({
+            where: eq(categories.name, parsed.categoryName),
+          });
+
+          if (existingCategory) {
+            categoryId = existingCategory.id;
+          } else {
+            // Create new category
+            const [newCategory] = await db.insert(categories).values({
+              name: parsed.categoryName,
+              sortOrder: 0,
+            }).returning();
+            categoryId = newCategory.id;
+            createdCategories.push(parsed.categoryName);
+          }
+          categoryMap.set(parsed.categoryName, categoryId!);
+        }
+      }
+
+      // Create habit
+      maxSortOrder++;
+      const [newHabit] = await db.insert(habits).values({
+        name: parsed.name,
+        categoryId,
+        icon: parsed.icon,
+        iconColor: parsed.iconColor,
+        sortOrder: maxSortOrder,
+      }).returning();
+
+      createdHabits.push(parsed.name);
+    }
+
+    res.status(201).json({
+      data: {
+        habitsCreated: createdHabits.length,
+        categoriesCreated: createdCategories.length,
+        habits: createdHabits,
+        categories: createdCategories,
+      },
+      message: `Imported ${createdHabits.length} habits and ${createdCategories.length} new categories`,
+    });
+  } catch (error) {
+    console.error('Failed to import habits:', error);
+    res.status(500).json({ error: 'Failed to import habits', code: 'INTERNAL_ERROR' });
+  }
+});
+
+// POST /api/habits/reorder - Reorder habits
+router.post('/reorder', async (req, res) => {
+  try {
+    const { orderedIds } = req.body;
+
+    if (!Array.isArray(orderedIds)) {
+      return res.status(400).json({ error: 'orderedIds must be an array', code: 'VALIDATION_ERROR' });
+    }
+
+    // Update sort order for each habit
+    for (let i = 0; i < orderedIds.length; i++) {
+      await db.update(habits)
+        .set({ sortOrder: i, updatedAt: new Date() })
+        .where(eq(habits.id, orderedIds[i]));
+    }
+
+    res.json({ data: { success: true, count: orderedIds.length } });
+  } catch (error) {
+    console.error('Failed to reorder habits:', error);
+    res.status(500).json({ error: 'Failed to reorder habits', code: 'INTERNAL_ERROR' });
   }
 });
 

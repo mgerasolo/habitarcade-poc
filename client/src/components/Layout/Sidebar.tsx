@@ -35,6 +35,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
       ]
     },
     { id: 'projects', icon: 'Folder', label: 'Projects' },
+    { id: 'targets', icon: 'TrackChanges', label: 'Targets' },
+    { id: 'time-blocks', icon: 'Schedule', label: 'Time Blocks' },
     { id: 'analytics', icon: 'BarChart', label: 'Analytics' },
     {
       id: 'manage',
@@ -46,6 +48,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
         { id: 'manage-projects', icon: 'Folder', label: 'Projects' },
         { id: 'manage-tags', icon: 'LocalOffer', label: 'Tags' },
         { id: 'manage-priorities', icon: 'LowPriority', label: 'Priorities' },
+        { id: 'manage-quotes', icon: 'FormatQuote', label: 'Quotes' },
+        { id: 'manage-videos', icon: 'VideoLibrary', label: 'Videos' },
         { id: 'settings', icon: 'Settings', label: 'Settings' },
       ]
     },
@@ -78,55 +82,69 @@ export function Sidebar({ isOpen }: SidebarProps) {
     return false;
   };
 
-  const renderNavItem = (item: NavItem, isChild = false) => {
+  const renderNavItem = (item: NavItem, isChild = false, isLast = false) => {
     const IconComponent = MuiIcons[item.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.id);
     const isActive = isItemActive(item);
 
     return (
-      <div key={item.id}>
+      <div key={item.id} className="relative">
+        {/* Tree line connector for child items */}
+        {isChild && isOpen && (
+          <>
+            {/* Vertical line from parent */}
+            <div
+              className="absolute left-5 top-0 w-px bg-slate-600/50"
+              style={{ height: isLast ? '50%' : '100%' }}
+            />
+            {/* Horizontal line to item */}
+            <div className="absolute left-5 top-1/2 w-3 h-px bg-slate-600/50" />
+          </>
+        )}
+
         <button
           onClick={() => handleNavClick(item)}
           title={!isOpen ? item.label : undefined}
           data-testid={`nav-${item.id}`}
           className={`
-            w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+            w-full flex items-center gap-3 px-3 py-2 rounded-lg
             text-slate-300 hover:bg-slate-700/50 hover:text-white
             transition-all duration-150
-            group
-            ${isChild ? 'pl-8' : ''}
+            group text-left
+            ${isChild ? 'ml-6' : ''}
             ${isActive ? 'bg-slate-700/30 text-white' : ''}
           `}
         >
-          <div className={`
-            flex items-center justify-center
-            ${isOpen ? 'w-6' : 'w-full'}
-          `}>
+          <div className="flex items-center justify-center w-5 flex-shrink-0">
             <IconComponent
-              style={{ fontSize: isChild ? 18 : 22 }}
+              style={{ fontSize: isChild ? 16 : 20 }}
               className="text-current group-hover:scale-110 transition-transform"
             />
           </div>
           {isOpen && (
             <>
-              <span className={`font-medium ${isChild ? 'text-xs' : 'text-sm'} whitespace-nowrap flex-1`}>
+              <span className={`font-medium ${isChild ? 'text-xs' : 'text-sm'} whitespace-nowrap flex-1 text-left`}>
                 {item.label}
               </span>
               {hasChildren && (
-                <MuiIcons.ExpandMore
-                  style={{ fontSize: 18 }}
-                  className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                <MuiIcons.ChevronRight
+                  style={{ fontSize: 16 }}
+                  className={`transition-transform duration-200 text-slate-500 ${isExpanded ? 'rotate-90' : ''}`}
                 />
               )}
             </>
           )}
         </button>
 
-        {/* Render children when expanded */}
+        {/* Render children when expanded with tree structure */}
         {hasChildren && isExpanded && isOpen && (
-          <div className="mt-1 space-y-1" data-testid={`nav-${item.id}-children`}>
-            {item.children!.map(child => renderNavItem(child, true))}
+          <div className="relative mt-0.5" data-testid={`nav-${item.id}-children`}>
+            {/* Vertical line for tree structure */}
+            <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-600/50" />
+            {item.children!.map((child, index) =>
+              renderNavItem(child, true, index === item.children!.length - 1)
+            )}
           </div>
         )}
       </div>
@@ -140,17 +158,17 @@ export function Sidebar({ isOpen }: SidebarProps) {
         bg-slate-800/90 backdrop-blur-md border-r border-slate-700/50
         transition-all duration-300 ease-in-out z-40
         flex flex-col
-        ${isOpen ? 'w-64' : 'w-16'}
+        ${isOpen ? 'w-56' : 'w-14'}
       `}
     >
       {/* Navigation items */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => renderNavItem(item))}
       </nav>
 
       {/* Quick actions section */}
       <div className={`
-        p-3 border-t border-slate-700/50
+        p-2 border-t border-slate-700/50
         ${isOpen ? 'space-y-2' : 'flex flex-col items-center gap-2'}
       `}>
         {/* Add Habit Button */}
@@ -158,15 +176,15 @@ export function Sidebar({ isOpen }: SidebarProps) {
           onClick={() => openModal('habit-form')}
           title={!isOpen ? 'Add Habit' : undefined}
           className={`
-            flex items-center justify-center gap-2
+            flex items-center gap-2
             bg-gradient-to-r from-teal-600 to-teal-500
             hover:from-teal-500 hover:to-teal-400
-            text-white rounded-xl transition-all duration-150
+            text-white rounded-lg transition-all duration-150
             shadow-lg shadow-teal-600/20 hover:shadow-teal-500/30
-            ${isOpen ? 'w-full py-2.5 px-4' : 'w-10 h-10'}
+            ${isOpen ? 'w-full py-2 px-3 justify-start' : 'w-10 h-10 justify-center'}
           `}
         >
-          <MuiIcons.Add style={{ fontSize: isOpen ? 20 : 24 }} />
+          <MuiIcons.Add style={{ fontSize: isOpen ? 18 : 22 }} />
           {isOpen && <span className="font-medium text-sm">Add Habit</span>}
         </button>
 
@@ -175,13 +193,13 @@ export function Sidebar({ isOpen }: SidebarProps) {
           onClick={() => openModal('task-form')}
           title={!isOpen ? 'Add Task' : undefined}
           className={`
-            flex items-center justify-center gap-2
+            flex items-center gap-2
             bg-slate-700 hover:bg-slate-600
-            text-white rounded-xl transition-all duration-150
-            ${isOpen ? 'w-full py-2.5 px-4' : 'w-10 h-10'}
+            text-white rounded-lg transition-all duration-150
+            ${isOpen ? 'w-full py-2 px-3 justify-start' : 'w-10 h-10 justify-center'}
           `}
         >
-          <MuiIcons.AddTask style={{ fontSize: isOpen ? 20 : 24 }} />
+          <MuiIcons.AddTask style={{ fontSize: isOpen ? 18 : 22 }} />
           {isOpen && <span className="font-medium text-sm">Add Task</span>}
         </button>
 
@@ -190,9 +208,9 @@ export function Sidebar({ isOpen }: SidebarProps) {
           <button
             onClick={() => openModal('category-form')}
             title="Add Category"
-            className="w-10 h-10 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-xl transition-colors"
+            className="w-10 h-10 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
           >
-            <MuiIcons.Category style={{ fontSize: 20 }} />
+            <MuiIcons.Category style={{ fontSize: 18 }} />
           </button>
         )}
 
@@ -202,14 +220,14 @@ export function Sidebar({ isOpen }: SidebarProps) {
             <button
               onClick={() => openModal('category-form')}
               title="Add Category"
-              className="flex-1 py-2 px-3 bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg transition-colors text-xs font-medium"
+              className="flex-1 py-1.5 px-2 bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg transition-colors text-xs font-medium"
             >
               + Category
             </button>
             <button
               onClick={() => openModal('project-form')}
               title="Add Project"
-              className="flex-1 py-2 px-3 bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg transition-colors text-xs font-medium"
+              className="flex-1 py-1.5 px-2 bg-slate-700/50 hover:bg-slate-600 text-slate-300 hover:text-white rounded-lg transition-colors text-xs font-medium"
             >
               + Project
             </button>

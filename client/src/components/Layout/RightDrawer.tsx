@@ -140,11 +140,15 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
           <h2 className="text-lg font-semibold text-white">{getContentTitle()}</h2>
           <button
             onClick={closeRightDrawer}
-            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors"
-            aria-label="Close drawer"
+            className="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors group"
+            aria-label="Collapse drawer"
             data-testid="drawer-close-button"
+            title="Collapse panel"
           >
-            <MuiIcons.Close style={{ fontSize: 18 }} />
+            <MuiIcons.KeyboardDoubleArrowRight
+              style={{ fontSize: 20 }}
+              className="group-hover:translate-x-0.5 transition-transform"
+            />
           </button>
         </div>
 

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { format, subDays, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
-import { useHabits, useCategories } from '../../api';
+import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, subHours, isSameDay } from 'date-fns';
+import { useHabits, useCategories, useSettings } from '../../api';
 import type { Habit, HabitEntry, Category, HabitStatus } from '../../types';
 
 // Responsive breakpoints for days to show
@@ -10,6 +10,33 @@ export const DAYS_CONFIG = {
   tablet: 7,   // Week view
   mobile: 3,   // Last 3 days
 } as const;
+
+/**
+ * Get the effective date based on day boundary hour.
+ * If current hour is before the boundary, treat it as the previous day.
+ *
+ * Example: At 3 AM with dayBoundaryHour=6, returns yesterday's date.
+ * Example: At 8 AM with dayBoundaryHour=6, returns today's date.
+ */
+export function getEffectiveDate(now: Date = new Date(), dayBoundaryHour: number = 0): Date {
+  const currentHour = now.getHours();
+
+  if (currentHour < dayBoundaryHour) {
+    // Treat as previous day - subtract the difference to get to the boundary hour of previous day
+    return subHours(now, currentHour + (24 - dayBoundaryHour));
+  }
+
+  return now;
+}
+
+/**
+ * Check if a date is "today" considering the day boundary offset.
+ * For example, at 3 AM with dayBoundaryHour=6, "today" would be yesterday's date.
+ */
+export function isEffectiveToday(date: Date, now: Date = new Date(), dayBoundaryHour: number = 0): boolean {
+  const effectiveNow = getEffectiveDate(now, dayBoundaryHour);
+  return isSameDay(date, effectiveNow);
+}
 
 export interface DateColumn {
   date: string;      // YYYY-MM-DD format
@@ -58,13 +85,16 @@ export function useHabitMatrix(
 ): HabitMatrixData {
   const { data: habitsResponse, isLoading: habitsLoading, isError: habitsError } = useHabits();
   const { data: categoriesResponse, isLoading: categoriesLoading } = useCategories();
+  const { data: settingsResponse } = useSettings();
 
   const habits = habitsResponse?.data || [];
   const categories = categoriesResponse?.data || [];
+  const dayBoundaryHour = settingsResponse?.data?.dayBoundaryHour ?? 0;
 
   // Generate date columns for the matrix
   const dateColumns = useMemo<DateColumn[]>(() => {
-    const today = new Date();
+    const now = new Date();
+    const effectiveToday = getEffectiveDate(now, dayBoundaryHour);
 
     // For month view (daysToShow >= DAYS_CONFIG.desktop), show the actual days in the month
     if (daysToShow >= DAYS_CONFIG.desktop && currentMonth) {
@@ -78,25 +108,25 @@ export function useHabitMatrix(
           date: format(date, 'yyyy-MM-dd'),
           dayOfWeek: format(date, 'EEE'),
           dayOfMonth: format(date, 'd'),
-          isToday: checkIsToday(date),
+          isToday: isEffectiveToday(date, now, dayBoundaryHour),
           isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
         };
       });
     }
 
-    // For week/3-day view, show last N days ending today
+    // For week/3-day view, show last N days ending on effective today
     return Array.from({ length: daysToShow }, (_, i) => {
-      const date = subDays(today, daysToShow - 1 - i);
+      const date = subDays(effectiveToday, daysToShow - 1 - i);
       const dayOfWeek = date.getDay();
       return {
         date: format(date, 'yyyy-MM-dd'),
         dayOfWeek: format(date, 'EEE'),
         dayOfMonth: format(date, 'd'),
-        isToday: checkIsToday(date),
+        isToday: isEffectiveToday(date, now, dayBoundaryHour),
         isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
       };
     });
-  }, [daysToShow, currentMonth]);
+  }, [daysToShow, currentMonth, dayBoundaryHour]);
 
   // Transform habits with entry lookup maps
   const matrixHabits = useMemo<MatrixHabit[]>(() => {
@@ -164,20 +194,22 @@ export function useHabitMatrix(
     return result;
   }, [matrixHabits, categories]);
 
-  // Calculate today's completion score
+  // Calculate today's completion score (using effective date based on day boundary)
   const todayScore = useMemo<CompletionScore>(() => {
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const effectiveToday = getEffectiveDate(new Date(), dayBoundaryHour);
+    const todayStr = format(effectiveToday, 'yyyy-MM-dd');
     return calculateCompletionScore(matrixHabits, [todayStr]);
-  }, [matrixHabits]);
+  }, [matrixHabits, dayBoundaryHour]);
 
-  // Calculate current month's completion score (up to today)
+  // Calculate current month's completion score (up to effective today)
   const monthScore = useMemo<CompletionScore>(() => {
-    const today = new Date();
-    const monthStart = startOfMonth(today);
-    const monthDates = eachDayOfInterval({ start: monthStart, end: today })
+    const now = new Date();
+    const effectiveToday = getEffectiveDate(now, dayBoundaryHour);
+    const monthStart = startOfMonth(effectiveToday);
+    const monthDates = eachDayOfInterval({ start: monthStart, end: effectiveToday })
       .map(d => format(d, 'yyyy-MM-dd'));
     return calculateCompletionScore(matrixHabits, monthDates);
-  }, [matrixHabits]);
+  }, [matrixHabits, dayBoundaryHour]);
 
   return {
     dateColumns,
@@ -195,6 +227,31 @@ export function useHabitMatrix(
 export function getHabitStatus(habit: MatrixHabit, date: string): HabitStatus {
   const entry = habit.entriesByDate.get(date);
   return entry?.status || 'empty';
+}
+
+/**
+ * Get effective status for a habit on a specific date, considering auto-pink for past unfilled days.
+ *
+ * @param habit - The habit with entries map
+ * @param date - The date string (YYYY-MM-DD format)
+ * @param isToday - Whether this date is effectively "today" (considering day boundary)
+ * @param autoMarkPink - Whether to auto-mark unfilled past days as pink
+ */
+export function getEffectiveHabitStatus(
+  habit: MatrixHabit,
+  date: string,
+  isToday: boolean,
+  autoMarkPink: boolean
+): HabitStatus {
+  const status = getHabitStatus(habit, date);
+
+  // If autoMarkPink is enabled and status is 'empty' and this is NOT today (a past day),
+  // return 'pink' instead of 'empty'
+  if (autoMarkPink && status === 'empty' && !isToday) {
+    return 'pink';
+  }
+
+  return status;
 }
 
 /**

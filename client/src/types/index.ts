@@ -53,6 +53,7 @@ export interface Habit {
   iconColor?: string;
   isActive: boolean;
   sortOrder: number;
+  dailyTarget?: number; // For count-based habits (e.g., 3 supplements)
   isDeleted: boolean;
   deletedAt?: string;
   createdAt: string;
@@ -66,6 +67,7 @@ export interface HabitEntry {
   habitId: string;
   date: string; // ISO date string YYYY-MM-DD
   status: HabitStatus;
+  count?: number; // For count-based habits
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -192,10 +194,24 @@ export interface ParkingLotItem {
   createdAt: string;
 }
 
+// Settings Theme
+export type ThemeMode = 'light' | 'dark' | 'auto';
+
+// Week Start Day (0 = Sunday, 1 = Monday, etc.)
+export type WeekStartDay = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 // Settings
 export interface Settings {
-  dayBoundaryHour: number; // Default 6 (6 AM)
-  theme: 'dark' | 'light';
+  dayBoundaryHour: number; // Default 6 (6 AM), range 0-23
+  theme: ThemeMode; // Default 'light'
+  weekStartDay: WeekStartDay; // Default 0 (Sunday)
+  showCompletedTasks: boolean; // Default true
+  showDeletedItems: boolean; // Default false
+  habitMatrixWeeks: number; // Default 4
+  kanbanDays: number; // Default 7
+  autoSyncInterval: number; // Default 30000 (30 seconds)
+  notificationsEnabled: boolean; // Default false
+  autoMarkPink: boolean; // Default true - auto-mark unfilled past days as pink
   [key: string]: unknown;
 }
 
@@ -221,13 +237,47 @@ export interface DashboardLayout {
   updatedAt: string;
 }
 
+// Quote
+export interface Quote {
+  id: string;
+  text: string;
+  author?: string;
+  source?: string;
+  category?: string;
+  isFavorite: boolean;
+  isDeleted: boolean;
+  deletedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Video
+export interface Video {
+  id: string;
+  url: string;
+  platform?: string; // youtube, instagram, tiktok, vimeo
+  videoId?: string; // Platform-specific video ID
+  title?: string;
+  description?: string;
+  category?: string; // motivation, mindset, productivity
+  thumbnailUrl?: string;
+  duration?: number; // in seconds
+  isFavorite: boolean;
+  isDeleted: boolean;
+  deletedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Widget types for the dashboard
 export type WidgetType =
   | 'habit-matrix'
   | 'weekly-kanban'
   | 'time-blocks'
   | 'target-graph'
-  | 'parking-lot';
+  | 'parking-lot'
+  | 'quotes'
+  | 'videos';
 
 export interface Widget {
   id: string;

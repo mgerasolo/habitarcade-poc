@@ -122,6 +122,7 @@ export function Dashboard() {
           compactType="vertical"
           preventCollision={false}
           useCSSTransforms={true}
+          resizeHandles={['s', 'e', 'se']}
         >
           {layout.map((item) => (
             <div key={item.i} className="widget-wrapper">

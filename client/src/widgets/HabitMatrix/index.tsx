@@ -8,6 +8,7 @@ import type { CustomHeaderControls } from '../../components/Dashboard/WidgetCont
 
 // Re-export for use by parent components
 export { DAYS_CONFIG, getResponsiveDays };
+export { ContributionGraph } from './ContributionGraph';
 
 // Configuration constants
 const HABIT_NAME_WIDTH_DESKTOP = 140;
@@ -109,12 +110,14 @@ export function HabitMatrix({
     return HABIT_NAME_WIDTH_DESKTOP;
   }, [isCompact, isMobile]);
 
-  // Calculate cell size based on available width
+  // Calculate cell size based on available width - auto-fill mode
   const cellSize = useMemo(() => {
     const padding = 32; // px-4 on both sides
+    const categoryIndent = 24; // category toggle button width
     const gap = daysToShow * 2; // gap between cells
-    const availableWidth = containerWidth - padding - habitNameWidth - gap - 40; // 40 for category indent
+    const availableWidth = containerWidth - padding - habitNameWidth - gap - categoryIndent;
     const calculatedSize = Math.floor(availableWidth / daysToShow);
+    // Allow cells to grow larger to fill width, with reasonable min/max
     return Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, calculatedSize));
   }, [containerWidth, daysToShow, habitNameWidth]);
 
@@ -192,14 +195,14 @@ export function HabitMatrix({
         `}
         data-testid="habit-matrix"
       >
-        {/* Matrix content - no internal header, controls are in WidgetContainer */}
-        <div className="flex-1 overflow-auto">
-          <div style={{ minWidth: habitNameWidth + (cellSize + 2) * daysToShow + 40 }}>
+        {/* Matrix content - auto-fill width, controls are in WidgetContainer */}
+        <div className="flex-1 overflow-y-visible">
+          <div className="w-full">
             {/* Date header row showing day numbers */}
             {isMobile ? (
-              <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} />
+              <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
             ) : (
-              <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} />
+              <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
             )}
 
             {/* Category sections with habits */}

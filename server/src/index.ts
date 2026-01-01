@@ -33,6 +33,8 @@ import measurementsRouter from './routes/measurements';
 import parkingLotRouter from './routes/parkingLot';
 import settingsRouter from './routes/settings';
 import dashboardRouter from './routes/dashboard';
+import quotesRouter from './routes/quotes';
+import videosRouter from './routes/videos';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3451', 10);
@@ -56,6 +58,8 @@ app.use('/api/measurements', measurementsRouter);
 app.use('/api/parking-lot', parkingLotRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
+app.use('/api/quotes', quotesRouter);
+app.use('/api/videos', videosRouter);
 
 // Serve static files from client dist
 const clientDistPath = path.join(__dirname, '../../client/dist');

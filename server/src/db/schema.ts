@@ -23,6 +23,7 @@ export const habits = pgTable('habits', {
   iconColor: varchar('icon_color', { length: 20 }),
   isActive: boolean('is_active').default(true),
   sortOrder: integer('sort_order').default(0),
+  dailyTarget: integer('daily_target'), // For count-based habits (e.g., 3 supplements)
   isDeleted: boolean('is_deleted').default(false),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -36,6 +37,7 @@ export const habitEntries = pgTable('habit_entries', {
   habitId: uuid('habit_id').references(() => habits.id).notNull(),
   date: date('date').notNull(),
   status: varchar('status', { length: 20 }).default('empty').notNull(),
+  count: integer('count').default(0), // For count-based habits
   notes: text('notes'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
@@ -165,6 +167,38 @@ export const dashboardLayouts = pgTable('dashboard_layouts', {
   name: varchar('name', { length: 100 }).default('default'),
   layout: json('layout').notNull(), // react-grid-layout config
   isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Videos
+export const videos = pgTable('videos', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  url: varchar('url', { length: 500 }).notNull(),
+  platform: varchar('platform', { length: 50 }), // youtube, instagram, tiktok, vimeo, etc.
+  videoId: varchar('video_id', { length: 100 }), // Platform-specific video ID
+  title: varchar('title', { length: 255 }),
+  description: text('description'),
+  category: varchar('category', { length: 100 }), // motivation, mindset, productivity, etc.
+  thumbnailUrl: varchar('thumbnail_url', { length: 500 }),
+  duration: integer('duration'), // in seconds
+  isFavorite: boolean('is_favorite').default(false),
+  isDeleted: boolean('is_deleted').default(false),
+  deletedAt: timestamp('deleted_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Quotes
+export const quotes = pgTable('quotes', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  text: text('text').notNull(),
+  author: varchar('author', { length: 255 }),
+  source: varchar('source', { length: 255 }), // Book, movie, etc.
+  category: varchar('category', { length: 100 }), // motivational, productivity, mindset, etc.
+  isFavorite: boolean('is_favorite').default(false),
+  isDeleted: boolean('is_deleted').default(false),
+  deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
 });

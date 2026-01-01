@@ -5,6 +5,7 @@ import { CategoryForm } from './Forms/CategoryForm';
 import { ProjectForm } from './Forms/ProjectForm';
 import { TagForm } from './Forms/TagForm';
 import { IconBrowser } from './IconBrowser';
+import { HabitDetailModal } from '../widgets/HabitMatrix/HabitDetailModal';
 import * as MuiIcons from '@mui/icons-material';
 
 // Settings Modal placeholder
@@ -196,6 +197,7 @@ export function ModalManager() {
 
   const modals: Record<string, ReactElement> = {
     'habit-form': <HabitForm />,
+    'habit-detail': <HabitDetailModal />,
     'task-form': <TaskForm />,
     'project-form': <ProjectForm />,
     'category-form': <CategoryForm />,

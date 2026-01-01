@@ -80,19 +80,20 @@ export function useDeleteHabit() {
   });
 }
 
-// Update habit entry (status)
+// Update habit entry (status or count)
 export function useUpdateHabitEntry() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ habitId, date, status, notes }: {
+    mutationFn: ({ habitId, date, status, notes, count }: {
       habitId: string;
       date: string;
       status: string;
-      notes?: string
+      notes?: string;
+      count?: number;
     }) =>
       apiFetch<ApiResponse<HabitEntry>>(`/habits/${habitId}/entries`, {
         method: 'POST',
-        body: JSON.stringify({ date, status, notes }),
+        body: JSON.stringify({ date, status, notes, count }),
       }),
     onMutate: async () => {
       // Cancel outgoing queries
@@ -137,6 +138,31 @@ export function useRestoreHabit() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: habitKeys.all });
+    },
+  });
+}
+
+// Import result type
+interface ImportResult {
+  habitsCreated: number;
+  categoriesCreated: number;
+  habits: string[];
+  categories: string[];
+}
+
+// Import habits from markdown
+export function useImportHabits() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (markdown: string) =>
+      apiFetch<{ data: ImportResult; message: string }>('/habits/import', {
+        method: 'POST',
+        body: JSON.stringify({ markdown }),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: habitKeys.all });
+      // Also invalidate categories since import may create new ones
+      queryClient.invalidateQueries({ queryKey: ['categories'] });
     },
   });
 }

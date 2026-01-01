@@ -49,50 +49,51 @@ export function DayColumn({
         ${isOver ? 'ring-2 ring-teal-400 bg-teal-900/30' : ''}
       `}
     >
-      {/* Column header */}
+      {/* Column header - compact with line */}
       <div
         className={`
-          px-2 py-2 text-center border-b flex-shrink-0
-          ${isToday
-            ? 'border-teal-600/50 bg-teal-800/30'
-            : 'border-slate-700/50'
-          }
+          px-2 py-1.5 flex-shrink-0
+          ${isToday ? 'bg-teal-800/30' : ''}
         `}
       >
-        <div
-          className={`
-            text-xs font-semibold uppercase tracking-wider font-condensed
-            ${isToday ? 'text-teal-300' : weekend ? 'text-slate-500' : 'text-slate-400'}
-          `}
-        >
-          {dayName}
-        </div>
-        <div
-          className={`
-            text-lg font-bold font-condensed
-            ${isToday
-              ? 'text-teal-100'
-              : weekend
-                ? 'text-slate-400'
-                : 'text-slate-200'
-            }
-          `}
-        >
-          {dayNum}
-        </div>
-        {totalCount > 0 && (
+        <div className="flex items-center gap-2">
+          {/* Day label */}
+          <div className="flex items-baseline gap-1 flex-shrink-0">
+            <span
+              className={`
+                text-xs font-semibold uppercase tracking-wider font-condensed
+                ${isToday ? 'text-teal-300' : weekend ? 'text-slate-500' : 'text-slate-400'}
+              `}
+            >
+              {dayName}
+            </span>
+            <span
+              className={`
+                text-sm font-bold font-condensed
+                ${isToday ? 'text-teal-100' : weekend ? 'text-slate-400' : 'text-slate-200'}
+              `}
+            >
+              {dayNum}
+            </span>
+            {totalCount > 0 && (
+              <span
+                className={`
+                  text-[10px] font-condensed ml-0.5
+                  ${completedCount === totalCount ? 'text-emerald-400' : 'text-slate-500'}
+                `}
+              >
+                ({completedCount}/{totalCount})
+              </span>
+            )}
+          </div>
+          {/* Extending line */}
           <div
             className={`
-              text-xs font-condensed
-              ${completedCount === totalCount
-                ? 'text-emerald-400'
-                : 'text-slate-500'
-              }
+              flex-1 h-px
+              ${isToday ? 'bg-teal-600/50' : 'bg-slate-700/50'}
             `}
-          >
-            {completedCount}/{totalCount}
-          </div>
-        )}
+          />
+        </div>
       </div>
 
       {/* Tasks list */}

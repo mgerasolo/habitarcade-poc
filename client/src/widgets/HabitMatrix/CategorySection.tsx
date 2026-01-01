@@ -205,8 +205,8 @@ export const CategorySection = memo(function CategorySection({
       <div
         id={`category-${category?.id || 'uncategorized'}`}
         className={`
-          overflow-hidden transition-all duration-200 ease-out
-          ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100'}
+          transition-all duration-200 ease-out
+          ${isCollapsed ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-[2000px] opacity-100 overflow-visible'}
         `}
       >
         <div className="pl-4 border-l border-slate-700/50 ml-1 mt-1">
