@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { format, subDays, isToday as checkIsToday } from 'date-fns';
-import { useHabits, useCategories } from '../../api';
+import { useHabits, useCategories, useSettings } from '../../api';
+import { generateDateColumns, isDateInPast } from '../../utils/dateUtils';
 import type { Habit, HabitEntry, Category, HabitStatus } from '../../types';
 
 // Responsive breakpoints for days to show
@@ -16,6 +16,7 @@ export interface DateColumn {
   dayOfMonth: string; // 1-31
   isToday: boolean;
   isWeekend: boolean;
+  isPast: boolean;   // Is this date in the past (for auto-fill logic)
 }
 
 export interface MatrixHabit extends Habit {
@@ -32,34 +33,27 @@ export interface HabitMatrixData {
   categoryGroups: CategoryGroup[];
   isLoading: boolean;
   isError: boolean;
+  dayBoundaryHour: number;
 }
 
 /**
  * Custom hook for managing Habit Matrix data
  * Handles date generation, habit grouping, and entry mapping
+ * Now supports day boundary (e.g., 6 AM) for determining "today"
  */
 export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitMatrixData {
   const { data: habitsResponse, isLoading: habitsLoading, isError: habitsError } = useHabits();
   const { data: categoriesResponse, isLoading: categoriesLoading } = useCategories();
+  const { data: settingsResponse } = useSettings();
 
   const habits = habitsResponse?.data || [];
   const categories = categoriesResponse?.data || [];
+  const dayBoundaryHour = settingsResponse?.data?.dayBoundaryHour ?? 6;
 
-  // Generate date columns for the matrix
+  // Generate date columns for the matrix using day boundary
   const dateColumns = useMemo<DateColumn[]>(() => {
-    const today = new Date();
-    return Array.from({ length: daysToShow }, (_, i) => {
-      const date = subDays(today, daysToShow - 1 - i);
-      const dayOfWeek = date.getDay();
-      return {
-        date: format(date, 'yyyy-MM-dd'),
-        dayOfWeek: format(date, 'EEE'),
-        dayOfMonth: format(date, 'd'),
-        isToday: checkIsToday(date),
-        isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
-      };
-    });
-  }, [daysToShow]);
+    return generateDateColumns(daysToShow, dayBoundaryHour);
+  }, [daysToShow, dayBoundaryHour]);
 
   // Transform habits with entry lookup maps
   const matrixHabits = useMemo<MatrixHabit[]>(() => {
@@ -132,15 +126,55 @@ export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitM
     categoryGroups,
     isLoading: habitsLoading || categoriesLoading,
     isError: habitsError,
+    dayBoundaryHour,
   };
 }
 
 /**
  * Get status for a specific habit on a specific date
+ * Returns 'empty' for unfilled entries, or the actual status if filled
  */
 export function getHabitStatus(habit: MatrixHabit, date: string): HabitStatus {
   const entry = habit.entriesByDate.get(date);
   return entry?.status || 'empty';
+}
+
+/**
+ * Check if a habit entry should be shown as "missed" (pink)
+ * This is for past dates with no entry (empty status)
+ */
+export function shouldShowAsMissed(
+  habit: MatrixHabit,
+  date: string,
+  dayBoundaryHour: number = 6
+): boolean {
+  const entry = habit.entriesByDate.get(date);
+  const status = entry?.status || 'empty';
+
+  // Only show as missed if:
+  // 1. The date is in the past
+  // 2. The status is 'empty' (no entry recorded)
+  return status === 'empty' && isDateInPast(date, dayBoundaryHour);
+}
+
+/**
+ * Get the display status for a habit cell
+ * Accounts for auto-missed logic for past unfilled days
+ */
+export function getDisplayStatus(
+  habit: MatrixHabit,
+  date: string,
+  dayBoundaryHour: number = 6,
+  autoShowMissed: boolean = false
+): HabitStatus {
+  const actualStatus = getHabitStatus(habit, date);
+
+  // If auto-show missed is enabled and this is an empty past day, show as pink
+  if (autoShowMissed && actualStatus === 'empty' && isDateInPast(date, dayBoundaryHour)) {
+    return 'pink';
+  }
+
+  return actualStatus;
 }
 
 /**
