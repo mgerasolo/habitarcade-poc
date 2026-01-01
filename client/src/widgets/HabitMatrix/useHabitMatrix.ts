@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
-import { format, subDays, isToday as checkIsToday } from 'date-fns';
+import { format, subDays, isToday as checkIsToday, getDaysInMonth } from 'date-fns';
 import { useHabits, useCategories } from '../../api';
 import type { Habit, HabitEntry, Category, HabitStatus } from '../../types';
 
 // Responsive breakpoints for days to show
 export const DAYS_CONFIG = {
-  desktop: 31, // Full month view
+  desktop: 31, // Full month view (adapts to actual days in month)
   tablet: 7,   // Week view
   mobile: 3,   // Last 3 days
 } as const;
@@ -30,8 +30,17 @@ export interface CategoryGroup {
 export interface HabitMatrixData {
   dateColumns: DateColumn[];
   categoryGroups: CategoryGroup[];
+  overallScore: number;
   isLoading: boolean;
   isError: boolean;
+}
+
+/**
+ * Get the number of days to show based on the current month
+ * Handles months with 28, 29, 30, or 31 days
+ */
+export function getDaysForMonth(date: Date = new Date()): number {
+  return getDaysInMonth(date);
 }
 
 /**
@@ -127,9 +136,34 @@ export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitM
     return result;
   }, [matrixHabits, categories]);
 
+  // Calculate overall score across all habits and dates
+  const overallScore = useMemo(() => {
+    if (matrixHabits.length === 0) return 0;
+
+    let totalCompleted = 0;
+    let totalEligible = 0;
+
+    matrixHabits.forEach(habit => {
+      dateColumns.forEach(dateCol => {
+        const status = getHabitStatus(habit, dateCol.date);
+        // Skip N/A and exempt entries
+        if (status === 'na' || status === 'exempt') return;
+
+        totalEligible++;
+        // Count complete and extra as completed
+        if (status === 'complete' || status === 'extra') {
+          totalCompleted++;
+        }
+      });
+    });
+
+    return totalEligible > 0 ? Math.round((totalCompleted / totalEligible) * 100) : 0;
+  }, [matrixHabits, dateColumns]);
+
   return {
     dateColumns,
     categoryGroups,
+    overallScore,
     isLoading: habitsLoading || categoriesLoading,
     isError: habitsError,
   };

@@ -1,12 +1,12 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG } from './useHabitMatrix';
+import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG, getDaysForMonth } from './useHabitMatrix';
 import { CategorySection, CategorySectionFlat, CategorySectionSkeleton } from './CategorySection';
 import { DateHeader, DateHeaderCompact } from './DateHeader';
-import { format, addMonths, subMonths } from 'date-fns';
+import { format, addMonths, subMonths, getDaysInMonth } from 'date-fns';
 import type { CustomHeaderControls } from '../../components/Dashboard/WidgetContainer';
 
 // Re-export for use by parent components
-export { DAYS_CONFIG, getResponsiveDays };
+export { DAYS_CONFIG, getResponsiveDays, getDaysForMonth };
 
 // Configuration constants
 const HABIT_NAME_WIDTH_DESKTOP = 140;
@@ -92,10 +92,21 @@ export function HabitMatrix({
     return () => window.removeEventListener('resize', handleResize);
   }, [propDaysToShow]);
 
-  const daysToShow = propDaysToShow ?? responsiveDays;
+  // Adapt days to show based on actual month length (#37)
+  const actualDaysToShow = useMemo(() => {
+    const basedays = propDaysToShow ?? responsiveDays;
+    // Only adapt for "month" view (31 days setting)
+    if (basedays === DAYS_CONFIG.desktop) {
+      const daysInCurrentMonth = getDaysInMonth(currentMonth);
+      return daysInCurrentMonth;
+    }
+    return basedays;
+  }, [propDaysToShow, responsiveDays, currentMonth]);
+
+  const daysToShow = actualDaysToShow;
 
   // Get matrix data
-  const { dateColumns, categoryGroups, isLoading, isError } = useHabitMatrix(daysToShow);
+  const { dateColumns, categoryGroups, overallScore, isLoading, isError } = useHabitMatrix(daysToShow);
 
   // Determine layout mode
   const isCompact = daysToShow <= DAYS_CONFIG.tablet;
@@ -134,14 +145,18 @@ export function HabitMatrix({
           />
         ),
         right: (
-          <ViewToggle
-            currentDays={daysToShow}
-            onChange={handleDaysChange}
-          />
+          <div className="flex items-center gap-3">
+            {/* Overall Score Display (#2) */}
+            <OverallScore score={overallScore} />
+            <ViewToggle
+              currentDays={daysToShow}
+              onChange={handleDaysChange}
+            />
+          </div>
         ),
       });
     }
-  }, [onHeaderControlsReady, currentMonth, navigatePrevMonth, navigateNextMonth, daysToShow, handleDaysChange]);
+  }, [onHeaderControlsReady, currentMonth, navigatePrevMonth, navigateNextMonth, daysToShow, handleDaysChange, overallScore]);
 
   // Calculate total habits count
   const totalHabits = useMemo(
@@ -309,6 +324,57 @@ function ViewToggle({
           {label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Overall score display component for widget header (#2)
+ * Shows the aggregate completion percentage across all habits
+ */
+function OverallScore({ score }: { score: number }) {
+  // Determine color based on score
+  const getScoreColor = () => {
+    if (score >= 80) return 'text-emerald-400';
+    if (score >= 60) return 'text-teal-400';
+    if (score >= 40) return 'text-amber-400';
+    if (score > 0) return 'text-orange-400';
+    return 'text-slate-500';
+  };
+
+  const getBgColor = () => {
+    if (score >= 80) return 'bg-emerald-500/20';
+    if (score >= 60) return 'bg-teal-500/20';
+    if (score >= 40) return 'bg-amber-500/20';
+    if (score > 0) return 'bg-orange-500/20';
+    return 'bg-slate-700/30';
+  };
+
+  return (
+    <div
+      className={`
+        flex items-center gap-1.5 px-2 py-0.5 rounded-full
+        ${getBgColor()}
+      `}
+      title={`Overall completion: ${score}%`}
+      data-testid="overall-score"
+    >
+      <svg
+        className={`w-3.5 h-3.5 ${getScoreColor()}`}
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+      <span className={`font-condensed text-sm font-semibold ${getScoreColor()}`}>
+        {score}%
+      </span>
     </div>
   );
 }

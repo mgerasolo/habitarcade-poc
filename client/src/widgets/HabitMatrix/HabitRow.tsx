@@ -9,6 +9,31 @@ interface HabitRowProps {
   habitNameWidth?: number;
   cellSize?: number;
   index?: number;
+  showScore?: boolean;
+  scoreWidth?: number;
+}
+
+/**
+ * Calculate completion percentage for a habit across given dates
+ * Only counts days where the habit could have been completed (not N/A)
+ */
+export function calculateHabitScore(habit: MatrixHabit, dates: DateColumn[]): number {
+  let completed = 0;
+  let eligible = 0;
+
+  for (const dateCol of dates) {
+    const status = getHabitStatus(habit, dateCol.date);
+    // Skip N/A entries - they don't count toward eligible days
+    if (status === 'na' || status === 'exempt') continue;
+
+    eligible++;
+    // Count complete and extra as completed
+    if (status === 'complete' || status === 'extra') {
+      completed++;
+    }
+  }
+
+  return eligible > 0 ? Math.round((completed / eligible) * 100) : 0;
 }
 
 /**
@@ -21,7 +46,12 @@ export const HabitRow = memo(function HabitRow({
   habitNameWidth = 120,
   cellSize,
   index = 0,
+  showScore = true,
+  scoreWidth = 40,
 }: HabitRowProps) {
+  // Calculate completion score for this habit
+  const completionScore = useMemo(() => calculateHabitScore(habit, dates), [habit, dates]);
+
   // Calculate streak info for visual indicator
   const streakInfo = useMemo(() => {
     let currentStreak = 0;
@@ -90,13 +120,15 @@ export const HabitRow = memo(function HabitRow({
 
       {/* Status cells for each date */}
       <div className="flex gap-0.5">
-        {dates.map((dateCol) => {
+        {dates.map((dateCol, dateIndex) => {
           const status = getHabitStatus(habit, dateCol.date);
           return (
             <StatusCell
               key={dateCol.date}
               habitId={habit.id}
               date={dateCol.date}
+              dayOfMonth={dateCol.dayOfMonth}
+              dateIndex={dateIndex}
               status={status}
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
@@ -105,6 +137,27 @@ export const HabitRow = memo(function HabitRow({
           );
         })}
       </div>
+
+      {/* Completion score percentage */}
+      {showScore && (
+        <div
+          style={{ width: scoreWidth }}
+          className="flex-shrink-0 flex items-center justify-end pl-2"
+        >
+          <span
+            className={`
+              font-condensed text-xs font-medium
+              ${completionScore >= 80 ? 'text-emerald-400' :
+                completionScore >= 50 ? 'text-amber-400' :
+                completionScore > 0 ? 'text-slate-400' :
+                'text-slate-500'}
+            `}
+            title={`${completionScore}% completion`}
+          >
+            {completionScore}%
+          </span>
+        </div>
+      )}
     </div>
   );
 });
@@ -119,7 +172,12 @@ export const HabitRowCompact = memo(function HabitRowCompact({
   habitNameWidth = 80,
   cellSize,
   index = 0,
+  showScore = true,
+  scoreWidth = 35,
 }: HabitRowProps) {
+  // Calculate completion score for this habit
+  const completionScore = useMemo(() => calculateHabitScore(habit, dates), [habit, dates]);
+
   return (
     <div className={`flex items-center gap-1 py-1 ${index % 2 === 1 ? 'bg-slate-800/30' : 'bg-transparent'}`}>
       {/* Habit name */}
@@ -139,13 +197,15 @@ export const HabitRowCompact = memo(function HabitRowCompact({
 
       {/* Status cells - larger for touch */}
       <div className="flex gap-1">
-        {dates.map((dateCol) => {
+        {dates.map((dateCol, dateIndex) => {
           const status = getHabitStatus(habit, dateCol.date);
           return (
             <StatusCell
               key={dateCol.date}
               habitId={habit.id}
               date={dateCol.date}
+              dayOfMonth={dateCol.dayOfMonth}
+              dateIndex={dateIndex}
               status={status}
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
@@ -154,6 +214,27 @@ export const HabitRowCompact = memo(function HabitRowCompact({
           );
         })}
       </div>
+
+      {/* Completion score percentage */}
+      {showScore && (
+        <div
+          style={{ width: scoreWidth }}
+          className="flex-shrink-0 flex items-center justify-end pl-1"
+        >
+          <span
+            className={`
+              font-condensed text-[10px] font-medium
+              ${completionScore >= 80 ? 'text-emerald-400' :
+                completionScore >= 50 ? 'text-amber-400' :
+                completionScore > 0 ? 'text-slate-400' :
+                'text-slate-500'}
+            `}
+            title={`${completionScore}% completion`}
+          >
+            {completionScore}%
+          </span>
+        </div>
+      )}
     </div>
   );
 });
