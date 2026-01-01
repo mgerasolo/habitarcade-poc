@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format, subDays, isToday as checkIsToday } from 'date-fns';
+import { format, subDays, isToday as checkIsToday, startOfMonth, eachDayOfInterval } from 'date-fns';
 import { useHabits, useCategories } from '../../api';
 import type { Habit, HabitEntry, Category, HabitStatus } from '../../types';
 
@@ -27,9 +27,19 @@ export interface CategoryGroup {
   habits: MatrixHabit[];
 }
 
+export interface CompletionScore {
+  percentage: number;
+  completed: number;
+  partial: number;
+  total: number;
+  excluded: number; // exempt + na
+}
+
 export interface HabitMatrixData {
   dateColumns: DateColumn[];
   categoryGroups: CategoryGroup[];
+  todayScore: CompletionScore;
+  monthScore: CompletionScore;
   isLoading: boolean;
   isError: boolean;
 }
@@ -127,9 +137,26 @@ export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitM
     return result;
   }, [matrixHabits, categories]);
 
+  // Calculate today's completion score
+  const todayScore = useMemo<CompletionScore>(() => {
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    return calculateCompletionScore(matrixHabits, [todayStr]);
+  }, [matrixHabits]);
+
+  // Calculate current month's completion score (up to today)
+  const monthScore = useMemo<CompletionScore>(() => {
+    const today = new Date();
+    const monthStart = startOfMonth(today);
+    const monthDates = eachDayOfInterval({ start: monthStart, end: today })
+      .map(d => format(d, 'yyyy-MM-dd'));
+    return calculateCompletionScore(matrixHabits, monthDates);
+  }, [matrixHabits]);
+
   return {
     dateColumns,
     categoryGroups,
+    todayScore,
+    monthScore,
     isLoading: habitsLoading || categoriesLoading,
     isError: habitsError,
   };
@@ -141,6 +168,52 @@ export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitM
 export function getHabitStatus(habit: MatrixHabit, date: string): HabitStatus {
   const entry = habit.entriesByDate.get(date);
   return entry?.status || 'empty';
+}
+
+/**
+ * Calculate completion score for habits on given dates
+ * Formula: (completed + partial*0.5) / (total - exempt - na)
+ */
+export function calculateCompletionScore(
+  habits: MatrixHabit[],
+  dates: string[]
+): CompletionScore {
+  let completed = 0;
+  let partial = 0;
+  let exempt = 0;
+  let na = 0;
+  const total = habits.length * dates.length;
+
+  for (const habit of habits) {
+    for (const date of dates) {
+      const status = getHabitStatus(habit, date);
+      switch (status) {
+        case 'complete':
+        case 'extra':
+          completed++;
+          break;
+        case 'partial':
+        case 'trending':
+          partial++;
+          break;
+        case 'exempt':
+          exempt++;
+          break;
+        case 'na':
+          na++;
+          break;
+        // 'empty', 'missed', 'pink' count as incomplete (not excluded)
+      }
+    }
+  }
+
+  const excluded = exempt + na;
+  const effectiveTotal = total - excluded;
+  const percentage = effectiveTotal > 0
+    ? Math.round(((completed + partial * 0.5) / effectiveTotal) * 100)
+    : 0;
+
+  return { percentage, completed, partial, total, excluded };
 }
 
 /**

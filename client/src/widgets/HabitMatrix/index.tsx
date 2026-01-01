@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG } from './useHabitMatrix';
+import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG, type CompletionScore } from './useHabitMatrix';
 import { CategorySection, CategorySectionFlat, CategorySectionSkeleton } from './CategorySection';
 import { DateHeader, DateHeaderCompact } from './DateHeader';
 import { HabitMatrixProvider } from './HabitMatrixContext';
@@ -96,7 +96,7 @@ export function HabitMatrix({
   const daysToShow = propDaysToShow ?? responsiveDays;
 
   // Get matrix data
-  const { dateColumns, categoryGroups, isLoading, isError } = useHabitMatrix(daysToShow);
+  const { dateColumns, categoryGroups, todayScore, monthScore, isLoading, isError } = useHabitMatrix(daysToShow);
 
   // Determine layout mode
   const isCompact = daysToShow <= DAYS_CONFIG.tablet;
@@ -127,6 +127,9 @@ export function HabitMatrix({
   useEffect(() => {
     if (onHeaderControlsReady) {
       onHeaderControlsReady({
+        left: (
+          <CompletionScoreDisplay todayScore={todayScore} monthScore={monthScore} />
+        ),
         center: (
           <MonthSelector
             currentMonth={currentMonth}
@@ -142,7 +145,7 @@ export function HabitMatrix({
         ),
       });
     }
-  }, [onHeaderControlsReady, currentMonth, navigatePrevMonth, navigateNextMonth, daysToShow, handleDaysChange]);
+  }, [onHeaderControlsReady, currentMonth, navigatePrevMonth, navigateNextMonth, daysToShow, handleDaysChange, todayScore, monthScore]);
 
   // Calculate total habits count
   const totalHabits = useMemo(
@@ -312,6 +315,48 @@ function ViewToggle({
           {label}
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * Get color class based on completion percentage
+ * Green >80%, Yellow 50-80%, Red <50%
+ */
+function getScoreColor(percentage: number): string {
+  if (percentage >= 80) return 'text-emerald-400';
+  if (percentage >= 50) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+/**
+ * Completion score display component for header
+ */
+function CompletionScoreDisplay({
+  todayScore,
+  monthScore,
+}: {
+  todayScore: CompletionScore;
+  monthScore: CompletionScore;
+}) {
+  return (
+    <div
+      className="flex items-center gap-3 text-xs font-condensed"
+      data-testid="completion-score"
+    >
+      <div className="flex items-center gap-1.5">
+        <span className="text-slate-400">Today:</span>
+        <span className={`font-medium ${getScoreColor(todayScore.percentage)}`}>
+          {todayScore.percentage}%
+        </span>
+      </div>
+      <span className="text-slate-600">|</span>
+      <div className="flex items-center gap-1.5">
+        <span className="text-slate-400">Month:</span>
+        <span className={`font-medium ${getScoreColor(monthScore.percentage)}`}>
+          {monthScore.percentage}%
+        </span>
+      </div>
     </div>
   );
 }

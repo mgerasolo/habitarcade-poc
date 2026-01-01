@@ -5,6 +5,8 @@ import { useDashboardStore } from '../../stores';
  * Custom header controls that widgets can provide
  */
 export interface CustomHeaderControls {
+  /** Controls to display next to the title (e.g., completion scores) */
+  left?: ReactNode;
   /** Controls to display in the center of the header (e.g., month selector) */
   center?: ReactNode;
   /** Controls to display on the right side of the header (e.g., view toggle) */
@@ -136,22 +138,30 @@ export function WidgetContainer({ widgetId, children, headerControls }: WidgetCo
         `}
         data-testid="widget-header"
       >
-        {/* Left section: Title */}
-        <div className="flex items-center gap-2 min-w-0 flex-shrink-0">
-          {icon && (
-            <span className={`${isActive ? 'text-teal-400' : 'text-slate-400'} transition-colors`}>
-              {icon}
-            </span>
+        {/* Left section: Title + optional left controls */}
+        <div className="flex items-center gap-3 min-w-0 flex-shrink-0">
+          <div className="flex items-center gap-2">
+            {icon && (
+              <span className={`${isActive ? 'text-teal-400' : 'text-slate-400'} transition-colors`}>
+                {icon}
+              </span>
+            )}
+            <h3
+              className={`
+                font-condensed font-semibold text-sm whitespace-nowrap
+                ${isActive ? 'text-white' : 'text-slate-200'}
+                transition-colors
+              `}
+            >
+              {title}
+            </h3>
+          </div>
+          {/* Custom left controls (e.g., completion scores) */}
+          {headerControls?.left && (
+            <div className="flex items-center" data-testid="header-left-controls">
+              {headerControls.left}
+            </div>
           )}
-          <h3
-            className={`
-              font-condensed font-semibold text-sm whitespace-nowrap
-              ${isActive ? 'text-white' : 'text-slate-200'}
-              transition-colors
-            `}
-          >
-            {title}
-          </h3>
         </div>
 
         {/* Center section: Custom controls (e.g., month selector) */}
