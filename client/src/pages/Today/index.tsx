@@ -1,5 +1,4 @@
 import { useMemo } from 'react';
-import * as MuiIcons from '@mui/icons-material';
 import { useHabits, useTasks, useTimeBlocks, useUpdateHabitEntry, useCompleteTask, useUncompleteTask, useCreateTask, useCreateHabit } from '../../api';
 import { useUIStore } from '../../stores';
 import type { Habit, Task, TimeBlock, HabitStatus } from '../../types';
