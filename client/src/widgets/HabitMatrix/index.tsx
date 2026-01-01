@@ -344,7 +344,7 @@ function StatusLegend() {
           </div>
         ))}
         <span className="text-[10px] text-slate-500 italic ml-auto flex-shrink-0">
-          Click to cycle, right-click for more
+          Click to cycle, hover or right-click for more
         </span>
       </div>
     </div>

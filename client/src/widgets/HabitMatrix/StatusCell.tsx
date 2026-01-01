@@ -19,7 +19,7 @@ interface StatusCellProps {
  * Individual status cell in the Habit Matrix
  * - Shows day of month number when empty (Arial Narrow, 40% black)
  * - Click: Cycles through common statuses (green -> red -> blue -> white)
- * - Right-click: Opens full status picker tooltip
+ * - Hover 1s or Right-click: Opens full status picker tooltip
  * - Crosshair highlight on hover (row/column)
  */
 export function StatusCell({
@@ -38,6 +38,7 @@ export function StatusCell({
 
   // Refs
   const cellRef = useRef<HTMLDivElement>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Context for crosshair highlighting
   const { hoveredCell, setHoveredCell } = useHabitMatrixContext();
@@ -76,6 +77,11 @@ export function StatusCell({
   // Handle click - cycle status
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    // Clear hover timer on click
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
     if (!showTooltip) {
       cycleStatus();
     }
@@ -88,13 +94,23 @@ export function StatusCell({
     setShowTooltip(true);
   }, [computeTooltipPosition]);
 
-  // Mouse enter - set hovered cell for crosshair
+  // Mouse enter - set hovered cell for crosshair and start hover timer
   const handleMouseEnter = useCallback(() => {
     setHoveredCell({ habitId, dateIndex });
-  }, [habitId, dateIndex, setHoveredCell]);
+    // Start 1-second timer to show tooltip
+    hoverTimerRef.current = setTimeout(() => {
+      setTooltipPosition(computeTooltipPosition());
+      setShowTooltip(true);
+    }, 1000);
+  }, [habitId, dateIndex, setHoveredCell, computeTooltipPosition]);
 
-  // Mouse leave - clear hover (but not if tooltip is open)
+  // Mouse leave - clear hover timer and close tooltip
   const handleMouseLeave = useCallback(() => {
+    // Clear hover timer
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
     if (!showTooltip) {
       setHoveredCell(null);
     }
@@ -160,7 +176,7 @@ export function StatusCell({
         onMouseLeave={handleMouseLeave}
         role="button"
         tabIndex={0}
-        aria-label={`${date}: ${status}. Click to cycle, right-click for more options.`}
+        aria-label={`${date}: ${status}. Click to cycle, hover or right-click for more options.`}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
