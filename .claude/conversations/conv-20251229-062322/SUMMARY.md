@@ -3,66 +3,47 @@
 **Title:** HabitArcade POC - Issue Backlog & UI Fixes
 **Status:** Active
 **Started:** 2025-12-29 06:23
-**Last Save:** 2026-01-01 00:15
+**Last Save:** 2026-01-01 07:30
 **Duration:** Multi-session (continued across compactions)
-**Compactions:** 4+
+**Compactions:** 5+
 
 ## Context in 3 Lines
-Merged 6 feature branches to main (#14, #17, #20, #21, #26, #28). Deployed to Parker with pm2 on port 3451. App live at poc.habitarcade.com (pending Traefik proxy config). 22 issues remain open.
+Implemented 7 more issues in Part 3 session. HabitMatrix now has crosshair hover, day numbers, today arrow, hover tooltip, and completion scores. 15 issues remain open.
 
-## Task Checklist
-- [x] PRD, Architecture, UX Specification complete
-- [x] All 8 Epics created
-- [x] Week 1 MVP Implementation
-- [x] Created 38 GitHub issues for full backlog
-- [x] **Merged #14** - Remove date nav from header
-- [x] **Merged #17** - Add Kanban views under Tasks
-- [x] **Merged #20** - Striped rows in Habit Matrix
-- [x] **Merged #21** - Distinct category headers
-- [x] **Merged #26** - Full-width page layout
-- [x] **Merged #28** - Parking Lot in right drawer
-- [x] **Fixed** TypeScript error (today prop in HabitSection)
-- [x] **Deployed** to Parker (pm2, port 3451)
-- [x] **Updated** CLAUDE.md domain to poc.habitarcade.com
-- [ ] Add Traefik proxy host for poc.habitarcade.com
-- [ ] Implement remaining 22 open issues
+## Task Checklist - Part 3 Session
+- [x] **Closed #8** - Row/Column Highlight on Hover (crosshair)
+- [x] **Closed #22** - Day of month numbers in cells
+- [x] **Closed #36** - Manage Habits with isActive toggle
+- [x] **Closed #32** - Edit mode component picker in right drawer
+- [x] **Closed #23** - Arrow indicator above today's column
+- [x] **Closed #9** - Hover 1s triggers status tooltip
+- [x] **Closed #2** - Overall score in widget header (Today/Month %)
 
 ## GitHub Issues Status
-**Closed (14 total):** #14, #15, #17, #20, #21, #24, #25, #26, #27, #28 + others
-**Open (22+ remaining):** #1-#13 (PRD gaps), #16, #18, #19, #22, #23, #29-#38
+**Closed This Session:** #2, #8, #9, #22, #23, #32, #36
+**Remaining Open (15):** #1, #3, #5, #6, #7, #10, #11, #12, #18, #30, #31, #34, #35, #37, #38
 
 ## Deployment Status
 - **Server:** Parker (10.0.0.34)
 - **Port:** 3451
 - **Process:** pm2 (habitarcade-poc)
 - **Database:** Docker (habitarcade-db on port 5433)
-- **Domain:** poc.habitarcade.com (DNS resolves to 10.0.0.27, needs Traefik config)
+- **Domain:** poc.habitarcade.com
 
-## Key Files Modified (This Session)
-- client/src/pages/Today/index.tsx (added today prop to HabitSection)
-- CLAUDE.md (updated domain to poc.habitarcade.com)
-- server/.env (DATABASE_URL to localhost:5433)
-
-## Decisions Made
-- Use Traefik instead of NPM for reverse proxy
-- Domain: poc.habitarcade.com (not lab.nextlevelfoundry.com)
-- pm2 for process management on Parker
-
-## Files Needing NPM→Traefik Update
-- /mnt/foundry_project/Forge/deployments/helicarrier/nginx-proxy-manager/ (archive)
-- /mnt/foundry_project/Forge/deployments/inventory.md
-- /mnt/foundry_project/Forge/deployments/helicarrier/adguard/overview.md
-- /mnt/foundry_project/Forge/Services/service-catalog-reference.md
-- Several other overview.md files referencing NPM
+## Key Commits This Session
+- d081322: feat: Add crosshair hover and improve status tooltip
+- c6f25ad: feat: Add isActive status to habits (#36)
+- f0d6ca1: feat: Add component picker in edit mode right drawer (#32)
+- ac5ed46: feat: Add arrow indicator above today's column (#23)
+- 1ec80bd: feat: Add 1-second hover delay for status tooltip (#9)
+- 6a1d478: feat: Add completion score display to HabitMatrix header (#2)
 
 ## Next Actions
-1. Configure Traefik proxy for poc.habitarcade.com → 10.0.0.34:3451
-2. Continue implementing remaining open issues
-3. Update NPM references to Traefik in Forge docs
+1. Continue with remaining 15 open issues
+2. Priority: #1 (per-habit scoring), #37 (month display bug), #5 (habit detail modal)
 
 ## State Snapshot
 **Current Persona:** PM (oversight/coordination)
-**Current file:** N/A - deployment complete
-**Current task:** Traefik proxy configuration pending
-**Blockers:** Need Traefik config for external access
-**Ready to:** Continue with next batch of issues after proxy configured
+**Current task:** Continuing issue implementation
+**Blockers:** None - making good progress
+**Ready to:** Continue with next batch of issues

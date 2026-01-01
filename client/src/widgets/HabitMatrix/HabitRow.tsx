@@ -3,6 +3,56 @@ import type { DateColumn, MatrixHabit } from './useHabitMatrix';
 import { getHabitStatus } from './useHabitMatrix';
 import { StatusCell } from './StatusCell';
 
+/**
+ * Get color class based on completion percentage
+ * Green >=80%, Yellow >=50%, Red <50%
+ */
+function getScoreColor(percentage: number): string {
+  if (percentage >= 80) return 'text-emerald-400';
+  if (percentage >= 50) return 'text-yellow-400';
+  return 'text-red-400';
+}
+
+/**
+ * Calculate completion percentage for a single habit across given dates
+ * Formula: (complete + extra + partial*0.5) / (total - na - exempt) * 100
+ */
+function calculateHabitCompletion(habit: MatrixHabit, dates: DateColumn[]): number {
+  let completed = 0;
+  let partial = 0;
+  let exempt = 0;
+  let na = 0;
+  const total = dates.length;
+
+  for (const dateCol of dates) {
+    const status = getHabitStatus(habit, dateCol.date);
+    switch (status) {
+      case 'complete':
+      case 'extra':
+        completed++;
+        break;
+      case 'partial':
+      case 'trending':
+        partial++;
+        break;
+      case 'exempt':
+        exempt++;
+        break;
+      case 'na':
+        na++;
+        break;
+      // 'empty', 'missed', 'pink' count as incomplete (not excluded)
+    }
+  }
+
+  const excluded = exempt + na;
+  const effectiveTotal = total - excluded;
+
+  if (effectiveTotal <= 0) return 0;
+
+  return Math.round(((completed + partial * 0.5) / effectiveTotal) * 100);
+}
+
 interface HabitRowProps {
   habit: MatrixHabit;
   dates: DateColumn[];
@@ -47,6 +97,12 @@ export const HabitRow = memo(function HabitRow({
 
     return { currentStreak, maxStreak };
   }, [habit, dates]);
+
+  // Calculate completion percentage for this habit
+  const completionPercent = useMemo(
+    () => calculateHabitCompletion(habit, dates),
+    [habit, dates]
+  );
 
   return (
     <div className={`flex items-center gap-0.5 py-0.5 group hover:bg-slate-700/20 rounded transition-colors duration-150 ${index % 2 === 1 ? 'bg-slate-800/30' : 'bg-transparent'}`}>
@@ -109,6 +165,17 @@ export const HabitRow = memo(function HabitRow({
           );
         })}
       </div>
+
+      {/* Completion percentage */}
+      <div
+        className={`
+          flex-shrink-0 w-10 text-right text-xs font-condensed font-medium
+          ${getScoreColor(completionPercent)}
+        `}
+        title={`${completionPercent}% completion this period`}
+      >
+        {completionPercent}%
+      </div>
     </div>
   );
 });
@@ -124,6 +191,12 @@ export const HabitRowCompact = memo(function HabitRowCompact({
   cellSize,
   index = 0,
 }: HabitRowProps) {
+  // Calculate completion percentage for this habit
+  const completionPercent = useMemo(
+    () => calculateHabitCompletion(habit, dates),
+    [habit, dates]
+  );
+
   return (
     <div className={`flex items-center gap-1 py-1 ${index % 2 === 1 ? 'bg-slate-800/30' : 'bg-transparent'}`}>
       {/* Habit name */}
@@ -160,6 +233,17 @@ export const HabitRowCompact = memo(function HabitRowCompact({
             />
           );
         })}
+      </div>
+
+      {/* Completion percentage */}
+      <div
+        className={`
+          flex-shrink-0 w-10 text-right text-xs font-condensed font-medium
+          ${getScoreColor(completionPercent)}
+        `}
+        title={`${completionPercent}% completion this period`}
+      >
+        {completionPercent}%
       </div>
     </div>
   );
