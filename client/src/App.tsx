@@ -4,6 +4,14 @@ import { queryClient } from './api';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Today } from './pages/Today';
+import {
+  ManageHabits,
+  ManageCategories,
+  ManageProjects,
+  ManageTags,
+  ManagePriorities,
+  Settings,
+} from './pages/Manage';
 import { ModalManager } from './components/ModalManager';
 import { useUIStore } from './stores';
 
@@ -15,6 +23,19 @@ function PageRouter() {
       return <Today />;
     case 'dashboard':
       return <Dashboard />;
+    // Manage section pages
+    case 'manage-habits':
+      return <ManageHabits />;
+    case 'manage-categories':
+      return <ManageCategories />;
+    case 'manage-projects':
+      return <ManageProjects />;
+    case 'manage-tags':
+      return <ManageTags />;
+    case 'manage-priorities':
+      return <ManagePriorities />;
+    case 'settings':
+      return <Settings />;
     // Future pages can be added here
     case 'habits':
     case 'tasks':

@@ -36,6 +36,19 @@ export function Sidebar({ isOpen }: SidebarProps) {
     },
     { id: 'projects', icon: 'Folder', label: 'Projects' },
     { id: 'analytics', icon: 'BarChart', label: 'Analytics' },
+    {
+      id: 'manage',
+      icon: 'Tune',
+      label: 'Manage',
+      children: [
+        { id: 'manage-habits', icon: 'CheckCircle', label: 'Habits' },
+        { id: 'manage-categories', icon: 'Category', label: 'Categories' },
+        { id: 'manage-projects', icon: 'Folder', label: 'Projects' },
+        { id: 'manage-tags', icon: 'LocalOffer', label: 'Tags' },
+        { id: 'manage-priorities', icon: 'LowPriority', label: 'Priorities' },
+        { id: 'settings', icon: 'Settings', label: 'Settings' },
+      ]
+    },
   ];
 
   const handleNavClick = (item: NavItem) => {
