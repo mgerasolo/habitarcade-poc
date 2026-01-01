@@ -75,7 +75,7 @@ export const CategorySection = memo(function CategorySection({
   if (!category && habits.length <= 3) {
     return (
       <div className="space-y-0">
-        {habits.map((habit) =>
+        {habits.map((habit, index) =>
           isCompact ? (
             <HabitRowCompact
               key={habit.id}
@@ -83,6 +83,7 @@ export const CategorySection = memo(function CategorySection({
               dates={dates}
               habitNameWidth={habitNameWidth}
               cellSize={cellSize}
+              index={index}
             />
           ) : (
             <HabitRow
@@ -91,6 +92,7 @@ export const CategorySection = memo(function CategorySection({
               dates={dates}
               habitNameWidth={habitNameWidth}
               cellSize={cellSize}
+              index={index}
             />
           )
         )}
@@ -203,13 +205,14 @@ export const CategorySection = memo(function CategorySection({
         `}
       >
         <div className="pl-4 border-l border-slate-700/50 ml-1 mt-1">
-          {habits.map((habit) => (
+          {habits.map((habit, index) => (
             <RowComponent
               key={habit.id}
               habit={habit}
               dates={dates}
               habitNameWidth={habitNameWidth - 20}
               cellSize={cellSize}
+              index={index}
             />
           ))}
         </div>
@@ -257,13 +260,14 @@ export const CategorySectionFlat = memo(function CategorySectionFlat({
 
       {/* Habit rows */}
       <div className={category ? 'pl-4 border-l border-slate-700/50 ml-1' : ''}>
-        {habits.map((habit) => (
+        {habits.map((habit, index) => (
           <RowComponent
             key={habit.id}
             habit={habit}
             dates={dates}
             habitNameWidth={category ? habitNameWidth - 20 : habitNameWidth}
             cellSize={cellSize}
+            index={index}
           />
         ))}
       </div>
