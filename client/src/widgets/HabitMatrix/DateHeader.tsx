@@ -26,7 +26,7 @@ export const DateHeader = memo(function DateHeader({
           <div
             key={dateCol.date}
             className={`
-              w-4 flex flex-col items-center justify-end
+              w-4 flex flex-col items-center justify-end relative
               font-condensed text-[10px] leading-tight
               transition-colors duration-150
               ${dateCol.isToday
@@ -38,6 +38,12 @@ export const DateHeader = memo(function DateHeader({
             `}
             title={dateCol.date}
           >
+            {/* Today arrow indicator */}
+            {dateCol.isToday && (
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-teal-400 text-[8px]">
+                ▼
+              </span>
+            )}
             {/* Day of week - only show first letter */}
             <span className="opacity-70">
               {dateCol.dayOfWeek.charAt(0)}
@@ -76,7 +82,7 @@ export const DateHeaderCompact = memo(function DateHeaderCompact({
           <div
             key={dateCol.date}
             className={`
-              w-5 h-5 flex items-center justify-center
+              w-5 h-5 flex items-center justify-center relative
               font-condensed text-xs rounded
               ${dateCol.isToday
                 ? 'bg-teal-500/20 text-teal-400 font-bold'
@@ -87,6 +93,12 @@ export const DateHeaderCompact = memo(function DateHeaderCompact({
             `}
             title={`${dateCol.dayOfWeek}, ${dateCol.date}`}
           >
+            {/* Today arrow indicator */}
+            {dateCol.isToday && (
+              <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-teal-400 text-[10px]">
+                ▼
+              </span>
+            )}
             {dateCol.dayOfMonth}
           </div>
         ))}
