@@ -126,6 +126,7 @@ export function Today() {
         <div className="space-y-4" data-testid="today-habits-section">
           <HabitSection
             habits={habits}
+            today={today}
             getHabitTodayStatus={getHabitTodayStatus}
             onHabitToggle={handleHabitToggle}
             isLoading={isLoading}

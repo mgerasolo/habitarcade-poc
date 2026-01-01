@@ -1,70 +1,69 @@
 # Conversation conv-20251229-062322 - TLDR
 
-**Title:** HabitArcade POC - Gap Analysis & Display Issues
+**Title:** HabitArcade POC - Issue Backlog & UI Fixes
 **Status:** Active
 **Started:** 2025-12-29 06:23
-**Duration:** ~3h (continued from previous sessions)
-**Compactions:** 2+ (context was lost, recovered via baton)
+**Last Save:** 2025-12-31 ~19:30
+**Duration:** Multi-session (continued across compactions)
+**Compactions:** 3+
 
 ## Context in 3 Lines
-HabitArcade Week 1 MVP was built but with significant requirements gaps vs the project-preplan.md. Many features specified in the preplan (GitHub graph, habit detail modal, scoring, 6AM boundary, markdown import) were dropped during implementation. Current session also has broken uncommitted changes that removed the DateHeader.
+HabitArcade POC had critical bugs fixed (DateHeader, API URL) and branding updated (logo, single header). Created comprehensive GitHub issue backlog (#1-#38) covering all missing features from PRD and new user requests. Ready for implementation phase.
 
 ## Task Checklist
 - [x] PRD created (_bmad-output/planning-artifacts/prd.md)
 - [x] Architecture designed (_bmad-output/planning-artifacts/architecture.md)
 - [x] UX Specification complete (_bmad-output/planning-artifacts/ux-design-specification.md)
 - [x] All 8 Epics created (epics 1-8)
-- [x] Week 1 MVP Implementation (partial - core features work)
-- [ ] **FIX: DateHeader removed in uncommitted changes** (BLOCKING)
-- [ ] Epic 2.7: Per-habit scoring display (NOT BUILT)
-- [ ] Epic 2.8: Markdown habit import (NOT BUILT)
-- [ ] Epic 2.9: 6 AM day boundary → pink status (NOT BUILT)
-- [ ] Click habit name → detail modal with GitHub graph (NOT BUILT)
-- [ ] Epic 7: Wallboard Mode (NOT STARTED)
-- [ ] Epic 8: Mobile Optimization (NOT STARTED)
+- [x] Week 1 MVP Implementation (core features work)
+- [x] **FIXED: DateHeader re-added** (commit ac48bc4)
+- [x] **FIXED: API URL for production** (relative /api)
+- [x] **FIXED: Branded logo added** (habitarcade-icon.png)
+- [x] **FIXED: Double header removed** (consolidated to single mast header)
+- [x] Created 38 GitHub issues for full backlog
+- [ ] Uncommitted changes: logo + header consolidation (ready to commit)
 
-## Decisions Made (This Session)
-- Identified source of requirements leakage: preplan → PRD (captured) → implementation (dropped)
-- PRD does mention these features - they were just not built
-- Need to either revert broken changes or re-add DateHeader
+## GitHub Issues Created (#1-#38)
+**PRD Gap Issues (#1-#13):**
+- Per-habit scoring, GitHub graph, 6AM boundary, markdown import, etc.
 
-## Key Files With Issues
-- client/src/widgets/HabitMatrix/index.tsx (MODIFIED - DateHeader import removed)
-- client/src/widgets/HabitMatrix/CategorySection.tsx (MODIFIED)
-- client/src/widgets/HabitMatrix/HabitRow.tsx (MODIFIED)
-- client/src/widgets/HabitMatrix/StatusCell.tsx (MODIFIED)
-- client/src/widgets/HabitMatrix/DateHeader.tsx (EXISTS but not used)
-- server/src/index.ts (MODIFIED - added static file serving)
+**UI/Navigation (#14-#19):**
+- Remove date selector, Today screen, Manage section, Kanban views, Settings
 
-## Failed Attempts (Don't Retry)
-- The 5 rounds of changes that removed DateHeader broke the UI
-- These changes are uncommitted and causing display issues
+**Habit Matrix (#20-#26):**
+- Striped rows, category headers, day numbers in cells, today arrow, merge headers, fix collapse, full width
 
-## Bugs Discovered
-1. **DateHeader Removed** - Day numbers (1-31) no longer display above habit cells
-2. **Per-habit scoring not built** - Epic 2.7 specified but not implemented
-3. **GitHub-style graph not built** - Preplan specified, not implemented
-4. **6 AM boundary not built** - Epic 2.9 specified, no logic in code
-5. **Markdown import not built** - No /api/habits/import endpoint
+**Sidebars & Drawers (#27-#33):**
+- Right drawer, Parking Lot, Priorities, Targets, Time Blocks, component picker, Timer redesign
 
-## Requirements Gap Summary
-| Feature | In Preplan | In PRD | In Code |
-|---------|------------|--------|---------|
-| 6 AM day boundary | ✅ | ✅ | ❌ |
-| GitHub annual graph | ✅ | ✅ | ❌ |
-| Click habit → modal | ✅ | ✅ | ❌ |
-| Per-habit scoring | ✅ | ✅ | ❌ |
-| Markdown import | ✅ | ✅ | ❌ |
-| Pink auto-set | ✅ | ✅ | ❌ |
+**New Modules (#34-#38):**
+- Quotes widget/library, Video Clips carousel, Manage Habits, month adaptation, completion scores
+
+## Key Files Modified (This Session)
+- client/src/components/Layout/Header.tsx (branded logo, Edit Layout button)
+- client/src/components/Dashboard/index.tsx (removed DashboardHeader)
+- client/src/assets/habitarcade-icon.png (NEW - branded logo)
+
+## Decisions Made
+- Use relative /api URL for production compatibility
+- Single header approach (mast header only, no DashboardHeader)
+- GitHub issues for full feature tracking
+- Branded logo from AppServices/icons/apps/HabitArcade/
+
+## Bugs Fixed This Session
+1. **DateHeader Removed** → Re-added (commit ac48bc4)
+2. **Production API URL** → Changed to relative /api (commit ac48bc4)
 
 ## Next Actions
-1. **IMMEDIATE:** Fix display issue - either revert changes or re-add DateHeader
-2. Decide: Build missing features or defer to later sprint
-3. Commit working state once display is fixed
+1. Commit logo + header changes
+2. Prioritize and start implementing from issue backlog
+3. Focus on high-priority: #24 (merge headers), #25 (fix collapse), #26 (full width)
 
 ## State Snapshot
-**Current Persona:** pm (John, Product Manager) - activated for status review
-**Current file:** client/src/widgets/HabitMatrix/index.tsx
-**Current issue:** DateHeader removed, day numbers not showing
-**Blockers:** App display broken by uncommitted changes
-**Ready to:** Fix display issue (user choice: revert or re-integrate DateHeader)
+**Current Persona:** None
+**Current file:** N/A - issue creation complete
+**Current task:** Baton save complete
+**Blockers:** None
+**Ready to:** Commit changes, then start implementing issues
+
+**Note:** Created 38 GitHub issues for HabitArcade features, fixed logo/header, ready for implementation

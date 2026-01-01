@@ -2,6 +2,20 @@
 // Using 'dotenv/config' ensures env vars are loaded during import phase
 import 'dotenv/config';
 
+// Initialize Sentry BEFORE other imports for proper instrumentation
+import * as Sentry from '@sentry/node';
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || 'development',
+
+  // Performance Monitoring
+  tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
+
+  // Only enable when DSN is configured
+  enabled: !!process.env.SENTRY_DSN,
+});
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
