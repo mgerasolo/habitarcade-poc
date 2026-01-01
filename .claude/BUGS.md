@@ -4,14 +4,6 @@ Discovered bugs across all conversations, tagged by conversation ID.
 
 ## Open Bugs
 
-### DateHeader Removed - Day Numbers Not Displaying
-**Conv:** conv-20251229-062322
-**Severity:** Critical
-**Status:** Open
-**Description:** Uncommitted changes removed the DateHeader component import and usage from HabitMatrix/index.tsx. The day numbers (1-31) no longer appear above the habit status cells.
-**Steps to Reproduce:** Load http://localhost:5173, view Habit Matrix widget
-**Resolution:** Pending - either revert changes or re-add DateHeader
-
 ### Per-Habit Scoring Not Built
 **Conv:** conv-20251229-062322
 **Severity:** Medium
@@ -62,7 +54,21 @@ Discovered bugs across all conversations, tagged by conversation ID.
 
 ## Resolved Bugs
 
-(none yet)
+### DateHeader Removed - Day Numbers Not Displaying
+**Conv:** conv-20251229-062322
+**Severity:** Critical
+**Status:** Resolved
+**Description:** Uncommitted changes removed the DateHeader component import and usage from HabitMatrix/index.tsx. The day numbers (1-31) no longer appeared above the habit status cells.
+**Steps to Reproduce:** Load http://localhost:5173, view Habit Matrix widget
+**Resolution:** Re-added DateHeader import and usage in index.tsx. Commit ac48bc4.
+
+### Production API URL Broken
+**Conv:** conv-20251229-062322
+**Severity:** Critical
+**Status:** Resolved
+**Description:** Production build was calling http://localhost:3451/api which doesn't work when served from Parker (10.0.0.34:3451). API calls failed with "Failed to load habits".
+**Steps to Reproduce:** Access http://10.0.0.34:3451 - shows "Failed to load habits"
+**Resolution:** Changed API_BASE in queryClient.ts to use relative URL (/api) instead of hardcoded localhost. Commit ac48bc4.
 
 ---
 
