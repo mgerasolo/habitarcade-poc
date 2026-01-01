@@ -8,6 +8,7 @@ interface HabitRowProps {
   dates: DateColumn[];
   habitNameWidth?: number;
   cellSize?: number;
+  index?: number;
 }
 
 /**
@@ -19,6 +20,7 @@ export const HabitRow = memo(function HabitRow({
   dates,
   habitNameWidth = 120,
   cellSize,
+  index = 0,
 }: HabitRowProps) {
   // Calculate streak info for visual indicator
   const streakInfo = useMemo(() => {
@@ -47,7 +49,7 @@ export const HabitRow = memo(function HabitRow({
   }, [habit, dates]);
 
   return (
-    <div className="flex items-center gap-0.5 py-0.5 group hover:bg-slate-700/20 rounded transition-colors duration-150">
+    <div className={`flex items-center gap-0.5 py-0.5 group hover:bg-slate-700/20 rounded transition-colors duration-150 ${index % 2 === 1 ? 'bg-slate-800/30' : 'bg-transparent'}`}>
       {/* Habit name and icon */}
       <div
         style={{ width: habitNameWidth }}
@@ -116,9 +118,10 @@ export const HabitRowCompact = memo(function HabitRowCompact({
   dates,
   habitNameWidth = 80,
   cellSize,
+  index = 0,
 }: HabitRowProps) {
   return (
-    <div className="flex items-center gap-1 py-1">
+    <div className={`flex items-center gap-1 py-1 ${index % 2 === 1 ? 'bg-slate-800/30' : 'bg-transparent'}`}>
       {/* Habit name */}
       <div
         style={{ width: habitNameWidth }}

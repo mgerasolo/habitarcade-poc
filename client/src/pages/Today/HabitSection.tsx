@@ -16,7 +16,7 @@ interface HabitSectionProps {
  */
 export function HabitSection({
   habits,
-  today,
+  today: _today,
   getHabitTodayStatus,
   onHabitToggle,
   isLoading,
