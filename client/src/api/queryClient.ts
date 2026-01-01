@@ -10,7 +10,8 @@ export const queryClient = new QueryClient({
   },
 });
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3451/api';
+// Use relative URL for production (works with same-origin), absolute for dev
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export async function apiFetch<T>(
   endpoint: string,

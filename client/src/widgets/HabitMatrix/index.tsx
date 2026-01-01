@@ -1,20 +1,21 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG } from './useHabitMatrix';
-import { DateHeader, DateHeaderCompact, WeekMarkers } from './DateHeader';
 import { CategorySection, CategorySectionFlat, CategorySectionSkeleton } from './CategorySection';
+import { DateHeader, DateHeaderCompact } from './DateHeader';
+import { format, addMonths, subMonths } from 'date-fns';
 
 // Configuration constants
 const HABIT_NAME_WIDTH_DESKTOP = 140;
 const HABIT_NAME_WIDTH_TABLET = 100;
 const HABIT_NAME_WIDTH_MOBILE = 80;
+const MIN_CELL_SIZE = 16;
+const MAX_CELL_SIZE = 28;
 
 interface HabitMatrixProps {
   /** Number of days to show. Auto-responsive if not specified */
   daysToShow?: number;
   /** Use flat (non-collapsible) categories */
   flatCategories?: boolean;
-  /** Show week markers above date headers */
-  showWeekMarkers?: boolean;
   /** Custom class name for the container */
   className?: string;
 }
@@ -43,13 +44,33 @@ interface HabitMatrixProps {
 export function HabitMatrix({
   daysToShow: propDaysToShow,
   flatCategories = false,
-  showWeekMarkers = true,
   className = '',
 }: HabitMatrixProps) {
+  // Container ref for measuring width
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerWidth, setContainerWidth] = useState(800);
+
   // Responsive days calculation
   const [responsiveDays, setResponsiveDays] = useState(() =>
     propDaysToShow ?? getResponsiveDays(typeof window !== 'undefined' ? window.innerWidth : 1200)
   );
+
+  // Current viewing month
+  const [currentMonth, setCurrentMonth] = useState(() => new Date());
+
+  // Handle container resize for dynamic cell sizing
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerWidth(entry.contentRect.width);
+      }
+    });
+
+    resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
 
   // Handle window resize for responsive days
   useEffect(() => {
@@ -79,6 +100,19 @@ export function HabitMatrix({
     if (isCompact) return HABIT_NAME_WIDTH_TABLET;
     return HABIT_NAME_WIDTH_DESKTOP;
   }, [isCompact, isMobile]);
+
+  // Calculate cell size based on available width
+  const cellSize = useMemo(() => {
+    const padding = 32; // px-4 on both sides
+    const gap = daysToShow * 2; // gap between cells
+    const availableWidth = containerWidth - padding - habitNameWidth - gap - 40; // 40 for category indent
+    const calculatedSize = Math.floor(availableWidth / daysToShow);
+    return Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, calculatedSize));
+  }, [containerWidth, daysToShow, habitNameWidth]);
+
+  // Month navigation handlers
+  const navigatePrevMonth = () => setCurrentMonth(prev => subMonths(prev, 1));
+  const navigateNextMonth = () => setCurrentMonth(prev => addMonths(prev, 1));
 
   // Calculate total habits count
   const totalHabits = useMemo(
@@ -114,20 +148,21 @@ export function HabitMatrix({
   }
 
   const CategoryComponent = flatCategories ? CategorySectionFlat : CategorySection;
-  const HeaderComponent = isMobile ? DateHeaderCompact : DateHeader;
 
   return (
     <div
+      ref={containerRef}
       className={`
         bg-slate-800/80 backdrop-blur rounded-lg
         border border-slate-700/50
-        overflow-hidden
+        overflow-hidden flex flex-col
         ${className}
       `}
     >
-      {/* Header bar */}
+      {/* Header bar with month selector centered */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-slate-700/50 bg-slate-800/50">
-        <div className="flex items-center gap-2">
+        {/* Left: Title and habit count */}
+        <div className="flex items-center gap-2 min-w-[120px]">
           <h3 className="font-condensed font-semibold text-slate-200 text-sm uppercase tracking-wider">
             Habit Matrix
           </h3>
@@ -136,8 +171,35 @@ export function HabitMatrix({
           </span>
         </div>
 
-        {/* View toggle (future feature) */}
-        <div className="flex items-center gap-1">
+        {/* Center: Month selector as inlaid pill */}
+        <div className="flex items-center">
+          <div className="flex items-center bg-slate-900/60 rounded-full px-1 py-0.5">
+            <button
+              onClick={navigatePrevMonth}
+              className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
+              title="Previous month"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <span className="px-3 py-0.5 text-sm font-condensed font-medium text-slate-200 min-w-[120px] text-center">
+              {format(currentMonth, 'MMMM yyyy')}
+            </span>
+            <button
+              onClick={navigateNextMonth}
+              className="p-1 hover:bg-slate-700/50 rounded-full transition-colors text-slate-400 hover:text-white"
+              title="Next month"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Right: View toggle */}
+        <div className="flex items-center gap-1 min-w-[120px] justify-end">
           <ViewToggle
             currentDays={daysToShow}
             onChange={(days) => setResponsiveDays(days)}
@@ -146,15 +208,14 @@ export function HabitMatrix({
       </div>
 
       {/* Matrix content */}
-      <div className="p-4 overflow-x-auto">
-        <div className="min-w-max">
-          {/* Week markers (optional, desktop only) */}
-          {showWeekMarkers && !isCompact && daysToShow >= 14 && (
-            <WeekMarkers dates={dateColumns} habitNameWidth={habitNameWidth} />
+      <div className="flex-1 p-4 overflow-auto">
+        <div style={{ minWidth: habitNameWidth + (cellSize + 2) * daysToShow + 40 }}>
+          {/* Date header row showing day numbers */}
+          {isMobile ? (
+            <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} />
+          ) : (
+            <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} />
           )}
-
-          {/* Date headers */}
-          <HeaderComponent dates={dateColumns} habitNameWidth={habitNameWidth} />
 
           {/* Category sections with habits */}
           <div className="space-y-1">
@@ -166,6 +227,7 @@ export function HabitMatrix({
                 dates={dateColumns}
                 habitNameWidth={habitNameWidth}
                 isCompact={isCompact}
+                cellSize={cellSize}
               />
             ))}
           </div>

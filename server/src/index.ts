@@ -4,6 +4,7 @@ import 'dotenv/config';
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 
 import habitsRouter from './routes/habits';
 import categoriesRouter from './routes/categories';
@@ -17,7 +18,7 @@ import settingsRouter from './routes/settings';
 import dashboardRouter from './routes/dashboard';
 
 const app = express();
-const PORT = process.env.PORT || 3451;
+const PORT = parseInt(process.env.PORT || '3451', 10);
 
 app.use(cors());
 app.use(express.json());
@@ -39,12 +40,41 @@ app.use('/api/parking-lot', parkingLotRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
 
+// Serve static files from client dist
+const clientDistPath = path.join(__dirname, '../../client/dist');
+app.use(express.static(clientDistPath, {
+  // Cache JS/CSS files with hashed names for 1 year
+  // But don't cache HTML files
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    } else if (filePath.match(/\.(js|css|woff2?)$/)) {
+      // Vite uses content hashes in filenames, safe to cache for long time
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
+
+// SPA fallback - serve index.html for all non-API routes
+// Add no-cache headers to ensure browsers always get fresh HTML
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api') || req.method !== 'GET') {
+    return next();
+  }
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
+
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
   res.status(500).json({ error: 'Internal server error', code: 'INTERNAL_ERROR' });
 });
 
-app.listen(PORT, () => {
-  console.log(`HabitArcade API running on port ${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`HabitArcade running on http://0.0.0.0:${PORT}`);
 });

@@ -7,6 +7,7 @@ interface HabitRowProps {
   habit: MatrixHabit;
   dates: DateColumn[];
   habitNameWidth?: number;
+  cellSize?: number;
 }
 
 /**
@@ -17,6 +18,7 @@ export const HabitRow = memo(function HabitRow({
   habit,
   dates,
   habitNameWidth = 120,
+  cellSize,
 }: HabitRowProps) {
   // Calculate streak info for visual indicator
   const streakInfo = useMemo(() => {
@@ -44,15 +46,6 @@ export const HabitRow = memo(function HabitRow({
     return { currentStreak, maxStreak };
   }, [habit, dates]);
 
-  // Determine if habit has recent activity
-  const hasRecentActivity = useMemo(() => {
-    const lastThreeDays = dates.slice(-3);
-    return lastThreeDays.some(d => {
-      const status = getHabitStatus(habit, d.date);
-      return status !== 'empty';
-    });
-  }, [habit, dates]);
-
   return (
     <div className="flex items-center gap-0.5 py-0.5 group hover:bg-slate-700/20 rounded transition-colors duration-150">
       {/* Habit name and icon */}
@@ -70,14 +63,9 @@ export const HabitRow = memo(function HabitRow({
           </span>
         )}
 
-        {/* Habit name */}
+        {/* Habit name - consistent color for all habits */}
         <span
-          className={`
-            font-condensed text-xs truncate
-            transition-colors duration-150
-            ${hasRecentActivity ? 'text-slate-200' : 'text-slate-400'}
-            group-hover:text-slate-100
-          `}
+          className="font-condensed text-xs truncate text-slate-200 group-hover:text-slate-100 transition-colors duration-150"
           title={habit.name}
         >
           {habit.name}
@@ -110,6 +98,7 @@ export const HabitRow = memo(function HabitRow({
               status={status}
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
+              size={cellSize}
             />
           );
         })}
@@ -126,6 +115,7 @@ export const HabitRowCompact = memo(function HabitRowCompact({
   habit,
   dates,
   habitNameWidth = 80,
+  cellSize,
 }: HabitRowProps) {
   return (
     <div className="flex items-center gap-1 py-1">
@@ -139,7 +129,7 @@ export const HabitRowCompact = memo(function HabitRowCompact({
             <i className={habit.icon} />
           </span>
         )}
-        <span className="font-condensed text-xs text-slate-300 truncate" title={habit.name}>
+        <span className="font-condensed text-xs text-slate-200 truncate" title={habit.name}>
           {habit.name}
         </span>
       </div>
@@ -149,15 +139,15 @@ export const HabitRowCompact = memo(function HabitRowCompact({
         {dates.map((dateCol) => {
           const status = getHabitStatus(habit, dateCol.date);
           return (
-            <div key={dateCol.date} className="w-5 h-5 flex items-center justify-center">
-              <StatusCell
-                habitId={habit.id}
-                date={dateCol.date}
-                status={status}
-                isToday={dateCol.isToday}
-                isWeekend={dateCol.isWeekend}
-              />
-            </div>
+            <StatusCell
+              key={dateCol.date}
+              habitId={habit.id}
+              date={dateCol.date}
+              status={status}
+              isToday={dateCol.isToday}
+              isWeekend={dateCol.isWeekend}
+              size={cellSize || 20}
+            />
           );
         })}
       </div>

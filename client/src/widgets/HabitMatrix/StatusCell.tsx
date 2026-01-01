@@ -9,6 +9,7 @@ interface StatusCellProps {
   status: HabitStatus;
   isToday: boolean;
   isWeekend?: boolean;
+  size?: number;
 }
 
 /**
@@ -23,6 +24,7 @@ export function StatusCell({
   status,
   isToday,
   isWeekend = false,
+  size = 16,
 }: StatusCellProps) {
   // State
   const [showTooltip, setShowTooltip] = useState(false);
@@ -117,7 +119,7 @@ export function StatusCell({
 
   // Dynamic styling based on status and state
   const cellClasses = `
-    w-4 h-4 rounded-sm cursor-pointer
+    rounded-sm cursor-pointer
     transition-all duration-150 ease-out
     ${isHovered ? 'scale-110 shadow-md' : ''}
     ${isToday ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-slate-800' : ''}
@@ -131,6 +133,8 @@ export function StatusCell({
         ref={cellRef}
         className={cellClasses}
         style={{
+          width: size,
+          height: size,
           backgroundColor: STATUS_COLORS[status],
           // Add subtle inner shadow for depth
           boxShadow: status !== 'empty'

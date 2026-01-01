@@ -1,63 +1,70 @@
 # Conversation conv-20251229-062322 - TLDR
 
-**Title:** HabitArcade POC - Implementation Ready
+**Title:** HabitArcade POC - Gap Analysis & Display Issues
 **Status:** Active
 **Started:** 2025-12-29 06:23
-**Duration:** 0h (continued from previous sessions)
-**Compactions:** 1 (this is a continuation session)
+**Duration:** ~3h (continued from previous sessions)
+**Compactions:** 2+ (context was lost, recovered via baton)
 
 ## Context in 3 Lines
-HabitArcade is a gamified habit tracking app with Habit Matrix, Weekly Kanban, Time Blocks, Target Graph, Parking Lot, Wallboard, and Mobile views. Planning phase complete: PRD, Architecture, UX Spec, and all 8 Epics created. Ready to begin implementation with Epic 1 (Infrastructure).
+HabitArcade Week 1 MVP was built but with significant requirements gaps vs the project-preplan.md. Many features specified in the preplan (GitHub graph, habit detail modal, scoring, 6AM boundary, markdown import) were dropped during implementation. Current session also has broken uncommitted changes that removed the DateHeader.
 
 ## Task Checklist
 - [x] PRD created (_bmad-output/planning-artifacts/prd.md)
 - [x] Architecture designed (_bmad-output/planning-artifacts/architecture.md)
 - [x] UX Specification complete (_bmad-output/planning-artifacts/ux-design-specification.md)
-- [x] Epic 1: Infrastructure (8 stories)
-- [x] Epic 2: Habit Matrix (9 stories)
-- [x] Epic 3: Weekly Kanban (8 stories)
-- [x] Epic 4: Time Blocks (5 stories)
-- [x] Epic 5: Target Graph (5 stories)
-- [x] Epic 6: Parking Lot (4 stories)
-- [x] Epic 7: Wallboard Mode (5 stories)
-- [x] Epic 8: Mobile Optimization (5 stories)
-- [ ] Story 1.1: Project Scaffolding (NEXT)
+- [x] All 8 Epics created (epics 1-8)
+- [x] Week 1 MVP Implementation (partial - core features work)
+- [ ] **FIX: DateHeader removed in uncommitted changes** (BLOCKING)
+- [ ] Epic 2.7: Per-habit scoring display (NOT BUILT)
+- [ ] Epic 2.8: Markdown habit import (NOT BUILT)
+- [ ] Epic 2.9: 6 AM day boundary → pink status (NOT BUILT)
+- [ ] Click habit name → detail modal with GitHub graph (NOT BUILT)
+- [ ] Epic 7: Wallboard Mode (NOT STARTED)
+- [ ] Epic 8: Mobile Optimization (NOT STARTED)
 
-## Decisions Made
-- Tailwind CSS + custom components (no MUI/Chakra)
-- Condensed fonts (Arial Narrow, Roboto Condensed) for data density
-- GitHub contribution graph visual style
-- Two-tier interaction: click cycles common states, hover for all 9
-- 9 status colors defined with specific hex values
-- @dnd-kit for drag-and-drop
-- ECharts for graphing
-- Drizzle ORM for PostgreSQL
+## Decisions Made (This Session)
+- Identified source of requirements leakage: preplan → PRD (captured) → implementation (dropped)
+- PRD does mention these features - they were just not built
+- Need to either revert broken changes or re-add DateHeader
 
-## Key Files Created/Modified
-- _bmad-output/planning-artifacts/prd.md
-- _bmad-output/planning-artifacts/architecture.md
-- _bmad-output/planning-artifacts/ux-design-specification.md
-- _bmad-output/planning-artifacts/epics/epic-01-infrastructure.md
-- _bmad-output/planning-artifacts/epics/epic-02-habit-matrix.md
-- _bmad-output/planning-artifacts/epics/epic-03-weekly-kanban.md
-- _bmad-output/planning-artifacts/epics/epic-04-time-blocks.md
-- _bmad-output/planning-artifacts/epics/epic-05-target-graph.md
-- _bmad-output/planning-artifacts/epics/epic-06-parking-lot.md
-- _bmad-output/planning-artifacts/epics/epic-07-wallboard.md
-- _bmad-output/planning-artifacts/epics/epic-08-mobile.md
+## Key Files With Issues
+- client/src/widgets/HabitMatrix/index.tsx (MODIFIED - DateHeader import removed)
+- client/src/widgets/HabitMatrix/CategorySection.tsx (MODIFIED)
+- client/src/widgets/HabitMatrix/HabitRow.tsx (MODIFIED)
+- client/src/widgets/HabitMatrix/StatusCell.tsx (MODIFIED)
+- client/src/widgets/HabitMatrix/DateHeader.tsx (EXISTS but not used)
+- server/src/index.ts (MODIFIED - added static file serving)
 
 ## Failed Attempts (Don't Retry)
-- Parallel agent epic generation timed out (90s limit) - direct file writes worked better
+- The 5 rounds of changes that removed DateHeader broke the UI
+- These changes are uncommitted and causing display issues
+
+## Bugs Discovered
+1. **DateHeader Removed** - Day numbers (1-31) no longer display above habit cells
+2. **Per-habit scoring not built** - Epic 2.7 specified but not implemented
+3. **GitHub-style graph not built** - Preplan specified, not implemented
+4. **6 AM boundary not built** - Epic 2.9 specified, no logic in code
+5. **Markdown import not built** - No /api/habits/import endpoint
+
+## Requirements Gap Summary
+| Feature | In Preplan | In PRD | In Code |
+|---------|------------|--------|---------|
+| 6 AM day boundary | ✅ | ✅ | ❌ |
+| GitHub annual graph | ✅ | ✅ | ❌ |
+| Click habit → modal | ✅ | ✅ | ❌ |
+| Per-habit scoring | ✅ | ✅ | ❌ |
+| Markdown import | ✅ | ✅ | ❌ |
+| Pink auto-set | ✅ | ✅ | ❌ |
 
 ## Next Actions
-1. Start Story 1.1: Project Scaffolding (Vite + React + Tailwind + Express)
-2. Create client/ and server/ directory structure
-3. Set up PostgreSQL connection with Drizzle
+1. **IMMEDIATE:** Fix display issue - either revert changes or re-add DateHeader
+2. Decide: Build missing features or defer to later sprint
+3. Commit working state once display is fixed
 
 ## State Snapshot
-**Current Persona:** none (PM workflow completed)
-**Current file:** none (starting fresh)
-**Current line:** N/A
-**Current task:** Ready to begin implementation
-**Blockers:** None
-**Ready to:** Start Story 1.1 - Project Scaffolding
+**Current Persona:** pm (John, Product Manager) - activated for status review
+**Current file:** client/src/widgets/HabitMatrix/index.tsx
+**Current issue:** DateHeader removed, day numbers not showing
+**Blockers:** App display broken by uncommitted changes
+**Ready to:** Fix display issue (user choice: revert or re-integrate DateHeader)

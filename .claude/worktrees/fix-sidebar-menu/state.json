@@ -1,0 +1,40 @@
+{
+  "name": "fix-sidebar-menu",
+  "description": "Fix left Sidebar Menu",
+  "branch": "work/fix-sidebar-menu",
+  "directory": "/home/mgerasolo/Dev/habitarcade-poc-fix-sidebar-menu",
+  "phase": "developing",
+  "mode": "standard",
+  "created": "2025-12-31T22:06:00Z",
+  "dependencies": [],
+  "tests": {
+    "written": false,
+    "passing": false,
+    "lastRun": null,
+    "skipped": false
+  },
+  "pr": {
+    "number": null,
+    "url": null,
+    "approved": false
+  },
+  "deployments": {
+    "staging": {
+      "url": null,
+      "deployedAt": null,
+      "verified": false,
+      "verifiedBy": null,
+      "verifiedAt": null
+    },
+    "production": {
+      "url": null,
+      "deployedAt": null,
+      "verified": false,
+      "verifiedBy": null,
+      "verifiedAt": null
+    }
+  },
+  "notes": [],
+  "blockers": [],
+  "stash": "stash@{0}"
+}
