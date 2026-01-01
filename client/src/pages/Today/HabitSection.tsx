@@ -4,7 +4,7 @@ import { STATUS_COLORS } from '../../types';
 
 interface HabitSectionProps {
   habits: Habit[];
-  today: string;
+  today: string; // eslint-disable-line @typescript-eslint/no-unused-vars -- Reserved for future use
   getHabitTodayStatus: (habit: Habit) => HabitStatus;
   onHabitToggle: (habit: Habit) => void;
   isLoading: boolean;
@@ -16,7 +16,7 @@ interface HabitSectionProps {
  */
 export function HabitSection({
   habits,
-  today,
+  today: _today,
   getHabitTodayStatus,
   onHabitToggle,
   isLoading,

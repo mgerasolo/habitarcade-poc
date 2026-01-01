@@ -24,7 +24,7 @@ export function Layout({ children }: LayoutProps) {
             ${rightDrawerOpen ? 'mr-80' : 'mr-0'}
           `}
         >
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             {children}
           </div>
         </main>
