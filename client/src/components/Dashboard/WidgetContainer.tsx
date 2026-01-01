@@ -1,4 +1,4 @@
-import { useState, useCallback, type ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
 import { useDashboardStore } from '../../stores';
 
 interface WidgetContainerProps {
@@ -80,8 +80,8 @@ const WIDGET_ICONS: Record<string, ReactNode> = {
  * - Edit mode visual indicators
  */
 export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
-  const { isEditMode, activeWidgetId, setActiveWidget } = useDashboardStore();
-  const [isMinimized, setIsMinimized] = useState(false);
+  const { isEditMode, activeWidgetId, setActiveWidget, toggleWidgetCollapse, collapsedWidgets } = useDashboardStore();
+  const isMinimized = widgetId in collapsedWidgets;
 
   const isActive = activeWidgetId === widgetId;
   const title = WIDGET_TITLES[widgetId] || widgetId;
@@ -91,9 +91,9 @@ export function WidgetContainer({ widgetId, children }: WidgetContainerProps) {
   const handleMinimize = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation();
-      setIsMinimized((prev) => !prev);
+      toggleWidgetCollapse(widgetId);
     },
-    []
+    [toggleWidgetCollapse, widgetId]
   );
 
   // Handle widget click for focus
