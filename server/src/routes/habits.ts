@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 
     const result = await db.query.habits.findMany({
       where: whereCondition,
-      with: { category: true },
+      with: { category: true, entries: true },
       orderBy: [habits.sortOrder],
     });
     res.json({ data: result, count: result.length });
