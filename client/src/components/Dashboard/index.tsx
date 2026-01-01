@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useRef } from 'react';
 import GridLayout, { type Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { useDashboardStore } from '../../stores';
+import { useDashboardStore, COLLAPSED_HEIGHT } from '../../stores';
 import { WidgetContainer } from './WidgetContainer';
 import { getWidget, useHabitMatrixHeaderControls } from './WidgetRegistry';
 import type { DashboardLayoutItem } from '../../types';
@@ -24,7 +24,7 @@ const GRID_MARGIN: [number, number] = [12, 12];
  * - Vertical compaction for optimal space usage
  */
 export function Dashboard() {
-  const { layout, setLayout, isEditMode } = useDashboardStore();
+  const { layout, setLayout, isEditMode, collapsedWidgets } = useDashboardStore();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1800);
 
@@ -38,6 +38,16 @@ export function Dashboard() {
     }
     return undefined;
   }, [habitMatrixHeaderControls]);
+
+  // Create a layout with proper heights for collapsed widgets
+  // This is derived from the store layout and ensures react-grid-layout sees correct heights
+  const effectiveLayout = layout.map((item) => ({
+    ...item,
+    // Ensure collapsed widgets have the correct height
+    h: item.i in collapsedWidgets ? COLLAPSED_HEIGHT : item.h,
+    // Disable resizing for collapsed widgets
+    isResizable: !(item.i in collapsedWidgets),
+  }));
 
   // Track container width for responsive grid
   useEffect(() => {
@@ -61,21 +71,25 @@ export function Dashboard() {
 
       const updatedLayout = newLayout.map((item) => {
         const originalItem = layout.find((l) => l.i === item.i);
+        const isCollapsed = item.i in collapsedWidgets;
+
         return {
           i: item.i,
           x: item.x,
           y: item.y,
           w: item.w,
-          h: item.h,
+          // Preserve collapsed height for collapsed widgets
+          h: isCollapsed ? COLLAPSED_HEIGHT : item.h,
           minW: originalItem?.minW,
-          minH: originalItem?.minH,
+          // Override minH for collapsed widgets to allow small height
+          minH: isCollapsed ? COLLAPSED_HEIGHT : originalItem?.minH,
           maxW: originalItem?.maxW,
           maxH: originalItem?.maxH,
         };
       });
       setLayout(updatedLayout as DashboardLayoutItem[]);
     },
-    [layout, setLayout, isEditMode]
+    [layout, setLayout, isEditMode, collapsedWidgets]
   );
 
   // Handle drag start - could be used for visual feedback
@@ -94,7 +108,7 @@ export function Dashboard() {
       <div ref={containerRef}>
         <GridLayout
           className="layout"
-          layout={layout}
+          layout={effectiveLayout}
           cols={GRID_COLS}
           rowHeight={ROW_HEIGHT}
           width={containerWidth}

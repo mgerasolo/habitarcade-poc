@@ -11,11 +11,16 @@ const DEFAULT_LAYOUT: DashboardLayoutItem[] = [
   { i: 'parking-lot', x: 12, y: 12, w: 12, h: 6, minW: 4, minH: 3 },
 ];
 
+// Height for collapsed widgets (title bar only - approximately 40px at 30px row height)
+const COLLAPSED_HEIGHT = 2;
+
 interface DashboardStore {
   // State
   layout: DashboardLayoutItem[];
   activeWidgetId: string | null;
   isEditMode: boolean;
+  // Map of widget id to original height (before collapse)
+  collapsedWidgets: Record<string, number>;
 
   // Actions
   setLayout: (layout: DashboardLayoutItem[]) => void;
@@ -23,14 +28,16 @@ interface DashboardStore {
   toggleEditMode: () => void;
   resetLayout: () => void;
   updateWidgetPosition: (id: string, updates: Partial<DashboardLayoutItem>) => void;
+  toggleWidgetCollapse: (widgetId: string) => void;
 }
 
 export const useDashboardStore = create<DashboardStore>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       layout: DEFAULT_LAYOUT,
       activeWidgetId: null,
       isEditMode: false,
+      collapsedWidgets: {},
 
       setLayout: (layout) => set({ layout }),
 
@@ -38,13 +45,44 @@ export const useDashboardStore = create<DashboardStore>()(
 
       toggleEditMode: () => set((state) => ({ isEditMode: !state.isEditMode })),
 
-      resetLayout: () => set({ layout: DEFAULT_LAYOUT }),
+      resetLayout: () => set({ layout: DEFAULT_LAYOUT, collapsedWidgets: {} }),
 
       updateWidgetPosition: (id, updates) => set((state) => ({
         layout: state.layout.map((item) =>
           item.i === id ? { ...item, ...updates } : item
         ),
       })),
+
+      toggleWidgetCollapse: (widgetId: string) => {
+        const state = get();
+        const isCurrentlyCollapsed = widgetId in state.collapsedWidgets;
+
+        if (isCurrentlyCollapsed) {
+          // Expand: restore original height
+          const originalHeight = state.collapsedWidgets[widgetId];
+          const newCollapsedWidgets = { ...state.collapsedWidgets };
+          delete newCollapsedWidgets[widgetId];
+
+          set({
+            collapsedWidgets: newCollapsedWidgets,
+            layout: state.layout.map((item) =>
+              item.i === widgetId ? { ...item, h: originalHeight } : item
+            ),
+          });
+        } else {
+          // Collapse: save original height and set to collapsed height
+          const widget = state.layout.find((item) => item.i === widgetId);
+          if (widget) {
+            set({
+              collapsedWidgets: { ...state.collapsedWidgets, [widgetId]: widget.h },
+              layout: state.layout.map((item) =>
+                item.i === widgetId ? { ...item, h: COLLAPSED_HEIGHT } : item
+              ),
+            });
+          }
+        }
+      },
+
     }),
     {
       name: 'habitarcade-dashboard',
@@ -52,4 +90,4 @@ export const useDashboardStore = create<DashboardStore>()(
   )
 );
 
-export { DEFAULT_LAYOUT };
+export { DEFAULT_LAYOUT, COLLAPSED_HEIGHT };
