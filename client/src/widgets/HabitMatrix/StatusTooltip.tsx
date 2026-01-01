@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { STATUS_COLORS, type HabitStatus } from '../../types';
 
-// Core statuses for the tooltip (2x3 grid layout)
+// Core statuses for the tooltip (3x3 grid layout)
 const TOOLTIP_STATUSES: HabitStatus[] = [
-  'empty', 'complete', 'missed',
-  'partial', 'na', 'exempt',
+  'empty', 'complete', 'extra',
+  'missed', 'partial', 'na',
+  'exempt', 'trending', 'pink',
 ];
 
 // Status labels for display
