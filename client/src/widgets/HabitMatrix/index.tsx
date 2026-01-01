@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG } from './useHabitMatrix';
 import { CategorySection, CategorySectionFlat, CategorySectionSkeleton } from './CategorySection';
 import { DateHeader, DateHeaderCompact } from './DateHeader';
+import { HabitMatrixProvider } from './HabitMatrixContext';
 import { format, addMonths, subMonths } from 'date-fns';
 import type { CustomHeaderControls } from '../../components/Dashboard/WidgetContainer';
 
@@ -179,44 +180,46 @@ export function HabitMatrix({
   const CategoryComponent = flatCategories ? CategorySectionFlat : CategorySection;
 
   return (
-    <div
-      ref={containerRef}
-      className={`
-        h-full overflow-hidden flex flex-col
-        ${className}
-      `}
-      data-testid="habit-matrix"
-    >
-      {/* Matrix content - no internal header, controls are in WidgetContainer */}
-      <div className="flex-1 overflow-auto">
-        <div style={{ minWidth: habitNameWidth + (cellSize + 2) * daysToShow + 40 }}>
-          {/* Date header row showing day numbers */}
-          {isMobile ? (
-            <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} />
-          ) : (
-            <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} />
-          )}
+    <HabitMatrixProvider>
+      <div
+        ref={containerRef}
+        className={`
+          h-full overflow-hidden flex flex-col
+          ${className}
+        `}
+        data-testid="habit-matrix"
+      >
+        {/* Matrix content - no internal header, controls are in WidgetContainer */}
+        <div className="flex-1 overflow-auto">
+          <div style={{ minWidth: habitNameWidth + (cellSize + 2) * daysToShow + 40 }}>
+            {/* Date header row showing day numbers */}
+            {isMobile ? (
+              <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} />
+            ) : (
+              <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} />
+            )}
 
-          {/* Category sections with habits */}
-          <div className="space-y-1">
-            {categoryGroups.map((group) => (
-              <CategoryComponent
-                key={group.category?.id || 'uncategorized'}
-                category={group.category}
-                habits={group.habits}
-                dates={dateColumns}
-                habitNameWidth={habitNameWidth}
-                isCompact={isCompact}
-                cellSize={cellSize}
-              />
-            ))}
+            {/* Category sections with habits */}
+            <div className="space-y-1">
+              {categoryGroups.map((group) => (
+                <CategoryComponent
+                  key={group.category?.id || 'uncategorized'}
+                  category={group.category}
+                  habits={group.habits}
+                  dates={dateColumns}
+                  habitNameWidth={habitNameWidth}
+                  isCompact={isCompact}
+                  cellSize={cellSize}
+                />
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Legend (desktop only) */}
-      {!isCompact && <StatusLegend />}
-    </div>
+        {/* Legend (desktop only) */}
+        {!isCompact && <StatusLegend />}
+      </div>
+    </HabitMatrixProvider>
   );
 }
 
@@ -341,7 +344,7 @@ function StatusLegend() {
           </div>
         ))}
         <span className="text-[10px] text-slate-500 italic ml-auto flex-shrink-0">
-          Click to cycle, hold for more
+          Click to cycle, right-click for more
         </span>
       </div>
     </div>

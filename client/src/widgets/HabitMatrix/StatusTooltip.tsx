@@ -1,5 +1,11 @@
 import { useEffect, useRef } from 'react';
-import { HABIT_STATUSES, STATUS_COLORS, type HabitStatus } from '../../types';
+import { STATUS_COLORS, type HabitStatus } from '../../types';
+
+// Core statuses for the tooltip (2x3 grid layout)
+const TOOLTIP_STATUSES: HabitStatus[] = [
+  'empty', 'complete', 'missed',
+  'partial', 'na', 'exempt',
+];
 
 // Status labels for display
 const STATUS_LABELS: Record<HabitStatus, string> = {
@@ -12,19 +18,6 @@ const STATUS_LABELS: Record<HabitStatus, string> = {
   extra: 'Extra',
   trending: 'Trending',
   pink: 'Pink',
-};
-
-// Status descriptions for tooltips
-const STATUS_DESCRIPTIONS: Record<HabitStatus, string> = {
-  empty: 'No status set',
-  complete: 'Habit completed',
-  missed: 'Habit missed',
-  partial: 'Partially completed',
-  na: 'Not applicable',
-  exempt: 'Exempt from tracking',
-  extra: 'Bonus/extra completion',
-  trending: 'Building momentum',
-  pink: 'Special marker',
 };
 
 interface StatusTooltipProps {
@@ -89,9 +82,9 @@ export function StatusTooltip({
         `}
       />
 
-      {/* Status grid */}
+      {/* Status grid - 2 rows x 3 columns */}
       <div className="grid grid-cols-3 gap-1">
-        {HABIT_STATUSES.map((status) => {
+        {TOOLTIP_STATUSES.map((status) => {
           const isSelected = status === currentStatus;
           return (
             <button
@@ -105,7 +98,7 @@ export function StatusTooltip({
               `}
               role="option"
               aria-selected={isSelected}
-              title={STATUS_DESCRIPTIONS[status]}
+              title={STATUS_LABELS[status]}
             >
               {/* Color swatch */}
               <div
@@ -124,20 +117,6 @@ export function StatusTooltip({
             </button>
           );
         })}
-      </div>
-
-      {/* Clear option */}
-      <div className="mt-2 pt-2 border-t border-slate-700/50">
-        <button
-          onClick={() => onSelect('empty')}
-          className="
-            w-full text-xs text-slate-400 hover:text-slate-200
-            py-1 px-2 rounded hover:bg-slate-700/30
-            transition-colors duration-150
-          "
-        >
-          Clear Status
-        </button>
       </div>
     </div>
   );
