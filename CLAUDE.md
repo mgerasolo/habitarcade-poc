@@ -12,7 +12,7 @@ HabitArcade is a gamified habit tracking web application. Users build and mainta
 
 **Target Environment:** Parker (10.0.0.34)
 **Reserved Port:** 3451
-**Domain:** habitarcade-poc.lab.nextlevelfoundry.com
+**Domain:** poc.habitarcade.com
 
 ## Technology Stack
 
