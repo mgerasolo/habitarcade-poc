@@ -3,13 +3,39 @@ import { Toaster } from 'react-hot-toast';
 import { queryClient } from './api';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
+import { Today } from './pages/Today';
 import { ModalManager } from './components/ModalManager';
+import { useUIStore } from './stores';
+
+function PageRouter() {
+  const { currentPage } = useUIStore();
+
+  switch (currentPage) {
+    case 'today':
+      return <Today />;
+    case 'dashboard':
+      return <Dashboard />;
+    // Future pages can be added here
+    case 'habits':
+    case 'tasks':
+    case 'projects':
+    case 'analytics':
+      // Placeholder - these pages can be implemented later
+      return (
+        <div className="flex items-center justify-center h-64 text-slate-400">
+          <p>{currentPage.charAt(0).toUpperCase() + currentPage.slice(1)} page coming soon...</p>
+        </div>
+      );
+    default:
+      return <Today />;
+  }
+}
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Layout>
-        <Dashboard />
+        <PageRouter />
       </Layout>
       <ModalManager />
       <Toaster

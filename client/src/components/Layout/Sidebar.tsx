@@ -1,8 +1,9 @@
 import { useUIStore } from '../../stores';
+import type { PageType } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
 
 interface NavItem {
-  id: string;
+  id: PageType;
   icon: keyof typeof MuiIcons;
   label: string;
   action?: () => void;
@@ -13,22 +14,23 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen }: SidebarProps) {
-  const { openModal } = useUIStore();
+  const { openModal, currentPage, setCurrentPage } = useUIStore();
 
   const NAV_ITEMS: NavItem[] = [
+    { id: 'today', icon: 'Today', label: 'Today' },
     { id: 'dashboard', icon: 'Dashboard', label: 'Dashboard' },
     { id: 'habits', icon: 'CheckCircle', label: 'Habits' },
     { id: 'tasks', icon: 'Assignment', label: 'Tasks' },
     { id: 'projects', icon: 'Folder', label: 'Projects' },
     { id: 'analytics', icon: 'BarChart', label: 'Analytics' },
-    { id: 'settings', icon: 'Settings', label: 'Settings', action: () => openModal('settings') },
   ];
 
   const handleNavClick = (item: NavItem) => {
     if (item.action) {
       item.action();
+    } else {
+      setCurrentPage(item.id);
     }
-    // Future: Add routing logic here
   };
 
   return (
@@ -56,7 +58,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
                 text-slate-300 hover:bg-slate-700/50 hover:text-white
                 transition-all duration-150
                 group
-                ${item.id === 'dashboard' ? 'bg-slate-700/30 text-white' : ''}
+                ${item.id === currentPage ? 'bg-slate-700/30 text-white' : ''}
               `}
             >
               <div className={`
