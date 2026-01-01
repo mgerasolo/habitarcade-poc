@@ -50,7 +50,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/habits - Create habit
 router.post('/', async (req, res) => {
   try {
-    const { name, categoryId, icon, iconColor, sortOrder } = req.body;
+    const { name, categoryId, icon, iconColor, isActive, sortOrder } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required', code: 'VALIDATION_ERROR' });
@@ -61,6 +61,7 @@ router.post('/', async (req, res) => {
       categoryId,
       icon,
       iconColor,
+      isActive: isActive !== undefined ? isActive : true,
       sortOrder,
     }).returning();
     res.status(201).json({ data: result });
@@ -73,9 +74,9 @@ router.post('/', async (req, res) => {
 // PUT /api/habits/:id - Update habit
 router.put('/:id', async (req, res) => {
   try {
-    const { name, categoryId, icon, iconColor, sortOrder } = req.body;
+    const { name, categoryId, icon, iconColor, isActive, sortOrder } = req.body;
     const [result] = await db.update(habits)
-      .set({ name, categoryId, icon, iconColor, sortOrder, updatedAt: new Date() })
+      .set({ name, categoryId, icon, iconColor, isActive, sortOrder, updatedAt: new Date() })
       .where(eq(habits.id, req.params.id))
       .returning();
     if (!result) {

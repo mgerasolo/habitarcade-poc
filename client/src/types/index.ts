@@ -51,6 +51,7 @@ export interface Habit {
   category?: Category;
   icon?: string;
   iconColor?: string;
+  isActive: boolean;
   sortOrder: number;
   isDeleted: boolean;
   deletedAt?: string;

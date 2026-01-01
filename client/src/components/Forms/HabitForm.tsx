@@ -15,6 +15,7 @@ interface HabitFormData {
   categoryId: string;
   icon: string;
   iconColor: string;
+  isActive: boolean;
 }
 
 export function HabitForm() {
@@ -42,6 +43,7 @@ export function HabitForm() {
       categoryId: selectedHabit?.categoryId || '',
       icon: selectedHabit?.icon || '',
       iconColor: selectedHabit?.iconColor || '#14b8a6',
+      isActive: selectedHabit?.isActive ?? true,
     },
   });
 
@@ -69,6 +71,7 @@ export function HabitForm() {
           categoryId: data.categoryId || undefined,
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
+          isActive: data.isActive,
         });
         toast.success('Habit updated successfully');
       } else {
@@ -77,6 +80,7 @@ export function HabitForm() {
           categoryId: data.categoryId || undefined,
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
+          isActive: data.isActive,
         });
         toast.success('Habit created successfully');
       }
@@ -251,6 +255,24 @@ export function HabitForm() {
                   style={{ fontSize: 24 }}
                 />
               </button>
+            </div>
+
+            {/* Active toggle */}
+            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-xl">
+              <div>
+                <div className="text-white font-medium">Active</div>
+                <div className="text-sm text-slate-400">
+                  Inactive habits are hidden from daily tracking
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('isActive')}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500" />
+              </label>
             </div>
           </div>
 

@@ -21,6 +21,7 @@ export const habits = pgTable('habits', {
   categoryId: uuid('category_id').references(() => categories.id),
   icon: varchar('icon', { length: 100 }),
   iconColor: varchar('icon_color', { length: 20 }),
+  isActive: boolean('is_active').default(true),
   sortOrder: integer('sort_order').default(0),
   isDeleted: boolean('is_deleted').default(false),
   deletedAt: timestamp('deleted_at'),
