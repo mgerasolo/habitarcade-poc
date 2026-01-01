@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useUIStore } from '../../stores';
 import type { PageType } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
@@ -7,6 +8,7 @@ interface NavItem {
   icon: keyof typeof MuiIcons;
   label: string;
   action?: () => void;
+  children?: NavItem[];
 }
 
 interface SidebarProps {
@@ -15,12 +17,23 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen }: SidebarProps) {
   const { openModal, currentPage, setCurrentPage } = useUIStore();
+  const [expandedItems, setExpandedItems] = useState<Set<PageType>>(new Set(['tasks']));
 
   const NAV_ITEMS: NavItem[] = [
     { id: 'today', icon: 'Today', label: 'Today' },
     { id: 'dashboard', icon: 'Dashboard', label: 'Dashboard' },
     { id: 'habits', icon: 'CheckCircle', label: 'Habits' },
-    { id: 'tasks', icon: 'Assignment', label: 'Tasks' },
+    {
+      id: 'tasks',
+      icon: 'Assignment',
+      label: 'Tasks',
+      children: [
+        { id: 'kanban-day', icon: 'ViewWeek', label: 'Day View' },
+        { id: 'kanban-status', icon: 'ViewKanban', label: 'Status View' },
+        { id: 'kanban-project', icon: 'Folder', label: 'Project View' },
+        { id: 'kanban-category', icon: 'Category', label: 'Category View' },
+      ]
+    },
     { id: 'projects', icon: 'Folder', label: 'Projects' },
     { id: 'analytics', icon: 'BarChart', label: 'Analytics' },
   ];
@@ -28,9 +41,83 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const handleNavClick = (item: NavItem) => {
     if (item.action) {
       item.action();
+    } else if (item.children) {
+      // Toggle expansion for items with children
+      setExpandedItems(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(item.id)) {
+          newSet.delete(item.id);
+        } else {
+          newSet.add(item.id);
+        }
+        return newSet;
+      });
     } else {
       setCurrentPage(item.id);
     }
+  };
+
+  const isItemActive = (item: NavItem): boolean => {
+    if (item.id === currentPage) return true;
+    if (item.children) {
+      return item.children.some(child => child.id === currentPage);
+    }
+    return false;
+  };
+
+  const renderNavItem = (item: NavItem, isChild = false) => {
+    const IconComponent = MuiIcons[item.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expandedItems.has(item.id);
+    const isActive = isItemActive(item);
+
+    return (
+      <div key={item.id}>
+        <button
+          onClick={() => handleNavClick(item)}
+          title={!isOpen ? item.label : undefined}
+          data-testid={`nav-${item.id}`}
+          className={`
+            w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
+            text-slate-300 hover:bg-slate-700/50 hover:text-white
+            transition-all duration-150
+            group
+            ${isChild ? 'pl-8' : ''}
+            ${isActive ? 'bg-slate-700/30 text-white' : ''}
+          `}
+        >
+          <div className={`
+            flex items-center justify-center
+            ${isOpen ? 'w-6' : 'w-full'}
+          `}>
+            <IconComponent
+              style={{ fontSize: isChild ? 18 : 22 }}
+              className="text-current group-hover:scale-110 transition-transform"
+            />
+          </div>
+          {isOpen && (
+            <>
+              <span className={`font-medium ${isChild ? 'text-xs' : 'text-sm'} whitespace-nowrap flex-1`}>
+                {item.label}
+              </span>
+              {hasChildren && (
+                <MuiIcons.ExpandMore
+                  style={{ fontSize: 18 }}
+                  className={`transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                />
+              )}
+            </>
+          )}
+        </button>
+
+        {/* Render children when expanded */}
+        {hasChildren && isExpanded && isOpen && (
+          <div className="mt-1 space-y-1" data-testid={`nav-${item.id}-children`}>
+            {item.children!.map(child => renderNavItem(child, true))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -45,39 +132,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
     >
       {/* Navigation items */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const IconComponent = MuiIcons[item.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleNavClick(item)}
-              title={!isOpen ? item.label : undefined}
-              className={`
-                w-full flex items-center gap-3 px-3 py-2.5 rounded-xl
-                text-slate-300 hover:bg-slate-700/50 hover:text-white
-                transition-all duration-150
-                group
-                ${item.id === currentPage ? 'bg-slate-700/30 text-white' : ''}
-              `}
-            >
-              <div className={`
-                flex items-center justify-center
-                ${isOpen ? 'w-6' : 'w-full'}
-              `}>
-                <IconComponent
-                  style={{ fontSize: 22 }}
-                  className="text-current group-hover:scale-110 transition-transform"
-                />
-              </div>
-              {isOpen && (
-                <span className="font-medium text-sm whitespace-nowrap">
-                  {item.label}
-                </span>
-              )}
-            </button>
-          );
-        })}
+        {NAV_ITEMS.map((item) => renderNavItem(item))}
       </nav>
 
       {/* Quick actions section */}

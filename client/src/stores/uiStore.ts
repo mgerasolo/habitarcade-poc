@@ -12,7 +12,7 @@ type ModalType =
   | 'confirm-delete'
   | null;
 
-export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'projects' | 'analytics';
+export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics';
 
 type RightDrawerContent = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | null;
 
