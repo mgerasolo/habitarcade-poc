@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
+import { ClickToComponent } from 'click-to-react-component';
 import { queryClient } from './api';
 import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
@@ -41,6 +42,9 @@ function PageRouter() {
       return <Settings />;
     // Future pages can be added here
     case 'tasks':
+    case 'kanban-status':
+    case 'kanban-project':
+    case 'kanban-category':
     case 'projects':
     case 'analytics':
       // Placeholder - these pages can be implemented later
@@ -57,6 +61,7 @@ function PageRouter() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <ClickToComponent />
       <Layout>
         <PageRouter />
       </Layout>

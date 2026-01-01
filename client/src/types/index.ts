@@ -14,8 +14,8 @@ export const HABIT_STATUSES: HabitStatus[] = [
   'empty', 'complete', 'missed', 'partial', 'na', 'exempt', 'extra', 'trending', 'pink'
 ];
 
-// Common statuses for click cycling
-export const COMMON_STATUSES: HabitStatus[] = ['empty', 'complete', 'missed'];
+// Common statuses for click cycling (green → red → blue → white)
+export const COMMON_STATUSES: HabitStatus[] = ['complete', 'missed', 'partial', 'empty'];
 
 // Status colors mapping
 export const STATUS_COLORS: Record<HabitStatus, string> = {

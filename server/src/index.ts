@@ -12,6 +12,9 @@ Sentry.init({
   // Performance Monitoring
   tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.2 : 1.0,
 
+  // Capture IP addresses and user info for better debugging
+  sendDefaultPii: true,
+
   // Only enable when DSN is configured
   enabled: !!process.env.SENTRY_DSN,
 });
@@ -82,6 +85,9 @@ app.use((req, res, next) => {
   res.setHeader('Expires', '0');
   res.sendFile(path.join(clientDistPath, 'index.html'));
 });
+
+// Sentry error handler - must be before other error handlers
+Sentry.setupExpressErrorHandler(app);
 
 // Error handler
 app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {

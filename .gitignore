@@ -13,6 +13,7 @@ server/dist/
 .env.local
 .env.*.local
 server/.env
+client/.env
 
 # Logs
 *.log

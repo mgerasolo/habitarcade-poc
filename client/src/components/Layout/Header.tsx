@@ -56,11 +56,13 @@ export function Header() {
             ))}
           </div>
 
-          {/* Quick stats indicator */}
+          {/* Build info indicator */}
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-xl">
             <div className="flex items-center gap-1.5">
               <div className="w-2 h-2 rounded-full bg-teal-400 animate-pulse" />
-              <span className="text-xs text-slate-400">Live</span>
+              <span className="text-xs text-slate-400" title={`Build: ${__BUILD_TIME__} ET`}>
+                {__BUILD_TIME__} ET
+              </span>
             </div>
           </div>
 

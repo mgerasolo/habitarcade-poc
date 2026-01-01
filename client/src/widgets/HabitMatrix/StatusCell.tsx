@@ -2,10 +2,13 @@ import { useState, useRef, useCallback } from 'react';
 import { COMMON_STATUSES, STATUS_COLORS, type HabitStatus } from '../../types';
 import { useUpdateHabitEntry } from '../../api';
 import { StatusTooltip } from './StatusTooltip';
+import { useHabitMatrixContext } from './HabitMatrixContext';
 
 interface StatusCellProps {
   habitId: string;
   date: string;
+  dayOfMonth: string;
+  dateIndex: number;
   status: HabitStatus;
   isToday: boolean;
   isWeekend?: boolean;
@@ -14,13 +17,16 @@ interface StatusCellProps {
 
 /**
  * Individual status cell in the Habit Matrix
- * - Click: Cycles through common statuses (empty -> complete -> missed)
- * - Long press (300ms): Opens full status picker tooltip
- * - Hover (500ms delay): Also opens tooltip for desktop users
+ * - Shows day of month number when empty (Arial Narrow, 40% black)
+ * - Click: Cycles through common statuses (green -> red -> blue -> white)
+ * - Right-click: Opens full status picker tooltip
+ * - Crosshair highlight on hover (row/column)
  */
 export function StatusCell({
   habitId,
   date,
+  dayOfMonth,
+  dateIndex,
   status,
   isToday,
   isWeekend = false,
@@ -28,43 +34,35 @@ export function StatusCell({
 }: StatusCellProps) {
   // State
   const [showTooltip, setShowTooltip] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('below');
 
   // Refs
   const cellRef = useRef<HTMLDivElement>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didLongPress = useRef(false);
+
+  // Context for crosshair highlighting
+  const { hoveredCell, setHoveredCell } = useHabitMatrixContext();
 
   // API mutation
   const updateEntry = useUpdateHabitEntry();
+
+  // Check if this cell is in the highlighted row/column
+  const isHighlightedRow = hoveredCell?.habitId === habitId;
+  const isHighlightedColumn = hoveredCell?.dateIndex === dateIndex;
+  const isHovered = isHighlightedRow && isHighlightedColumn;
 
   // Compute tooltip position based on available space
   const computeTooltipPosition = useCallback((): 'above' | 'below' => {
     if (!cellRef.current) return 'below';
     const rect = cellRef.current.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom;
-    return spaceBelow < 250 ? 'above' : 'below';
+    return spaceBelow < 200 ? 'above' : 'below';
   }, []);
 
-  // Clear all timers
-  const clearTimers = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    if (hoverTimer.current) {
-      clearTimeout(hoverTimer.current);
-      hoverTimer.current = null;
-    }
-  }, []);
-
-  // Cycle through common statuses (empty -> complete -> missed -> empty)
+  // Cycle through common statuses (green -> red -> blue -> white)
   const cycleStatus = useCallback(() => {
     const currentIndex = COMMON_STATUSES.indexOf(status);
-    // If status is not in common statuses, start at complete
-    const nextIndex = currentIndex === -1 ? 1 : (currentIndex + 1) % COMMON_STATUSES.length;
+    // If status is not in common statuses, start at complete (green)
+    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + 1) % COMMON_STATUSES.length;
     const nextStatus = COMMON_STATUSES[nextIndex];
     updateEntry.mutate({ habitId, date, status: nextStatus });
   }, [habitId, date, status, updateEntry]);
@@ -75,95 +73,116 @@ export function StatusCell({
     setShowTooltip(false);
   }, [habitId, date, updateEntry]);
 
-  // Mouse/Touch down - start long press timer
-  const handlePointerDown = useCallback(() => {
-    didLongPress.current = false;
-    longPressTimer.current = setTimeout(() => {
-      didLongPress.current = true;
-      setTooltipPosition(computeTooltipPosition());
-      setShowTooltip(true);
-    }, 300); // 300ms for long press
-  }, [computeTooltipPosition]);
-
-  // Mouse/Touch up - cycle status if not long press
-  const handlePointerUp = useCallback(() => {
-    clearTimers();
-    if (!didLongPress.current && !showTooltip) {
+  // Handle click - cycle status
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!showTooltip) {
       cycleStatus();
     }
-  }, [clearTimers, showTooltip, cycleStatus]);
+  }, [showTooltip, cycleStatus]);
 
-  // Mouse enter - start hover tooltip timer
-  const handleMouseEnter = useCallback(() => {
-    setIsHovered(true);
-    // Show tooltip after 500ms hover
-    hoverTimer.current = setTimeout(() => {
-      setTooltipPosition(computeTooltipPosition());
-      setShowTooltip(true);
-    }, 500);
+  // Handle right-click - show tooltip
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setTooltipPosition(computeTooltipPosition());
+    setShowTooltip(true);
   }, [computeTooltipPosition]);
 
-  // Mouse leave - cancel hover timer and potentially close tooltip
+  // Mouse enter - set hovered cell for crosshair
+  const handleMouseEnter = useCallback(() => {
+    setHoveredCell({ habitId, dateIndex });
+  }, [habitId, dateIndex, setHoveredCell]);
+
+  // Mouse leave - clear hover (but not if tooltip is open)
   const handleMouseLeave = useCallback(() => {
-    setIsHovered(false);
-    clearTimers();
-    // Don't close tooltip if it was opened by long press
-    // User must click outside to close
-  }, [clearTimers]);
+    if (!showTooltip) {
+      setHoveredCell(null);
+    }
+  }, [showTooltip, setHoveredCell]);
 
   // Close tooltip handler
   const handleCloseTooltip = useCallback(() => {
     setShowTooltip(false);
-    didLongPress.current = false;
-  }, []);
+    setHoveredCell(null);
+  }, [setHoveredCell]);
 
-  // Dynamic styling based on status and state
-  const cellClasses = `
-    rounded-sm cursor-pointer
-    transition-all duration-150 ease-out
-    ${isHovered ? 'scale-110 shadow-md' : ''}
-    ${isToday ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-slate-800' : ''}
-    ${isWeekend && status === 'empty' ? 'opacity-60' : ''}
-    ${updateEntry.isPending ? 'animate-pulse' : ''}
-  `;
+  // Determine background color with crosshair highlight
+  const getBackgroundColor = () => {
+    // If this is the hovered cell itself, show status color with slight emphasis
+    if (isHovered) {
+      return STATUS_COLORS[status];
+    }
+    // If in highlighted row or column, overlay yellow tint
+    if (isHighlightedRow || isHighlightedColumn) {
+      if (status === 'empty') {
+        return 'rgba(250, 204, 21, 0.15)'; // Yellow tint on empty
+      }
+      // For colored cells, we'll use a box-shadow instead
+      return STATUS_COLORS[status];
+    }
+    return STATUS_COLORS[status];
+  };
+
+  // Get box shadow for crosshair effect on colored cells
+  const getBoxShadow = () => {
+    const baseShadow = status !== 'empty'
+      ? 'inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.1)'
+      : 'inset 0 0 0 1px rgba(0,0,0,0.08)';
+
+    if ((isHighlightedRow || isHighlightedColumn) && !isHovered) {
+      return `${baseShadow}, inset 0 0 0 100px rgba(250, 204, 21, 0.2)`;
+    }
+    return baseShadow;
+  };
 
   return (
     <div className="relative flex items-center justify-center">
       <div
         ref={cellRef}
-        className={cellClasses}
+        className={`
+          rounded-sm cursor-pointer relative
+          transition-all duration-75 ease-out
+          flex items-center justify-center
+          ${isHovered ? 'scale-110 shadow-lg z-20' : ''}
+          ${isToday ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-slate-800' : ''}
+          ${isWeekend && status === 'empty' ? 'opacity-70' : ''}
+          ${updateEntry.isPending ? 'animate-pulse' : ''}
+        `}
         style={{
           width: size,
           height: size,
-          backgroundColor: STATUS_COLORS[status],
-          // Add subtle inner shadow for depth
-          boxShadow: status !== 'empty'
-            ? 'inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.1)'
-            : 'inset 0 0 0 1px rgba(0,0,0,0.1)',
+          backgroundColor: getBackgroundColor(),
+          boxShadow: getBoxShadow(),
         }}
-        onMouseDown={handlePointerDown}
-        onMouseUp={handlePointerUp}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
-        onTouchStart={handlePointerDown}
-        onTouchEnd={(e) => {
-          e.preventDefault(); // Prevent ghost clicks
-          handlePointerUp();
-        }}
-        onTouchCancel={() => {
-          clearTimers();
-          didLongPress.current = false;
-        }}
         role="button"
         tabIndex={0}
-        aria-label={`${date}: ${status}. Click to cycle, hold for more options.`}
+        aria-label={`${date}: ${status}. Click to cycle, right-click for more options.`}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             cycleStatus();
           }
         }}
-      />
+      >
+        {/* Day number - show only when empty */}
+        {status === 'empty' && (
+          <span
+            style={{
+              fontFamily: '"Arial Narrow", Arial, sans-serif',
+              fontSize: size > 20 ? '11px' : '9px',
+              color: 'rgba(0, 0, 0, 0.4)',
+              fontWeight: 500,
+              lineHeight: 1,
+            }}
+          >
+            {dayOfMonth}
+          </span>
+        )}
+      </div>
 
       {/* Status picker tooltip */}
       {showTooltip && (

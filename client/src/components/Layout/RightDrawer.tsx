@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import { useUIStore } from '../../stores';
+import { useTasks } from '../../api';
 import * as MuiIcons from '@mui/icons-material';
 import { PrioritiesList } from './PrioritiesList';
+import type { Task } from '../../types';
 
 // Parking Lot types and localStorage key
 interface ParkingLotItem {
@@ -18,10 +21,11 @@ interface RightDrawerProps {
   overlay?: boolean;
 }
 
-type DrawerTab = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties';
+type DrawerTab = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog';
 
 const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons }[] = [
   { id: 'parking-lot', label: 'Parking Lot', icon: 'LocalParking' },
+  { id: 'task-backlog', label: 'Task Backlog', icon: 'Inbox' },
   { id: 'priorities', label: 'Priorities', icon: 'PriorityHigh' },
   { id: 'quick-entry', label: 'Quick Entry', icon: 'FlashOn' },
   { id: 'properties', label: 'Properties', icon: 'Settings' },
@@ -73,6 +77,8 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
     switch (rightDrawerContent) {
       case 'parking-lot':
         return <ParkingLotContent />;
+      case 'task-backlog':
+        return <TaskBacklogContent />;
       case 'priorities':
         return <PrioritiesContent />;
       case 'quick-entry':
@@ -359,6 +365,122 @@ function PropertiesContent() {
         <p className="text-sm text-slate-500">
           Select an item to view its properties
         </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * TaskBacklogContent - Shows unassigned tasks that can be dragged to day columns
+ */
+function TaskBacklogContent() {
+  const { data: tasksData, isLoading } = useTasks();
+
+  // Filter to only unassigned, non-deleted, incomplete tasks
+  const backlogTasks = useMemo(() => {
+    if (!tasksData?.data) return [];
+    return tasksData.data.filter(
+      (task: Task) => !task.plannedDate && !task.isDeleted && task.status !== 'complete'
+    ).sort((a: Task, b: Task) => {
+      // Sort by priority (lower number = higher priority), then by creation date
+      const aPriority = a.priority ?? 999;
+      const bPriority = b.priority ?? 999;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [tasksData?.data]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <div className="text-slate-400">Loading tasks...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4" data-testid="task-backlog-content">
+      <p className="text-sm text-slate-400">
+        Unassigned tasks. Drag to a day column to schedule.
+      </p>
+
+      {/* Task list */}
+      <div className="space-y-2" data-testid="backlog-task-list">
+        {backlogTasks.length === 0 ? (
+          <div className="p-4 text-center text-slate-500 text-sm">
+            <MuiIcons.Inbox style={{ fontSize: 32 }} className="mb-2 opacity-50" />
+            <p>No unassigned tasks</p>
+            <p className="text-xs mt-1">All tasks are scheduled!</p>
+          </div>
+        ) : (
+          backlogTasks.map((task: Task) => (
+            <BacklogTaskCard key={task.id} task={task} />
+          ))
+        )}
+      </div>
+
+      {/* Task count */}
+      {backlogTasks.length > 0 && (
+        <div className="text-xs text-slate-500 text-center">
+          {backlogTasks.length} {backlogTasks.length === 1 ? 'task' : 'tasks'} in backlog
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Draggable task card for backlog
+ */
+function BacklogTaskCard({ task }: { task: Task }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task },
+  });
+
+  // Priority: 1=high (red), 2=medium (yellow), 3+=low (blue)
+  const getPriorityStyle = (priority?: number) => {
+    if (priority === 1) return { border: 'border-l-red-500 bg-red-500/5', text: 'text-red-400 bg-red-500/20', label: 'H' };
+    if (priority === 2) return { border: 'border-l-yellow-500 bg-yellow-500/5', text: 'text-yellow-400 bg-yellow-500/20', label: 'M' };
+    return { border: 'border-l-blue-500 bg-blue-500/5', text: 'text-blue-400 bg-blue-500/20', label: 'L' };
+  };
+
+  const priorityStyle = getPriorityStyle(task.priority);
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={`
+        p-3 rounded-lg border-l-4 cursor-grab active:cursor-grabbing
+        ${priorityStyle.border}
+        ${isDragging ? 'opacity-50 shadow-lg' : 'hover:bg-slate-700/50'}
+        transition-colors
+      `}
+      data-testid="backlog-task-card"
+    >
+      <div className="flex items-start gap-2">
+        <MuiIcons.DragIndicator
+          style={{ fontSize: 16 }}
+          className="text-slate-500 mt-0.5 flex-shrink-0"
+        />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm text-slate-200 truncate">{task.title}</p>
+          {task.project && (
+            <p className="text-xs text-slate-500 truncate mt-0.5">
+              {task.project.name}
+            </p>
+          )}
+        </div>
+        <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-medium ${priorityStyle.text}`}>
+          {priorityStyle.label}
+        </span>
       </div>
     </div>
   );
