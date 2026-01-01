@@ -1,6 +1,15 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useUIStore } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
+
+// Parking Lot types and localStorage key
+interface ParkingLotItem {
+  id: string;
+  text: string;
+  createdAt: number;
+}
+
+const PARKING_LOT_STORAGE_KEY = 'habitarcade-parking-lot';
 
 interface RightDrawerProps {
   isOpen: boolean;
@@ -162,25 +171,135 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
 // Content panels
 
 function ParkingLotContent() {
+  const [items, setItems] = useState<ParkingLotItem[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Load items from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PARKING_LOT_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setItems(parsed);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load parking lot items:', error);
+    }
+  }, []);
+
+  // Save items to localStorage whenever they change
+  const saveItems = useCallback((newItems: ParkingLotItem[]) => {
+    setItems(newItems);
+    try {
+      localStorage.setItem(PARKING_LOT_STORAGE_KEY, JSON.stringify(newItems));
+    } catch (error) {
+      console.error('Failed to save parking lot items:', error);
+    }
+  }, []);
+
+  // Add a new item
+  const addItem = useCallback(() => {
+    const trimmedText = inputValue.trim();
+    if (!trimmedText) return;
+
+    const newItem: ParkingLotItem = {
+      id: `parking-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      text: trimmedText,
+      createdAt: Date.now(),
+    };
+
+    // Add to beginning (newest first)
+    saveItems([newItem, ...items]);
+    setInputValue('');
+    inputRef.current?.focus();
+  }, [inputValue, items, saveItems]);
+
+  // Delete an item
+  const deleteItem = useCallback((id: string) => {
+    saveItems(items.filter(item => item.id !== id));
+  }, [items, saveItems]);
+
+  // Handle Enter key
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      addItem();
+    }
+  };
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="parking-lot-content">
       <p className="text-sm text-slate-400">
-        Store ideas and items to process later. Drag items here to park them temporarily.
+        Capture quick ideas to process later. Press Enter to add.
       </p>
 
-      <div className="space-y-2">
-        <div className="p-3 bg-slate-700/50 rounded-lg border border-slate-600/50 hover:border-teal-500/50 transition-colors cursor-pointer">
-          <div className="flex items-center gap-2 text-slate-300">
-            <MuiIcons.LightbulbOutlined style={{ fontSize: 16 }} className="text-yellow-400" />
-            <span className="text-sm">Example parked idea</span>
-          </div>
-        </div>
-
-        <button className="w-full p-3 border-2 border-dashed border-slate-600 rounded-lg text-slate-500 hover:border-teal-500/50 hover:text-teal-400 transition-colors text-sm">
-          <MuiIcons.Add style={{ fontSize: 18 }} className="inline mr-1" />
-          Add to parking lot
+      {/* Quick input */}
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Quick idea..."
+          className="flex-1 px-3 py-2.5 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500"
+          data-testid="parking-lot-input"
+          aria-label="Add idea to parking lot"
+        />
+        <button
+          onClick={addItem}
+          disabled={!inputValue.trim()}
+          className="px-3 py-2.5 bg-teal-600 hover:bg-teal-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+          data-testid="parking-lot-add-button"
+          aria-label="Add item"
+        >
+          <MuiIcons.Add style={{ fontSize: 18 }} />
         </button>
       </div>
+
+      {/* Items list */}
+      <div className="space-y-2" data-testid="parking-lot-list">
+        {items.length === 0 ? (
+          <div className="p-4 text-center text-slate-500 text-sm">
+            <MuiIcons.LocalParking style={{ fontSize: 32 }} className="mb-2 opacity-50" />
+            <p>No parked ideas yet</p>
+            <p className="text-xs mt-1">Add your first idea above</p>
+          </div>
+        ) : (
+          items.map((item) => (
+            <div
+              key={item.id}
+              className="p-3 bg-slate-700/50 rounded-lg border border-slate-600/50 hover:border-teal-500/50 transition-colors group"
+              data-testid="parking-lot-item"
+            >
+              <div className="flex items-start gap-2">
+                <MuiIcons.LightbulbOutlined style={{ fontSize: 16 }} className="text-yellow-400 mt-0.5 flex-shrink-0" />
+                <span className="flex-1 text-sm text-slate-300 break-words" data-testid="parking-lot-item-text">
+                  {item.text}
+                </span>
+                <button
+                  onClick={() => deleteItem(item.id)}
+                  className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded bg-slate-600/50 hover:bg-red-500/50 text-slate-400 hover:text-white transition-all flex-shrink-0"
+                  data-testid="parking-lot-delete-button"
+                  aria-label={`Delete: ${item.text}`}
+                >
+                  <MuiIcons.Close style={{ fontSize: 14 }} />
+                </button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Item count */}
+      {items.length > 0 && (
+        <div className="text-xs text-slate-500 text-center">
+          {items.length} {items.length === 1 ? 'idea' : 'ideas'} parked
+        </div>
+      )}
     </div>
   );
 }
