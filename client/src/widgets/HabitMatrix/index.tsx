@@ -95,8 +95,8 @@ export function HabitMatrix({
 
   const daysToShow = propDaysToShow ?? responsiveDays;
 
-  // Get matrix data
-  const { dateColumns, categoryGroups, todayScore, monthScore, isLoading, isError } = useHabitMatrix(daysToShow);
+  // Get matrix data - pass currentMonth for month view to show correct number of days
+  const { dateColumns, categoryGroups, todayScore, monthScore, isLoading, isError } = useHabitMatrix(daysToShow, currentMonth);
 
   // Determine layout mode
   const isCompact = daysToShow <= DAYS_CONFIG.tablet;
@@ -289,7 +289,7 @@ function ViewToggle({
   const options = [
     { label: '3D', days: DAYS_CONFIG.mobile, title: '3 days', testId: 'view-3d' },
     { label: '7D', days: DAYS_CONFIG.tablet, title: '7 days', testId: 'view-7d' },
-    { label: 'Mo', days: DAYS_CONFIG.desktop, title: 'Month (31 days)', testId: 'view-month' },
+    { label: 'Mo', days: DAYS_CONFIG.desktop, title: 'Full month', testId: 'view-month' },
   ];
 
   return (

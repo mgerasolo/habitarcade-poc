@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
-import { format, subDays, isToday as checkIsToday, startOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, subDays, isToday as checkIsToday, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 import { useHabits, useCategories } from '../../api';
 import type { Habit, HabitEntry, Category, HabitStatus } from '../../types';
 
 // Responsive breakpoints for days to show
+// Note: desktop value is just a marker for "month view" - actual days calculated from currentMonth
 export const DAYS_CONFIG = {
-  desktop: 31, // Full month view
+  desktop: 31, // Full month view (actual days calculated dynamically)
   tablet: 7,   // Week view
   mobile: 3,   // Last 3 days
 } as const;
@@ -47,8 +48,14 @@ export interface HabitMatrixData {
 /**
  * Custom hook for managing Habit Matrix data
  * Handles date generation, habit grouping, and entry mapping
+ *
+ * @param daysToShow - Number of days to display (3, 7, or 31 for month view)
+ * @param currentMonth - The month to display when in month view (daysToShow >= 31)
  */
-export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitMatrixData {
+export function useHabitMatrix(
+  daysToShow: number = DAYS_CONFIG.desktop,
+  currentMonth?: Date
+): HabitMatrixData {
   const { data: habitsResponse, isLoading: habitsLoading, isError: habitsError } = useHabits();
   const { data: categoriesResponse, isLoading: categoriesLoading } = useCategories();
 
@@ -58,6 +65,26 @@ export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitM
   // Generate date columns for the matrix
   const dateColumns = useMemo<DateColumn[]>(() => {
     const today = new Date();
+
+    // For month view (daysToShow >= DAYS_CONFIG.desktop), show the actual days in the month
+    if (daysToShow >= DAYS_CONFIG.desktop && currentMonth) {
+      const monthStart = startOfMonth(currentMonth);
+      const monthEnd = endOfMonth(currentMonth);
+
+      // Generate columns for all days in the month
+      return eachDayOfInterval({ start: monthStart, end: monthEnd }).map(date => {
+        const dayOfWeek = date.getDay();
+        return {
+          date: format(date, 'yyyy-MM-dd'),
+          dayOfWeek: format(date, 'EEE'),
+          dayOfMonth: format(date, 'd'),
+          isToday: checkIsToday(date),
+          isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+        };
+      });
+    }
+
+    // For week/3-day view, show last N days ending today
     return Array.from({ length: daysToShow }, (_, i) => {
       const date = subDays(today, daysToShow - 1 - i);
       const dayOfWeek = date.getDay();
@@ -69,7 +96,7 @@ export function useHabitMatrix(daysToShow: number = DAYS_CONFIG.desktop): HabitM
         isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
       };
     });
-  }, [daysToShow]);
+  }, [daysToShow, currentMonth]);
 
   // Transform habits with entry lookup maps
   const matrixHabits = useMemo<MatrixHabit[]>(() => {
