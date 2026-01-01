@@ -3,3 +3,4 @@ export { useTimerStore, formatTime, formatTimeVerbose, POMODORO_PRESETS } from '
 export type { TimerMode, TimerPhase, TimerStatus, PomodoroPreset } from './timerStore';
 export { useUIStore } from './uiStore';
 export type { PageType } from './uiStore';
+export { useSettingsStore } from './settingsStore';

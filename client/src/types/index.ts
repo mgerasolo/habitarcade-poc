@@ -191,10 +191,27 @@ export interface ParkingLotItem {
   createdAt: string;
 }
 
+// Theme types
+export type ThemeMode = 'dark' | 'light' | 'auto';
+
+// Default view types
+export type DefaultView = 'today' | 'dashboard' | 'habits';
+
+// Week start day (0 = Sunday, 1 = Monday, etc.)
+export type WeekStartDay = 0 | 1 | 2 | 3 | 4 | 5 | 6;
+
 // Settings
 export interface Settings {
   dayBoundaryHour: number; // Default 6 (6 AM)
-  theme: 'dark' | 'light';
+  theme: ThemeMode; // Default 'dark'
+  defaultView: DefaultView; // Default 'today'
+  weekStartDay: WeekStartDay; // Default 0 (Sunday)
+  showCompletedTasks: boolean; // Default true
+  showDeletedItems: boolean; // Default false
+  habitMatrixWeeks: number; // Default 4
+  kanbanDays: number; // Default 7
+  autoSyncInterval: number; // Default 30000 (30 seconds)
+  notificationsEnabled: boolean; // Default false
   [key: string]: unknown;
 }
 

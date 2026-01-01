@@ -1,6 +1,22 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { settings } from '../db/schema';
+import {
+  settings,
+  habits,
+  habitEntries,
+  categories,
+  tasks,
+  taskTags,
+  projects,
+  tags,
+  timeBlocks,
+  timeBlockPriorities,
+  measurements,
+  measurementEntries,
+  measurementTargets,
+  parkingLot,
+  dashboardLayouts,
+} from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 const router = Router();
@@ -8,7 +24,8 @@ const router = Router();
 // Default settings
 const DEFAULT_SETTINGS: Record<string, unknown> = {
   dayBoundaryHour: 6,
-  theme: 'light',
+  theme: 'dark',
+  defaultView: 'today',
   weekStartDay: 0, // Sunday
   showCompletedTasks: true,
   showDeletedItems: false,
@@ -195,6 +212,77 @@ router.post('/reset', async (req, res) => {
 // GET /api/settings/defaults - Get default settings
 router.get('/defaults', async (req, res) => {
   res.json({ data: DEFAULT_SETTINGS });
+});
+
+// GET /api/settings/export - Export all user data
+router.get('/export', async (req, res) => {
+  try {
+    // Fetch all data in parallel
+    const [
+      allSettings,
+      allCategories,
+      allHabits,
+      allHabitEntries,
+      allProjects,
+      allTasks,
+      allTags,
+      allTaskTags,
+      allTimeBlocks,
+      allTimeBlockPriorities,
+      allMeasurements,
+      allMeasurementEntries,
+      allMeasurementTargets,
+      allParkingLot,
+      allDashboardLayouts,
+    ] = await Promise.all([
+      db.query.settings.findMany(),
+      db.query.categories.findMany(),
+      db.query.habits.findMany(),
+      db.query.habitEntries.findMany(),
+      db.query.projects.findMany(),
+      db.query.tasks.findMany(),
+      db.query.tags.findMany(),
+      db.select().from(taskTags),
+      db.query.timeBlocks.findMany(),
+      db.select().from(timeBlockPriorities),
+      db.query.measurements.findMany(),
+      db.select().from(measurementEntries),
+      db.select().from(measurementTargets),
+      db.select().from(parkingLot),
+      db.select().from(dashboardLayouts),
+    ]);
+
+    // Build settings object
+    const settingsObj: Record<string, unknown> = { ...DEFAULT_SETTINGS };
+    allSettings.forEach(setting => {
+      settingsObj[setting.key] = setting.value;
+    });
+
+    const exportData = {
+      exportedAt: new Date().toISOString(),
+      version: '1.0.0',
+      settings: settingsObj,
+      categories: allCategories,
+      habits: allHabits,
+      habitEntries: allHabitEntries,
+      projects: allProjects,
+      tasks: allTasks,
+      tags: allTags,
+      taskTags: allTaskTags,
+      timeBlocks: allTimeBlocks,
+      timeBlockPriorities: allTimeBlockPriorities,
+      measurements: allMeasurements,
+      measurementEntries: allMeasurementEntries,
+      measurementTargets: allMeasurementTargets,
+      parkingLot: allParkingLot,
+      dashboardLayouts: allDashboardLayouts,
+    };
+
+    res.json(exportData);
+  } catch (error) {
+    console.error('Failed to export data:', error);
+    res.status(500).json({ error: 'Failed to export data', code: 'INTERNAL_ERROR' });
+  }
 });
 
 export default router;
