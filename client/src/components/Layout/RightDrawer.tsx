@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import { useUIStore } from '../../stores';
+import { useUIStore, useDashboardStore } from '../../stores';
 import { useTasks } from '../../api';
 import * as MuiIcons from '@mui/icons-material';
 import { PrioritiesList } from './PrioritiesList';
+import { WIDGET_META, getAvailableWidgets } from '../Dashboard/WidgetRegistry';
 import type { Task } from '../../types';
 
 // Parking Lot types and localStorage key
@@ -21,9 +22,10 @@ interface RightDrawerProps {
   overlay?: boolean;
 }
 
-type DrawerTab = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog';
+type DrawerTab = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog' | 'components';
 
-const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons }[] = [
+const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons; editModeOnly?: boolean }[] = [
+  { id: 'components', label: 'Components', icon: 'Widgets', editModeOnly: true },
   { id: 'parking-lot', label: 'Parking Lot', icon: 'LocalParking' },
   { id: 'task-backlog', label: 'Task Backlog', icon: 'Inbox' },
   { id: 'priorities', label: 'Priorities', icon: 'PriorityHigh' },
@@ -33,7 +35,13 @@ const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons }
 
 export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawerProps) {
   const { rightDrawerContent, setRightDrawerContent, closeRightDrawer } = useUIStore();
+  const { isEditMode } = useDashboardStore();
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  // Filter tabs based on edit mode - only show components tab when in edit mode
+  const visibleTabs = useMemo(() => {
+    return DRAWER_TABS.filter(tab => !tab.editModeOnly || isEditMode);
+  }, [isEditMode]);
 
   // Handle click outside to close (only if overlay mode)
   useEffect(() => {
@@ -75,6 +83,8 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
 
   const renderContent = () => {
     switch (rightDrawerContent) {
+      case 'components':
+        return <ComponentsContent />;
       case 'parking-lot':
         return <ParkingLotContent />;
       case 'task-backlog':
@@ -140,7 +150,7 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
 
         {/* Tab navigation */}
         <div className="flex border-b border-slate-700/50 px-2 py-2 gap-1 overflow-x-auto">
-          {DRAWER_TABS.map((tab) => {
+          {visibleTabs.map((tab) => {
             const IconComponent = MuiIcons[tab.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
             const isActive = rightDrawerContent === tab.id;
 
@@ -365,6 +375,194 @@ function PropertiesContent() {
         <p className="text-sm text-slate-500">
           Select an item to view its properties
         </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * ComponentsContent - Shows available dashboard widgets that can be added
+ * Only visible when in edit mode
+ */
+function ComponentsContent() {
+  const { layout, setLayout } = useDashboardStore();
+  const availableWidgets = getAvailableWidgets();
+
+  // Get widgets that are already on the dashboard
+  const activeWidgetIds = useMemo(() => {
+    return new Set(layout.map(item => item.i));
+  }, [layout]);
+
+  // Separate available and active widgets
+  const { inactiveWidgets, activeWidgets } = useMemo(() => {
+    const inactive: string[] = [];
+    const active: string[] = [];
+
+    availableWidgets.forEach(widgetId => {
+      if (activeWidgetIds.has(widgetId)) {
+        active.push(widgetId);
+      } else {
+        inactive.push(widgetId);
+      }
+    });
+
+    return { inactiveWidgets: inactive, activeWidgets: active };
+  }, [availableWidgets, activeWidgetIds]);
+
+  // Add widget to dashboard
+  const handleAddWidget = useCallback((widgetId: string) => {
+    const meta = WIDGET_META[widgetId];
+    if (!meta) return;
+
+    // Find the lowest y position in the current layout to place new widget at bottom
+    const maxY = layout.reduce((max, item) => Math.max(max, item.y + item.h), 0);
+
+    const newWidget = {
+      i: widgetId,
+      x: 0,
+      y: maxY,
+      w: meta.defaultSize.w,
+      h: meta.defaultSize.h,
+      minW: meta.minSize.w,
+      minH: meta.minSize.h,
+      maxW: meta.maxSize?.w,
+      maxH: meta.maxSize?.h,
+    };
+
+    setLayout([...layout, newWidget]);
+  }, [layout, setLayout]);
+
+  // Remove widget from dashboard
+  const handleRemoveWidget = useCallback((widgetId: string) => {
+    setLayout(layout.filter(item => item.i !== widgetId));
+  }, [layout, setLayout]);
+
+  return (
+    <div className="space-y-4" data-testid="components-content">
+      <p className="text-sm text-slate-400">
+        Add or remove dashboard widgets. Drag widgets on the dashboard to rearrange.
+      </p>
+
+      {/* Available widgets to add */}
+      {inactiveWidgets.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+            Available Widgets
+          </h3>
+          <div className="space-y-2" data-testid="available-widgets-list">
+            {inactiveWidgets.map((widgetId) => {
+              const meta = WIDGET_META[widgetId];
+              if (!meta) return null;
+
+              return (
+                <WidgetCard
+                  key={widgetId}
+                  meta={meta}
+                  isActive={false}
+                  onAdd={() => handleAddWidget(widgetId)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Active widgets on dashboard */}
+      {activeWidgets.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
+            Active Widgets
+          </h3>
+          <div className="space-y-2" data-testid="active-widgets-list">
+            {activeWidgets.map((widgetId) => {
+              const meta = WIDGET_META[widgetId];
+              if (!meta) return null;
+
+              return (
+                <WidgetCard
+                  key={widgetId}
+                  meta={meta}
+                  isActive={true}
+                  onRemove={() => handleRemoveWidget(widgetId)}
+                />
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Widget count */}
+      <div className="text-xs text-slate-500 text-center pt-2 border-t border-slate-700/50">
+        {activeWidgets.length} of {availableWidgets.length} widgets active
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Widget card component for displaying widget info
+ */
+interface WidgetCardProps {
+  meta: typeof WIDGET_META[string];
+  isActive: boolean;
+  onAdd?: () => void;
+  onRemove?: () => void;
+}
+
+function WidgetCard({ meta, isActive, onAdd, onRemove }: WidgetCardProps) {
+  return (
+    <div
+      className={`
+        p-3 rounded-lg border transition-all
+        ${isActive
+          ? 'bg-teal-900/20 border-teal-600/50'
+          : 'bg-slate-700/30 border-slate-600/50 hover:border-teal-500/50'
+        }
+      `}
+      data-testid={`widget-card-${meta.id}`}
+    >
+      <div className="flex items-start gap-3">
+        {/* Widget icon */}
+        <div className={`
+          w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0
+          ${isActive ? 'bg-teal-600/30 text-teal-400' : 'bg-slate-600/50 text-slate-400'}
+        `}>
+          {meta.icon}
+        </div>
+
+        {/* Widget info */}
+        <div className="flex-1 min-w-0">
+          <h4 className="text-sm font-medium text-white">{meta.title}</h4>
+          <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{meta.description}</p>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-[10px] text-slate-500">
+              {meta.defaultSize.w}x{meta.defaultSize.h}
+            </span>
+          </div>
+        </div>
+
+        {/* Action button */}
+        <div className="flex-shrink-0">
+          {isActive ? (
+            <button
+              onClick={onRemove}
+              className="p-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 hover:text-red-300 transition-colors"
+              title="Remove from dashboard"
+              data-testid={`remove-widget-${meta.id}`}
+            >
+              <MuiIcons.Remove style={{ fontSize: 16 }} />
+            </button>
+          ) : (
+            <button
+              onClick={onAdd}
+              className="p-1.5 rounded-lg bg-teal-500/20 hover:bg-teal-500/30 text-teal-400 hover:text-teal-300 transition-colors"
+              title="Add to dashboard"
+              data-testid={`add-widget-${meta.id}`}
+            >
+              <MuiIcons.Add style={{ fontSize: 16 }} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

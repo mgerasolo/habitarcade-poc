@@ -14,7 +14,7 @@ type ModalType =
 
 export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'settings';
 
-type RightDrawerContent = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog' | null;
+type RightDrawerContent = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog' | 'components' | null;
 
 interface UIStore {
   // Modal state

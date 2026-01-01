@@ -1,8 +1,24 @@
-import { useUIStore } from '../../stores';
+import { useUIStore, useDashboardStore } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
 
 export function Header() {
-  const { toggleSidebar, sidebarOpen, viewMode, setViewMode, toggleRightDrawer, rightDrawerOpen } = useUIStore();
+  const { toggleSidebar, sidebarOpen, viewMode, setViewMode, toggleRightDrawer, rightDrawerOpen, openRightDrawer, setRightDrawerContent, currentPage } = useUIStore();
+  const { isEditMode, toggleEditMode } = useDashboardStore();
+
+  // Handler for Edit Layout button
+  const handleEditLayoutClick = () => {
+    // Toggle edit mode
+    toggleEditMode();
+
+    // If we're entering edit mode (not currently in it), open drawer with components tab
+    if (!isEditMode) {
+      setRightDrawerContent('components');
+      openRightDrawer('components');
+    }
+  };
+
+  // Only show edit layout button on dashboard page
+  const showEditLayoutButton = currentPage === 'dashboard' || currentPage === 'today';
 
   return (
     <header className="sticky top-0 z-50 h-16 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50" data-testid="main-header">
@@ -65,6 +81,29 @@ export function Header() {
               </span>
             </div>
           </div>
+
+          {/* Edit Layout Button - Only shown on dashboard pages */}
+          {showEditLayoutButton && (
+            <button
+              onClick={handleEditLayoutClick}
+              data-testid="edit-layout-button"
+              className={`
+                flex items-center gap-2 px-3 py-2 rounded-xl
+                transition-all duration-150 text-sm font-medium
+                ${isEditMode
+                  ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25'
+                  : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
+                }
+              `}
+              aria-label={isEditMode ? 'Exit edit mode' : 'Edit layout'}
+              aria-pressed={isEditMode}
+            >
+              <MuiIcons.Edit style={{ fontSize: 18 }} />
+              <span className="hidden sm:inline">
+                {isEditMode ? 'Done' : 'Edit Layout'}
+              </span>
+            </button>
+          )}
 
           {/* Right Drawer Toggle */}
           <button
