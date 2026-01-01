@@ -6,6 +6,8 @@ import { Layout } from './components/Layout';
 import { Dashboard } from './components/Dashboard';
 import { Today } from './pages/Today';
 import { Habits } from './pages/Habits';
+import { Targets } from './pages/Targets';
+import { TimeBlocks } from './pages/TimeBlocks';
 import {
   ManageHabits,
   ManageCategories,
@@ -27,6 +29,10 @@ function PageRouter() {
       return <Dashboard />;
     case 'habits':
       return <Habits />;
+    case 'targets':
+      return <Targets />;
+    case 'time-blocks':
+      return <TimeBlocks />;
     // Manage section pages
     case 'manage-habits':
       return <ManageHabits />;

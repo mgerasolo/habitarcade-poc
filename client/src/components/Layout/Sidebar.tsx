@@ -34,6 +34,8 @@ export function Sidebar({ isOpen }: SidebarProps) {
         { id: 'kanban-category', icon: 'Category', label: 'Category View' },
       ]
     },
+    { id: 'targets', icon: 'TrackChanges', label: 'Targets' },
+    { id: 'time-blocks', icon: 'Schedule', label: 'Time Blocks' },
     { id: 'projects', icon: 'Folder', label: 'Projects' },
     { id: 'analytics', icon: 'BarChart', label: 'Analytics' },
     {

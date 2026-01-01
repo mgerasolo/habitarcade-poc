@@ -90,13 +90,17 @@ export const HabitRow = memo(function HabitRow({
 
       {/* Status cells for each date */}
       <div className="flex gap-0.5">
-        {dates.map((dateCol) => {
+        {dates.map((dateCol, dateIndex) => {
           const status = getHabitStatus(habit, dateCol.date);
+          // Extract day of month from the date string (YYYY-MM-DD format)
+          const dayOfMonth = dateCol.date.split('-')[2].replace(/^0/, '');
           return (
             <StatusCell
               key={dateCol.date}
               habitId={habit.id}
               date={dateCol.date}
+              dayOfMonth={dayOfMonth}
+              dateIndex={dateIndex}
               status={status}
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
@@ -139,13 +143,17 @@ export const HabitRowCompact = memo(function HabitRowCompact({
 
       {/* Status cells - larger for touch */}
       <div className="flex gap-1">
-        {dates.map((dateCol) => {
+        {dates.map((dateCol, dateIndex) => {
           const status = getHabitStatus(habit, dateCol.date);
+          // Extract day of month from the date string (YYYY-MM-DD format)
+          const dayOfMonth = dateCol.date.split('-')[2].replace(/^0/, '');
           return (
             <StatusCell
               key={dateCol.date}
               habitId={habit.id}
               date={dateCol.date}
+              dayOfMonth={dayOfMonth}
+              dateIndex={dateIndex}
               status={status}
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
