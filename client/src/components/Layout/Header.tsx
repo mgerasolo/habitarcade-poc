@@ -2,7 +2,7 @@ import { useUIStore } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
 
 export function Header() {
-  const { toggleSidebar, sidebarOpen, currentDate, setCurrentDate, viewMode, setViewMode } = useUIStore();
+  const { toggleSidebar, sidebarOpen, currentDate, setCurrentDate, viewMode, setViewMode, toggleRightDrawer, rightDrawerOpen } = useUIStore();
 
   // Format current date for display
   const formatDate = (date: Date): string => {
@@ -145,6 +145,29 @@ export function Header() {
               <span className="text-xs text-slate-400">Live</span>
             </div>
           </div>
+
+          {/* Right Drawer Toggle */}
+          <button
+            onClick={toggleRightDrawer}
+            data-drawer-toggle
+            data-testid="right-drawer-toggle"
+            className={`
+              w-10 h-10 flex items-center justify-center rounded-xl
+              transition-all duration-150
+              ${rightDrawerOpen
+                ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25'
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
+              }
+            `}
+            aria-label={rightDrawerOpen ? 'Close right drawer' : 'Open right drawer'}
+            aria-expanded={rightDrawerOpen}
+          >
+            {rightDrawerOpen ? (
+              <MuiIcons.ChevronRight style={{ fontSize: 24 }} />
+            ) : (
+              <MuiIcons.ViewSidebar style={{ fontSize: 22 }} />
+            )}
+          </button>
 
           {/* User menu / Settings */}
           <button

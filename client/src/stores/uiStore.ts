@@ -14,6 +14,8 @@ type ModalType =
 
 export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'projects' | 'analytics';
 
+type RightDrawerContent = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | null;
+
 interface UIStore {
   // Modal state
   activeModal: ModalType;
@@ -31,6 +33,10 @@ interface UIStore {
   viewMode: 'day' | 'week' | 'month';
   sidebarOpen: boolean;
   currentPage: PageType;
+
+  // Right drawer state
+  rightDrawerOpen: boolean;
+  rightDrawerContent: RightDrawerContent;
 
   // Icon picker callback
   onIconSelect: ((icon: string, color: string) => void) | null;
@@ -50,6 +56,12 @@ interface UIStore {
   toggleSidebar: () => void;
   setCurrentPage: (page: PageType) => void;
 
+  // Right drawer actions
+  toggleRightDrawer: () => void;
+  openRightDrawer: (content?: RightDrawerContent) => void;
+  closeRightDrawer: () => void;
+  setRightDrawerContent: (content: RightDrawerContent) => void;
+
   openIconPicker: (onSelect: (icon: string, color: string) => void) => void;
 }
 
@@ -66,6 +78,8 @@ export const useUIStore = create<UIStore>((set) => ({
   viewMode: 'week',
   sidebarOpen: true,
   currentPage: 'today',
+  rightDrawerOpen: false,
+  rightDrawerContent: 'parking-lot',
   onIconSelect: null,
 
   // Actions
@@ -82,6 +96,15 @@ export const useUIStore = create<UIStore>((set) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
   setCurrentPage: (page) => set({ currentPage: page }),
+
+  // Right drawer actions
+  toggleRightDrawer: () => set((state) => ({ rightDrawerOpen: !state.rightDrawerOpen })),
+  openRightDrawer: (content) => set((state) => ({
+    rightDrawerOpen: true,
+    rightDrawerContent: content || state.rightDrawerContent || 'parking-lot'
+  })),
+  closeRightDrawer: () => set({ rightDrawerOpen: false }),
+  setRightDrawerContent: (content) => set({ rightDrawerContent: content }),
 
   openIconPicker: (onSelect) => set({
     activeModal: 'icon-picker',
