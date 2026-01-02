@@ -20,8 +20,9 @@ function getScoreColor(percentage: number): string {
  * Formula: (complete + extra + partial*0.5) / (countedCells - na - exempt) * 100
  *
  * Scoring rules:
- * - Only count "completed days" (past days, not including today unless filled)
+ * - Only count "completed days" (past days that have elapsed)
  * - Today is only included if user has filled in a value (not 'empty')
+ * - Future days are completely excluded
  * - N/A and Exempt are excluded from the denominator
  */
 function calculateHabitCompletion(habit: MatrixHabit, dates: DateColumn[]): number {
@@ -31,9 +32,18 @@ function calculateHabitCompletion(habit: MatrixHabit, dates: DateColumn[]): numb
   let na = 0;
   let countedCells = 0;
 
-  for (const dateCol of dates) {
+  // Find "today" column to determine which days are past/future
+  const todayIndex = dates.findIndex(d => d.isToday);
+
+  for (let i = 0; i < dates.length; i++) {
+    const dateCol = dates[i];
     const status = getHabitStatus(habit, dateCol.date);
     const hasEntry = status !== 'empty';
+
+    // Skip future days entirely (days after today)
+    if (todayIndex >= 0 && i > todayIndex) {
+      continue;
+    }
 
     // Only count this cell if:
     // 1. It's a past day (not today), OR
