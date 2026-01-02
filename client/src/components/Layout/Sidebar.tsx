@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useUIStore } from '../../stores';
+import { useState, useMemo } from 'react';
+import { useUIStore, useDashboardStore } from '../../stores';
 import type { PageType } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
 
@@ -17,11 +17,28 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen }: SidebarProps) {
   const { openModal, currentPage, setCurrentPage } = useUIStore();
-  const [expandedItems, setExpandedItems] = useState<Set<PageType>>(new Set(['tasks']));
+  const { pages, activePageId, setActivePageId, createPage } = useDashboardStore();
+  const [expandedItems, setExpandedItems] = useState<Set<PageType>>(new Set(['tasks', 'dashboard']));
+  const [isCreatingPage, setIsCreatingPage] = useState(false);
+  const [newPageName, setNewPageName] = useState('');
+
+  // Sort pages by sortOrder
+  const sortedPages = useMemo(() =>
+    [...pages].sort((a, b) => a.sortOrder - b.sortOrder),
+    [pages]
+  );
+
+  // Handle creating a new dashboard page
+  const handleCreatePage = () => {
+    if (newPageName.trim()) {
+      createPage(newPageName.trim());
+      setCurrentPage('dashboard');
+      setNewPageName('');
+      setIsCreatingPage(false);
+    }
+  };
 
   const NAV_ITEMS: NavItem[] = [
-    { id: 'today', icon: 'Today', label: 'Today' },
-    { id: 'dashboard', icon: 'Dashboard', label: 'Dashboard' },
     { id: 'habits', icon: 'CheckCircle', label: 'Habits' },
     {
       id: 'tasks',
@@ -163,6 +180,165 @@ export function Sidebar({ isOpen }: SidebarProps) {
     >
       {/* Navigation items */}
       <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
+        {/* Dashboard section with pages */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              // Toggle expansion
+              setExpandedItems(prev => {
+                const newSet = new Set(prev);
+                if (newSet.has('dashboard')) {
+                  newSet.delete('dashboard');
+                } else {
+                  newSet.add('dashboard');
+                }
+                return newSet;
+              });
+            }}
+            title={!isOpen ? 'Dashboard' : undefined}
+            data-testid="nav-dashboard"
+            className={`
+              w-full flex items-center gap-3 px-3 py-2 rounded-lg
+              text-slate-300 hover:bg-slate-700/50 hover:text-white
+              transition-all duration-150
+              group text-left
+              ${currentPage === 'dashboard' ? 'bg-slate-700/30 text-white' : ''}
+            `}
+          >
+            <div className="flex items-center justify-center w-5 flex-shrink-0">
+              <MuiIcons.Dashboard
+                style={{ fontSize: 20 }}
+                className="text-current group-hover:scale-110 transition-transform"
+              />
+            </div>
+            {isOpen && (
+              <>
+                <span className="font-medium text-sm whitespace-nowrap flex-1 text-left">
+                  Dashboard
+                </span>
+                <MuiIcons.ChevronRight
+                  style={{ fontSize: 16 }}
+                  className={`transition-transform duration-200 text-slate-500 ${expandedItems.has('dashboard') ? 'rotate-90' : ''}`}
+                />
+              </>
+            )}
+          </button>
+
+          {/* Dashboard pages */}
+          {expandedItems.has('dashboard') && isOpen && (
+            <div className="relative mt-0.5" data-testid="nav-dashboard-children">
+              {/* Vertical line for tree structure */}
+              <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-600/50" />
+              {sortedPages.map((page, index) => {
+                const IconComponent = MuiIcons[page.icon as keyof typeof MuiIcons] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
+                const isActive = currentPage === 'dashboard' && activePageId === page.id;
+                const isLast = index === sortedPages.length - 1 && !isCreatingPage;
+
+                return (
+                  <div key={page.id} className="relative">
+                    {/* Tree line connector */}
+                    <div
+                      className="absolute left-5 top-0 w-px bg-slate-600/50"
+                      style={{ height: isLast ? '50%' : '100%' }}
+                    />
+                    <div className="absolute left-5 top-1/2 w-3 h-px bg-slate-600/50" />
+
+                    <button
+                      onClick={() => {
+                        setActivePageId(page.id);
+                        setCurrentPage('dashboard');
+                      }}
+                      data-testid={`nav-dashboard-${page.id}`}
+                      className={`
+                        w-full flex items-center gap-3 px-3 py-2 rounded-lg ml-6
+                        text-slate-300 hover:bg-slate-700/50 hover:text-white
+                        transition-all duration-150
+                        group text-left
+                        ${isActive ? 'bg-slate-700/30 text-white' : ''}
+                      `}
+                    >
+                      <div className="flex items-center justify-center w-5 flex-shrink-0">
+                        {IconComponent && (
+                          <IconComponent
+                            style={{ fontSize: 16 }}
+                            className="text-current group-hover:scale-110 transition-transform"
+                          />
+                        )}
+                      </div>
+                      <span className="font-medium text-xs whitespace-nowrap flex-1 text-left truncate">
+                        {page.name}
+                      </span>
+                      {page.isDefault && (
+                        <span className="text-[10px] text-slate-500">Default</span>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+
+              {/* Add page button or form */}
+              <div className="relative">
+                <div className="absolute left-5 top-0 w-px bg-slate-600/50" style={{ height: '50%' }} />
+                <div className="absolute left-5 top-1/2 w-3 h-px bg-slate-600/50" />
+
+                {isCreatingPage ? (
+                  <div className="ml-6 flex items-center gap-2 px-3 py-1.5">
+                    <input
+                      type="text"
+                      value={newPageName}
+                      onChange={(e) => setNewPageName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCreatePage();
+                        if (e.key === 'Escape') {
+                          setIsCreatingPage(false);
+                          setNewPageName('');
+                        }
+                      }}
+                      placeholder="Page name..."
+                      autoFocus
+                      className="
+                        flex-1 px-2 py-1 rounded text-xs
+                        bg-slate-900/50 border border-slate-600/50
+                        text-slate-200 placeholder-slate-500
+                        focus:outline-none focus:border-teal-500/50
+                      "
+                    />
+                    <button
+                      onClick={handleCreatePage}
+                      disabled={!newPageName.trim()}
+                      className="p-1 text-teal-400 hover:text-teal-300 disabled:text-slate-600"
+                    >
+                      <MuiIcons.Check style={{ fontSize: 16 }} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsCreatingPage(false);
+                        setNewPageName('');
+                      }}
+                      className="p-1 text-slate-400 hover:text-slate-300"
+                    >
+                      <MuiIcons.Close style={{ fontSize: 16 }} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsCreatingPage(true)}
+                    className="
+                      ml-6 flex items-center gap-2 px-3 py-1.5
+                      text-slate-500 hover:text-teal-400
+                      transition-colors text-xs font-medium
+                    "
+                  >
+                    <MuiIcons.Add style={{ fontSize: 14 }} />
+                    New Page
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Other nav items */}
         {NAV_ITEMS.map((item) => renderNavItem(item))}
       </nav>
 

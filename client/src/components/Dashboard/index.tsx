@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect, useRef } from 'react';
+import { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import GridLayout, { type Layout } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
@@ -22,9 +22,18 @@ const GRID_MARGIN: [number, number] = [12, 12];
  * - Edit mode toggle for drag/resize
  * - Automatic layout saving on change
  * - Vertical compaction for optimal space usage
+ * - Multi-page support with independent layouts
  */
 export function Dashboard() {
-  const { layout, setLayout, isEditMode, collapsedWidgets } = useDashboardStore();
+  const { pages, activePageId, setLayout, isEditMode } = useDashboardStore();
+
+  // Get current page's layout and collapsed widgets
+  const currentPage = useMemo(() =>
+    pages.find(p => p.id === activePageId),
+    [pages, activePageId]
+  );
+  const layout = currentPage?.layout ?? [];
+  const collapsedWidgets = currentPage?.collapsedWidgets ?? {};
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerWidth, setContainerWidth] = useState(1800);
 

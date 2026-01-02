@@ -66,7 +66,7 @@ function PageRouter() {
         </div>
       );
     default:
-      return <Today />;
+      return <Dashboard />;
   }
 }
 
