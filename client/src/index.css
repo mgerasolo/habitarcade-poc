@@ -14,54 +14,99 @@ body {
 
 /* React Grid Layout resize handle styles */
 .react-resizable-handle {
-  @apply absolute opacity-0 transition-opacity duration-200;
+  @apply absolute transition-all duration-200;
   z-index: 50;
+  opacity: 0;
 }
 
 /* Show handles on widget hover in edit mode */
 .react-grid-item:hover .react-resizable-handle {
-  @apply opacity-100;
+  opacity: 1;
 }
 
-/* South (bottom) resize handle */
+/* Common handle hover effect */
+.react-resizable-handle:hover::after {
+  @apply bg-teal-400/80;
+  transform: scale(1.2);
+}
+
+/* Active/dragging state */
+.react-resizable-handle:active::after {
+  @apply bg-teal-300;
+}
+
+/* South (bottom) resize handle - full width for easy grabbing */
 .react-resizable-handle-s {
-  @apply bottom-0 left-1/2 -translate-x-1/2 cursor-s-resize;
-  width: 40px;
-  height: 8px;
+  @apply bottom-0 left-0 right-0 cursor-s-resize;
+  height: 12px;
+}
+
+.react-resizable-handle-s::before {
+  content: '';
+  @apply absolute left-0 right-0 bottom-0 h-1 bg-gradient-to-r from-transparent via-teal-500/30 to-transparent;
 }
 
 .react-resizable-handle-s::after {
   content: '';
-  @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2;
-  @apply w-8 h-1 bg-teal-500/50 rounded-full;
+  @apply absolute left-1/2 bottom-1 -translate-x-1/2;
+  @apply w-12 h-1.5 bg-teal-500/50 rounded-full transition-all duration-150;
 }
 
-/* East (right) resize handle */
+.react-resizable-handle-s:hover::before {
+  @apply via-teal-400/50;
+}
+
+/* East (right) resize handle - full height for easy grabbing */
 .react-resizable-handle-e {
-  @apply right-0 top-1/2 -translate-y-1/2 cursor-e-resize;
-  width: 8px;
-  height: 40px;
+  @apply right-0 top-0 bottom-0 cursor-e-resize;
+  width: 12px;
+}
+
+.react-resizable-handle-e::before {
+  content: '';
+  @apply absolute top-0 bottom-0 right-0 w-1 bg-gradient-to-b from-transparent via-teal-500/30 to-transparent;
 }
 
 .react-resizable-handle-e::after {
   content: '';
-  @apply absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2;
-  @apply w-1 h-8 bg-teal-500/50 rounded-full;
+  @apply absolute top-1/2 right-1 -translate-y-1/2;
+  @apply h-12 w-1.5 bg-teal-500/50 rounded-full transition-all duration-150;
+}
+
+.react-resizable-handle-e:hover::before {
+  @apply via-teal-400/50;
 }
 
 /* Southeast (corner) resize handle */
 .react-resizable-handle-se {
   @apply bottom-0 right-0 cursor-se-resize;
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+}
+
+.react-resizable-handle-se::before {
+  content: '';
+  @apply absolute bottom-0 right-0 w-4 h-4;
+  background: linear-gradient(135deg, transparent 50%, rgba(20, 184, 166, 0.3) 50%);
+  border-radius: 0 0 8px 0;
 }
 
 .react-resizable-handle-se::after {
   content: '';
-  @apply absolute bottom-1 right-1;
-  width: 0;
-  height: 0;
-  border-style: solid;
-  border-width: 0 0 8px 8px;
-  border-color: transparent transparent rgba(20, 184, 166, 0.5) transparent;
+  @apply absolute bottom-1.5 right-1.5;
+  width: 6px;
+  height: 6px;
+  background:
+    radial-gradient(circle at 100% 100%, rgba(20, 184, 166, 0.6) 2px, transparent 2px),
+    radial-gradient(circle at 50% 100%, rgba(20, 184, 166, 0.5) 2px, transparent 2px),
+    radial-gradient(circle at 100% 50%, rgba(20, 184, 166, 0.5) 2px, transparent 2px);
+  transition: all 0.15s ease;
+}
+
+.react-resizable-handle-se:hover::before {
+  background: linear-gradient(135deg, transparent 50%, rgba(20, 184, 166, 0.5) 50%);
+}
+
+.react-resizable-handle-se:hover::after {
+  transform: scale(1.3);
 }

@@ -253,28 +253,6 @@ export function WidgetContainer({ widgetId, children, headerControls }: WidgetCo
         {!isMinimized && children}
       </div>
 
-      {/* Resize handle visual indicator (edit mode only) */}
-      {isEditMode && !isMinimized && (
-        <div
-          className="
-            absolute bottom-0 right-0
-            w-4 h-4 cursor-se-resize
-            flex items-end justify-end
-            pointer-events-none
-          "
-          aria-hidden="true"
-        >
-          <svg
-            className="w-3 h-3 text-teal-500/50"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-          >
-            <circle cx="18" cy="18" r="2" />
-            <circle cx="12" cy="18" r="2" />
-            <circle cx="18" cy="12" r="2" />
-          </svg>
-        </div>
-      )}
     </div>
   );
 }
