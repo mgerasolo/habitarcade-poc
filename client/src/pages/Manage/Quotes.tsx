@@ -222,8 +222,8 @@ export function ManageQuotes() {
         >
           <option value="">All Categories</option>
           {allCategories.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
+            <option key={cat} value={cat} className="capitalize">
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
             </option>
           ))}
         </select>
@@ -294,8 +294,8 @@ export function ManageQuotes() {
                 >
                   <option value="">No category</option>
                   {allCategories.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
+                    <option key={cat} value={cat} className="capitalize">
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
                     </option>
                   ))}
                 </select>
@@ -359,7 +359,7 @@ export function ManageQuotes() {
                       <span className="text-slate-500">({quote.source})</span>
                     )}
                     {quote.category && (
-                      <span className="px-2 py-0.5 rounded-full bg-slate-700/50 text-xs">
+                      <span className="px-2 py-0.5 rounded-full bg-slate-700/50 text-xs capitalize">
                         {quote.category}
                       </span>
                     )}

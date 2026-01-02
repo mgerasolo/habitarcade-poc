@@ -126,8 +126,8 @@ export function QuotesWidget({
           >
             <option value="">All Categories</option>
             {categories.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
+              <option key={cat} value={cat} className="capitalize">
+                {cat.charAt(0).toUpperCase() + cat.slice(1)}
               </option>
             ))}
           </select>
@@ -167,7 +167,7 @@ export function QuotesWidget({
           </p>
         )}
         {currentQuote.category && (
-          <span className="mt-2 text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-400">
+          <span className="mt-2 text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-400 capitalize">
             {currentQuote.category}
           </span>
         )}
