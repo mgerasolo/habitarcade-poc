@@ -47,6 +47,7 @@ export function Chart({ entries, target, unit }: ChartProps) {
 
     // Generate target line data points
     const targetData: Array<{ date: string; value: number }> = [];
+    const reachTargetData: Array<{ date: string; value: number }> = [];
     if (target) {
       const startDate = new Date(target.startDate);
       const endDate = new Date(target.goalDate);
@@ -60,12 +61,25 @@ export function Chart({ entries, target, unit }: ChartProps) {
         const date = new Date(
           startDate.getTime() + progress * (endDate.getTime() - startDate.getTime())
         );
+        const dateStr = date.toISOString().split('T')[0];
+
+        // Primary target line
         const value =
           target.startValue + (target.goalValue - target.startValue) * progress;
         targetData.push({
-          date: date.toISOString().split('T')[0],
+          date: dateStr,
           value,
         });
+
+        // Reach goal line (if set)
+        if (target.reachGoalValue !== undefined && target.reachGoalValue !== null) {
+          const reachValue =
+            target.startValue + (target.reachGoalValue - target.startValue) * progress;
+          reachTargetData.push({
+            date: dateStr,
+            value: reachValue,
+          });
+        }
       }
     }
 
@@ -77,13 +91,16 @@ export function Chart({ entries, target, unit }: ChartProps) {
       ]),
     ].sort();
 
-    // Determine Y-axis range
+    // Determine Y-axis range - handle empty data case
     const allValues = [
       ...actualData.map((d) => d.value),
       ...targetData.map((d) => d.value),
+      ...reachTargetData.map((d) => d.value),
     ];
-    const minValue = Math.min(...allValues);
-    const maxValue = Math.max(...allValues);
+
+    // Handle empty data - use sensible defaults
+    const minValue = allValues.length > 0 ? Math.min(...allValues) : 0;
+    const maxValue = allValues.length > 0 ? Math.max(...allValues) : 100;
     const padding = (maxValue - minValue) * 0.1 || 5;
 
     // Find today's position
@@ -256,6 +273,42 @@ export function Chart({ entries, target, unit }: ChartProps) {
                   color: '#64748b',
                   width: 2,
                   type: 'dashed' as const,
+                },
+                connectNulls: false,
+              },
+            ]
+          : []),
+        // Reach goal line (stretch target)
+        ...(target && target.reachGoalValue !== undefined && target.reachGoalValue !== null
+          ? [
+              {
+                name: 'Reach Goal',
+                type: 'line' as const,
+                data: allDates.map((date) => {
+                  const currentDate = new Date(date);
+                  const startDate = new Date(target.startDate);
+                  const endDate = new Date(target.goalDate);
+                  const totalDays =
+                    (endDate.getTime() - startDate.getTime()) /
+                    (1000 * 60 * 60 * 24);
+                  const daysPassed =
+                    (currentDate.getTime() - startDate.getTime()) /
+                    (1000 * 60 * 60 * 24);
+
+                  if (daysPassed < 0 || daysPassed > totalDays) return null;
+
+                  const progress = daysPassed / totalDays;
+                  return (
+                    target.startValue +
+                    (target.reachGoalValue! - target.startValue) * progress
+                  );
+                }),
+                smooth: false,
+                symbol: 'none',
+                lineStyle: {
+                  color: '#a855f7', // Purple for reach goal
+                  width: 1.5,
+                  type: 'dotted' as const,
                 },
                 connectNulls: false,
               },

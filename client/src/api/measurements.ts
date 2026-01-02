@@ -8,6 +8,25 @@ import type {
   ApiResponse
 } from '../types';
 
+// Helper to transform API response decimal strings to numbers
+function transformEntry(entry: MeasurementEntry): MeasurementEntry {
+  return {
+    ...entry,
+    value: typeof entry.value === 'string' ? parseFloat(entry.value) : entry.value,
+  };
+}
+
+function transformTarget(target: MeasurementTarget): MeasurementTarget {
+  return {
+    ...target,
+    startValue: typeof target.startValue === 'string' ? parseFloat(target.startValue) : target.startValue,
+    goalValue: typeof target.goalValue === 'string' ? parseFloat(target.goalValue) : target.goalValue,
+    reachGoalValue: target.reachGoalValue != null
+      ? (typeof target.reachGoalValue === 'string' ? parseFloat(target.reachGoalValue) : target.reachGoalValue)
+      : undefined,
+  };
+}
+
 // Query keys
 export const measurementKeys = {
   all: ['measurements'] as const,
@@ -21,7 +40,18 @@ export const measurementKeys = {
 export function useMeasurements() {
   return useQuery({
     queryKey: measurementKeys.all,
-    queryFn: () => apiFetch<ApiListResponse<Measurement>>('/measurements'),
+    queryFn: async () => {
+      const response = await apiFetch<ApiListResponse<Measurement>>('/measurements');
+      // Transform decimal strings to numbers in nested entries and targets
+      return {
+        ...response,
+        data: response.data.map((measurement) => ({
+          ...measurement,
+          entries: measurement.entries?.map(transformEntry),
+          targets: measurement.targets?.map(transformTarget),
+        })),
+      };
+    },
   });
 }
 
@@ -29,7 +59,18 @@ export function useMeasurements() {
 export function useMeasurement(id: string) {
   return useQuery({
     queryKey: measurementKeys.detail(id),
-    queryFn: () => apiFetch<ApiResponse<Measurement>>(`/measurements/${id}`),
+    queryFn: async () => {
+      const response = await apiFetch<ApiResponse<Measurement>>(`/measurements/${id}`);
+      // Transform decimal strings to numbers in nested entries and targets
+      return {
+        ...response,
+        data: {
+          ...response.data,
+          entries: response.data.entries?.map(transformEntry),
+          targets: response.data.targets?.map(transformTarget),
+        },
+      };
+    },
     enabled: !!id,
   });
 }
@@ -50,9 +91,16 @@ export function useMeasurementEntries(
       measurementId,
       startDate && endDate ? { start: startDate, end: endDate } : undefined
     ),
-    queryFn: () => apiFetch<ApiListResponse<MeasurementEntry>>(
-      `/measurements/${measurementId}/entries${queryString ? `?${queryString}` : ''}`
-    ),
+    queryFn: async () => {
+      const response = await apiFetch<ApiListResponse<MeasurementEntry>>(
+        `/measurements/${measurementId}/entries${queryString ? `?${queryString}` : ''}`
+      );
+      // Transform decimal strings to numbers
+      return {
+        ...response,
+        data: response.data.map(transformEntry),
+      };
+    },
     enabled: !!measurementId,
   });
 }
@@ -61,9 +109,16 @@ export function useMeasurementEntries(
 export function useMeasurementTargets(measurementId: string) {
   return useQuery({
     queryKey: measurementKeys.targets(measurementId),
-    queryFn: () => apiFetch<ApiListResponse<MeasurementTarget>>(
-      `/measurements/${measurementId}/targets`
-    ),
+    queryFn: async () => {
+      const response = await apiFetch<ApiListResponse<MeasurementTarget>>(
+        `/measurements/${measurementId}/targets`
+      );
+      // Transform decimal strings to numbers
+      return {
+        ...response,
+        data: response.data.map(transformTarget),
+      };
+    },
     enabled: !!measurementId,
   });
 }
@@ -199,6 +254,7 @@ export function useCreateMeasurementTarget() {
       measurementId: string;
       startValue: number;
       goalValue: number;
+      reachGoalValue?: number;
       startDate: string;
       goalDate: string;
     }) =>
@@ -226,6 +282,7 @@ export function useUpdateMeasurementTarget() {
       targetId: string;
       startValue?: number;
       goalValue?: number;
+      reachGoalValue?: number;
       startDate?: string;
       goalDate?: string;
     }) =>

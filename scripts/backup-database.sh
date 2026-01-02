@@ -13,7 +13,7 @@ BACKUP_DIR="/home/mgerasolo/backups/habitarcade"
 DB_NAME="habitarcade"
 DB_USER="habitarcade"
 POSTGRES_CONTAINER="habitarcade-db"
-RETENTION_DAYS=7
+RETENTION_DAYS=14
 
 # Timestamp for backup file
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")

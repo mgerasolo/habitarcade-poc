@@ -28,6 +28,8 @@ interface HabitMatrixProps {
   onHeaderControlsReady?: (controls: CustomHeaderControls) => void;
   /** Compact vertical mode - removes header row, legend, tightens spacing */
   compactVertical?: boolean;
+  /** Show inline header with scores and controls (for standalone use outside WidgetContainer) */
+  showInlineHeader?: boolean;
 }
 
 /**
@@ -44,11 +46,10 @@ interface HabitMatrixProps {
  * Status colors:
  * - Green (#10b981): Complete
  * - Red (#ef4444): Missed
- * - Blue (#3b82f6): Partial
+ * - Orange (#f97316): Partial
+ * - Blue (#3b82f6): Exempt
  * - Gray (#9ca3af): N/A
- * - Yellow (#fbbf24): Exempt
  * - Dark Green (#047857): Extra
- * - Orange (#f97316): Trending
  * - Pink (#ec4899): Pink marker
  */
 export function HabitMatrix({
@@ -57,6 +58,7 @@ export function HabitMatrix({
   className = '',
   onHeaderControlsReady,
   compactVertical = false,
+  showInlineHeader = false,
 }: HabitMatrixProps) {
   // Container ref for measuring width
   const containerRef = useRef<HTMLDivElement>(null);
@@ -198,6 +200,24 @@ export function HabitMatrix({
         `}
         data-testid="habit-matrix"
       >
+        {/* Inline header for standalone use (not in WidgetContainer) */}
+        {showInlineHeader && (
+          <div className="flex items-center justify-between px-2 py-1.5 border-b border-slate-700/50 mb-1 flex-shrink-0">
+            <CompletionScoreDisplay todayScore={todayScore} monthScore={monthScore} />
+            <div className="flex items-center gap-2">
+              <MonthSelector
+                currentMonth={currentMonth}
+                onPrevMonth={navigatePrevMonth}
+                onNextMonth={navigateNextMonth}
+              />
+              <ViewToggle
+                currentDays={daysToShow}
+                onChange={handleDaysChange}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Matrix content - auto-fill width, controls are in WidgetContainer */}
         <div className="flex-1 overflow-y-visible">
           <div className="w-full">
@@ -377,8 +397,8 @@ function StatusLegend() {
   const statuses = [
     { status: 'complete', label: 'Done', color: '#10b981' },
     { status: 'missed', label: 'Missed', color: '#ef4444' },
-    { status: 'partial', label: 'Partial', color: '#3b82f6' },
-    { status: 'exempt', label: 'Exempt', color: '#fbbf24' },
+    { status: 'partial', label: 'Partial', color: '#f97316' },  // Orange
+    { status: 'exempt', label: 'Exempt', color: '#3b82f6' },    // Blue
     { status: 'na', label: 'N/A', color: '#9ca3af' },
   ];
 

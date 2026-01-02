@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useCreateMeasurement,
   useCreateMeasurementTarget,
   useUpdateMeasurementTarget,
+  measurementKeys,
 } from '../../api';
 import type { Measurement, MeasurementTarget } from '../../types';
 
@@ -27,6 +29,7 @@ export function TargetConfig({
   onClose,
 }: TargetConfigProps) {
   const modalRef = useRef<HTMLDivElement>(null);
+  const queryClient = useQueryClient();
 
   // Form state
   const [measurementName, setMeasurementName] = useState(
@@ -40,6 +43,12 @@ export function TargetConfig({
   );
   const [goalValue, setGoalValue] = useState(
     currentTarget?.goalValue?.toString() || ''
+  );
+  const [reachGoalValue, setReachGoalValue] = useState(
+    currentTarget?.reachGoalValue?.toString() || ''
+  );
+  const [showReachGoal, setShowReachGoal] = useState(
+    !!currentTarget?.reachGoalValue
   );
   const [startDate, setStartDate] = useState(
     currentTarget?.startDate || new Date().toISOString().split('T')[0]
@@ -109,6 +118,7 @@ export function TargetConfig({
 
     const numStartValue = parseFloat(startValue);
     const numGoalValue = parseFloat(goalValue);
+    const numReachGoalValue = reachGoalValue ? parseFloat(reachGoalValue) : undefined;
 
     if (isNaN(numStartValue) || isNaN(numGoalValue)) {
       return;
@@ -134,6 +144,7 @@ export function TargetConfig({
           targetId: currentTarget.id,
           startValue: numStartValue,
           goalValue: numGoalValue,
+          reachGoalValue: showReachGoal ? numReachGoalValue : undefined,
           startDate,
           goalDate,
         });
@@ -142,9 +153,16 @@ export function TargetConfig({
           measurementId,
           startValue: numStartValue,
           goalValue: numGoalValue,
+          reachGoalValue: showReachGoal ? numReachGoalValue : undefined,
           startDate,
           goalDate,
         });
+      }
+
+      // Wait for queries to refetch before closing to prevent blank screen
+      await queryClient.refetchQueries({ queryKey: measurementKeys.all });
+      if (measurementId) {
+        await queryClient.refetchQueries({ queryKey: measurementKeys.targets(measurementId) });
       }
 
       onClose();
@@ -287,6 +305,52 @@ export function TargetConfig({
                 placeholder="Target value"
               />
             </div>
+          </div>
+
+          {/* Reach Goal toggle and input */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer mb-2">
+              <input
+                type="checkbox"
+                checked={showReachGoal}
+                onChange={(e) => setShowReachGoal(e.target.checked)}
+                className="
+                  w-4 h-4 rounded
+                  bg-slate-700/50 border-slate-600
+                  text-teal-500 focus:ring-teal-500/50
+                "
+              />
+              <span className="text-sm text-slate-300">
+                Set a reach goal (optional stretch target)
+              </span>
+            </label>
+            {showReachGoal && (
+              <div className="ml-6">
+                <label className="block text-xs text-slate-400 mb-1.5">
+                  Reach Goal Value ({measurement?.unit || measurementUnit})
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={reachGoalValue}
+                  onChange={(e) => setReachGoalValue(e.target.value)}
+                  className="
+                    w-full px-3 py-2
+                    bg-slate-700/50 border border-slate-600/50
+                    rounded-lg text-white placeholder-slate-500
+                    focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-500/50
+                    text-sm
+                    [appearance:textfield]
+                    [&::-webkit-outer-spin-button]:appearance-none
+                    [&::-webkit-inner-spin-button]:appearance-none
+                  "
+                  placeholder="Aggressive target (optional)"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">
+                  A more aggressive goal to strive for beyond your primary target
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Dates row */}

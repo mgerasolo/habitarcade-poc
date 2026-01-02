@@ -236,7 +236,7 @@ router.get('/:id/targets', async (req, res) => {
 // POST /api/measurements/:id/targets - Create target
 router.post('/:id/targets', async (req, res) => {
   try {
-    const { startValue, goalValue, startDate, goalDate } = req.body;
+    const { startValue, goalValue, reachGoalValue, startDate, goalDate } = req.body;
 
     if (!startValue || !goalValue || !startDate || !goalDate) {
       return res.status(400).json({
@@ -257,6 +257,7 @@ router.post('/:id/targets', async (req, res) => {
       measurementId: req.params.id,
       startValue: startValue.toString(),
       goalValue: goalValue.toString(),
+      reachGoalValue: reachGoalValue !== undefined ? reachGoalValue.toString() : null,
       startDate,
       goalDate,
     }).returning();
@@ -271,11 +272,12 @@ router.post('/:id/targets', async (req, res) => {
 // PUT /api/measurements/:measurementId/targets/:targetId - Update target
 router.put('/:measurementId/targets/:targetId', async (req, res) => {
   try {
-    const { startValue, goalValue, startDate, goalDate } = req.body;
+    const { startValue, goalValue, reachGoalValue, startDate, goalDate } = req.body;
     const [result] = await db.update(measurementTargets)
       .set({
         startValue: startValue?.toString(),
         goalValue: goalValue?.toString(),
+        reachGoalValue: reachGoalValue !== undefined ? reachGoalValue?.toString() : null,
         startDate,
         goalDate,
       })

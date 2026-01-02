@@ -136,6 +136,14 @@ export function TargetLineGraph({
               {measurement.unit || 'lbs'}
             </span>
           </div>
+          {latestEntry && (
+            <span className="text-[10px] text-slate-500">
+              {new Date(latestEntry.date + 'T00:00:00').toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+              })}
+            </span>
+          )}
         </div>
 
         {difference !== null && (

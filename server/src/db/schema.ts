@@ -140,6 +140,7 @@ export const measurementTargets = pgTable('measurement_targets', {
   measurementId: uuid('measurement_id').references(() => measurements.id).notNull(),
   startValue: decimal('start_value', { precision: 10, scale: 2 }).notNull(),
   goalValue: decimal('goal_value', { precision: 10, scale: 2 }).notNull(),
+  reachGoalValue: decimal('reach_goal_value', { precision: 10, scale: 2 }), // Optional stretch goal
   startDate: date('start_date').notNull(),
   goalDate: date('goal_date').notNull(),
   createdAt: timestamp('created_at').defaultNow(),

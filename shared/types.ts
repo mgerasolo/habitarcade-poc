@@ -176,6 +176,7 @@ export interface MeasurementTarget {
   measurementId: string;
   startValue: number;
   goalValue: number;
+  reachGoalValue?: number; // Optional stretch/reach goal
   startDate: string;
   goalDate: string;
   createdAt: string;
