@@ -17,13 +17,13 @@ export const HABIT_STATUSES: HabitStatus[] = [
 export const COMMON_STATUSES: HabitStatus[] = ['complete', 'missed', 'partial', 'empty'];
 
 // Status colors mapping
-// partial = orange, exempt = blue, na = gray
+// partial = orange, exempt = blue, na = gray (60% black for visibility on weekends)
 export const STATUS_COLORS: Record<HabitStatus, string> = {
-  empty: '#f3f4f6',
+  empty: '#ffffff',    // White - cells start empty
   complete: '#10b981',
   missed: '#ef4444',
   partial: '#f97316',  // Orange
-  na: '#9ca3af',
+  na: '#666666',       // 60% black - distinguishable on weekend gray backgrounds
   exempt: '#3b82f6',   // Blue
   extra: '#047857',
   pink: '#ec4899',
