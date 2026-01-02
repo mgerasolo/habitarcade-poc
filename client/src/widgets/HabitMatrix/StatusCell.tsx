@@ -267,13 +267,14 @@ export function StatusCell({
         )}
       </div>
 
-      {/* Status picker tooltip */}
+      {/* Status picker tooltip - rendered via portal */}
       {showTooltip && (
         <StatusTooltip
           currentStatus={status}
           onSelect={handleStatusSelect}
           onClose={handleCloseTooltip}
           position={tooltipPosition}
+          anchorRef={cellRef}
         />
       )}
     </div>

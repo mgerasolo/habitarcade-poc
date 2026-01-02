@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { STATUS_COLORS, type HabitStatus } from '../../types';
 
 // Ordered statuses for the dropdown list with priority indicators
@@ -32,6 +33,7 @@ interface StatusTooltipProps {
   onSelect: (status: HabitStatus) => void;
   onClose: () => void;
   position?: 'above' | 'below';
+  anchorRef?: React.RefObject<HTMLDivElement | null>;
 }
 
 export function StatusTooltip({
@@ -39,8 +41,41 @@ export function StatusTooltip({
   onSelect,
   onClose,
   position = 'below',
+  anchorRef,
 }: StatusTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
+  const [coords, setCoords] = useState({ top: 0, left: 0 });
+
+  // Calculate position based on anchor element
+  useLayoutEffect(() => {
+    if (anchorRef?.current) {
+      const rect = anchorRef.current.getBoundingClientRect();
+      const tooltipHeight = 320; // Approximate tooltip height
+      const scrollY = window.scrollY;
+      const scrollX = window.scrollX;
+
+      // Calculate left position (centered on anchor)
+      let left = rect.left + scrollX + rect.width / 2;
+
+      // Calculate top position based on above/below
+      let top: number;
+      if (position === 'above') {
+        top = rect.top + scrollY - tooltipHeight - 8;
+      } else {
+        top = rect.bottom + scrollY + 8;
+      }
+
+      // Keep tooltip within viewport horizontally
+      const tooltipWidth = 140;
+      if (left - tooltipWidth / 2 < 10) {
+        left = tooltipWidth / 2 + 10;
+      } else if (left + tooltipWidth / 2 > window.innerWidth - 10) {
+        left = window.innerWidth - tooltipWidth / 2 - 10;
+      }
+
+      setCoords({ top, left });
+    }
+  }, [anchorRef, position]);
 
   // Close on click outside
   useEffect(() => {
@@ -56,27 +91,34 @@ export function StatusTooltip({
       }
     }
 
-    document.addEventListener('mousedown', handleClickOutside);
+    // Use setTimeout to avoid immediate close from the same click that opened it
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 0);
     document.addEventListener('keydown', handleEscape);
+
     return () => {
+      clearTimeout(timer);
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
   }, [onClose]);
 
-  const positionClasses = position === 'above'
-    ? 'bottom-full mb-2'
-    : 'top-full mt-2';
-
-  return (
+  const tooltipContent = (
     <div
       ref={tooltipRef}
-      className={`
-        absolute ${positionClasses} left-1/2 -translate-x-1/2 z-50
-        bg-slate-900 rounded-lg shadow-xl
+      style={{
+        position: 'absolute',
+        top: coords.top,
+        left: coords.left,
+        transform: 'translateX(-50%)',
+        zIndex: 9999,
+      }}
+      className="
+        bg-slate-900 rounded-lg shadow-2xl
         border border-slate-600 py-1
         min-w-[140px] animate-in fade-in zoom-in-95 duration-150
-      `}
+      "
       role="listbox"
       aria-label="Select habit status"
     >
@@ -130,6 +172,9 @@ export function StatusTooltip({
       </div>
     </div>
   );
+
+  // Render via portal to escape all parent overflow constraints
+  return createPortal(tooltipContent, document.body);
 }
 
 export default StatusTooltip;
