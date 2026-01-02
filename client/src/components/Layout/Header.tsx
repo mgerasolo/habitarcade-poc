@@ -44,25 +44,34 @@ export function Header() {
             <div className="flex items-center gap-2">
               {isEditMode ? (
                 <>
-                  {/* Save button */}
+                  {/* Undo button - only enabled when there are changes to undo */}
+                  <button
+                    onClick={undoLayoutChange}
+                    disabled={!canUndo}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      canUndo
+                        ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white'
+                        : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                    }`}
+                    aria-label="Undo layout change"
+                    data-testid="undo-layout"
+                  >
+                    <MuiIcons.Undo style={{ fontSize: 16 }} />
+                    <span className="hidden sm:inline">Undo</span>
+                  </button>
+                  {/* Save/Done button */}
                   <button
                     onClick={toggleEditMode}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium transition-colors shadow-lg shadow-teal-600/25"
-                    aria-label="Save changes"
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                      hasUnsavedChanges
+                        ? 'bg-teal-600 hover:bg-teal-500 text-white shadow-lg shadow-teal-600/25'
+                        : 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white'
+                    }`}
+                    aria-label={hasUnsavedChanges ? 'Save changes' : 'Exit edit mode'}
                     data-testid="save-edit-mode"
                   >
                     <MuiIcons.Check style={{ fontSize: 16 }} />
-                    <span className="hidden sm:inline">Done</span>
-                  </button>
-                  {/* Reset layout button */}
-                  <button
-                    onClick={resetLayout}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-xs font-medium transition-colors"
-                    aria-label="Reset layout"
-                    data-testid="reset-layout"
-                  >
-                    <MuiIcons.Undo style={{ fontSize: 16 }} />
-                    <span className="hidden sm:inline">Reset</span>
+                    <span className="hidden sm:inline">{hasUnsavedChanges ? 'Save' : 'Done'}</span>
                   </button>
                 </>
               ) : (
