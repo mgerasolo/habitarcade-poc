@@ -107,7 +107,7 @@ export function Header() {
             </div>
           </div>
 
-          {/* Right Drawer Toggle */}
+          {/* Right Drawer Toggle - mirrors left sidebar toggle but flipped */}
           <button
             onClick={toggleRightDrawer}
             data-drawer-toggle
@@ -125,12 +125,11 @@ export function Header() {
             title={rightDrawerOpen ? 'Collapse panel' : 'Open panel'}
           >
             {rightDrawerOpen ? (
-              <MuiIcons.KeyboardDoubleArrowRight
-                style={{ fontSize: 22 }}
-                className="group-hover:translate-x-0.5 transition-transform"
+              <MuiIcons.MenuOpen
+                style={{ fontSize: 24, transform: 'scaleX(-1)' }}
               />
             ) : (
-              <MuiIcons.ViewSidebar style={{ fontSize: 22 }} />
+              <MuiIcons.Menu style={{ fontSize: 24, transform: 'scaleX(-1)' }} />
             )}
           </button>
 
