@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useHabits, useCreateTimeBlock, useUpdateTimeBlock } from '../../api';
-import type { TimeBlock, Habit } from '../../types';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useHabits, useCategories, useCreateTimeBlock, useUpdateTimeBlock } from '../../api';
+import type { TimeBlock, Habit, Category } from '../../types';
 
 interface BlockFormProps {
   block?: TimeBlock | null;
@@ -27,9 +27,69 @@ export function BlockForm({ block, onClose }: BlockFormProps) {
   const [customDuration, setCustomDuration] = useState('');
   const [showCustomDuration, setShowCustomDuration] = useState(false);
 
-  // Fetch habits for linking
+  // Fetch habits and categories for linking
   const { data: habitsData } = useHabits();
+  const { data: categoriesData } = useCategories();
   const habits: Habit[] = habitsData?.data ?? [];
+  const categories: Category[] = categoriesData?.data ?? [];
+
+  // Group habits by category, ordered like Habit Matrix
+  interface CategoryGroup {
+    category: Category | null;
+    habits: Habit[];
+  }
+
+  const categoryGroups = useMemo<CategoryGroup[]>(() => {
+    const groupMap = new Map<string | null, Habit[]>();
+
+    // Sort categories by sortOrder
+    const sortedCategories = [...categories]
+      .filter(c => !c.isDeleted)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Pre-create category groups in order
+    sortedCategories.forEach(cat => {
+      groupMap.set(cat.id, []);
+    });
+    groupMap.set(null, []); // Uncategorized at the end
+
+    // Filter and sort habits by sortOrder, then distribute into groups
+    const sortedHabits = [...habits]
+      .filter(h => !h.isDeleted)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    sortedHabits.forEach(habit => {
+      const categoryId = habit.categoryId || null;
+      if (!groupMap.has(categoryId)) {
+        groupMap.set(categoryId, []);
+      }
+      groupMap.get(categoryId)!.push(habit);
+    });
+
+    // Build result array maintaining category order
+    const result: CategoryGroup[] = [];
+
+    sortedCategories.forEach(cat => {
+      const categoryHabits = groupMap.get(cat.id) || [];
+      if (categoryHabits.length > 0) {
+        result.push({
+          category: cat,
+          habits: categoryHabits,
+        });
+      }
+    });
+
+    // Add uncategorized at the end if it has habits
+    const uncategorized = groupMap.get(null) || [];
+    if (uncategorized.length > 0) {
+      result.push({
+        category: null,
+        habits: uncategorized,
+      });
+    }
+
+    return result;
+  }, [habits, categories]);
 
   // Mutations
   const createBlock = useCreateTimeBlock();
@@ -231,14 +291,18 @@ export function BlockForm({ block, onClose }: BlockFormProps) {
               }}
             >
               <option value="">No linked habit</option>
-              {habits
-                .filter((h) => !h.isDeleted)
-                .map((habit) => (
-                  <option key={habit.id} value={habit.id}>
-                    {habit.icon ? `${habit.icon} ` : ''}{habit.name}
-                  </option>
-                ))
-              }
+              {categoryGroups.map((group) => (
+                <optgroup
+                  key={group.category?.id || 'uncategorized'}
+                  label={group.category ? `${group.category.icon || ''} ${group.category.name}`.trim() : 'Uncategorized'}
+                >
+                  {group.habits.map((habit) => (
+                    <option key={habit.id} value={habit.id}>
+                      {habit.icon ? `${habit.icon} ` : ''}{habit.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
             <p className="text-xs text-slate-500 mt-2">
               When the timer completes, you can mark the linked habit as done.

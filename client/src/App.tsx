@@ -1,4 +1,6 @@
+import { useEffect, useRef } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ClickToComponent } from 'click-to-react-component';
 import { queryClient } from './api';
@@ -20,6 +22,49 @@ import { Targets } from './pages/Targets';
 import { TimeBlocks } from './pages/TimeBlocks';
 import { ModalManager } from './components/ModalManager';
 import { useUIStore } from './stores';
+import { PAGE_ROUTES, getPageFromPath } from './routes';
+
+// Sync URL with store state (prevents infinite loop with ref tracking)
+function RouteSync() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { currentPage, setCurrentPage } = useUIStore();
+
+  // Track what caused the last change to prevent ping-pong loops
+  const lastSyncSource = useRef<'url' | 'store' | null>(null);
+
+  // When URL changes (e.g., browser back/forward, new tab), sync to store
+  useEffect(() => {
+    // Skip if we just synced from store to URL
+    if (lastSyncSource.current === 'store') {
+      lastSyncSource.current = null;
+      return;
+    }
+
+    const pageFromUrl = getPageFromPath(location.pathname);
+    if (pageFromUrl !== currentPage) {
+      lastSyncSource.current = 'url';
+      setCurrentPage(pageFromUrl);
+    }
+  }, [location.pathname, currentPage, setCurrentPage]);
+
+  // When store changes (e.g., sidebar click), sync to URL
+  useEffect(() => {
+    // Skip if we just synced from URL to store
+    if (lastSyncSource.current === 'url') {
+      lastSyncSource.current = null;
+      return;
+    }
+
+    const expectedPath = PAGE_ROUTES[currentPage];
+    if (location.pathname !== expectedPath) {
+      lastSyncSource.current = 'store';
+      navigate(expectedPath, { replace: false });
+    }
+  }, [currentPage, location.pathname, navigate]);
+
+  return null;
+}
 
 function PageRouter() {
   const { currentPage } = useUIStore();
@@ -66,13 +111,14 @@ function PageRouter() {
         </div>
       );
     default:
-      return <Today />;
+      return <Dashboard />;
   }
 }
 
-function App() {
+function AppContent() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <>
+      <RouteSync />
       <ClickToComponent />
       <Layout>
         <PageRouter />
@@ -102,6 +148,16 @@ function App() {
           },
         }}
       />
+    </>
+  );
+}
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
     </QueryClientProvider>
   );
 }
