@@ -14,6 +14,7 @@ import {
   ManagePriorities,
   ManageQuotes,
   ManageVideos,
+  ManageMaintenanceTasks,
   Settings,
 } from './pages/Manage';
 import { Targets } from './pages/Targets';
@@ -46,6 +47,8 @@ function PageRouter() {
       return <ManageQuotes />;
     case 'manage-videos':
       return <ManageVideos />;
+    case 'manage-maintenance':
+      return <ManageMaintenanceTasks />;
     case 'settings':
       return <Settings />;
     case 'targets':

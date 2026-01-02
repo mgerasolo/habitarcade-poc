@@ -5,4 +5,5 @@ export { ManageTags } from './ManageTags';
 export { ManagePriorities } from './ManagePriorities';
 export { ManageQuotes } from './Quotes';
 export { ManageVideos } from './Videos';
+export { ManageMaintenanceTasks } from './ManageMaintenanceTasks';
 export { Settings } from './Settings';

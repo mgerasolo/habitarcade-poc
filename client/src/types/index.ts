@@ -310,3 +310,36 @@ export interface IconOption {
   name: string;
   class: string;
 }
+
+// Maintenance Task Frequency
+export type MaintenanceFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'yearly' | 'custom';
+
+// Maintenance Task
+export interface MaintenanceTask {
+  id: string;
+  name: string;
+  description?: string;
+  icon?: string;
+  iconColor?: string;
+  frequency: MaintenanceFrequency;
+  frequencyDays?: number; // For custom frequency
+  location?: string; // Room or area
+  priority: number; // 1 = low, 2 = medium, 3 = high
+  estimatedMinutes?: number;
+  lastCompletedAt?: string;
+  nextDueAt?: string;
+  sortOrder: number;
+  isDeleted: boolean;
+  deletedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+  completions?: MaintenanceTaskCompletion[];
+}
+
+// Maintenance Task Completion
+export interface MaintenanceTaskCompletion {
+  id: string;
+  taskId: string;
+  completedAt: string;
+  notes?: string;
+}

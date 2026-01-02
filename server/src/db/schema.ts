@@ -205,6 +205,46 @@ export const quotes = pgTable('quotes', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Maintenance Tasks (recurring upkeep items)
+export const maintenanceTasks = pgTable('maintenance_tasks', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  description: text('description'),
+  icon: varchar('icon', { length: 100 }),
+  iconColor: varchar('icon_color', { length: 20 }),
+  frequency: varchar('frequency', { length: 20 }).notNull(), // daily, weekly, biweekly, monthly, quarterly, yearly
+  frequencyDays: integer('frequency_days'), // Custom frequency in days (if frequency is 'custom')
+  location: varchar('location', { length: 100 }), // Room or area (kitchen, garage, etc.)
+  priority: integer('priority').default(1), // 1 = low, 2 = medium, 3 = high
+  estimatedMinutes: integer('estimated_minutes'), // How long the task takes
+  lastCompletedAt: timestamp('last_completed_at'),
+  nextDueAt: timestamp('next_due_at'),
+  sortOrder: integer('sort_order').default(0),
+  isDeleted: boolean('is_deleted').default(false),
+  deletedAt: timestamp('deleted_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Maintenance Task Completions (history)
+export const maintenanceTaskCompletions = pgTable('maintenance_task_completions', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  taskId: uuid('task_id').references(() => maintenanceTasks.id).notNull(),
+  completedAt: timestamp('completed_at').defaultNow().notNull(),
+  notes: text('notes'),
+});
+
+export const maintenanceTasksRelations = relations(maintenanceTasks, ({ many }) => ({
+  completions: many(maintenanceTaskCompletions),
+}));
+
+export const maintenanceTaskCompletionsRelations = relations(maintenanceTaskCompletions, ({ one }) => ({
+  task: one(maintenanceTasks, {
+    fields: [maintenanceTaskCompletions.taskId],
+    references: [maintenanceTasks.id],
+  }),
+}));
+
 // Define relations
 export const categoriesRelations = relations(categories, ({ many }) => ({
   habits: many(habits),

@@ -35,6 +35,7 @@ import settingsRouter from './routes/settings';
 import dashboardRouter from './routes/dashboard';
 import quotesRouter from './routes/quotes';
 import videosRouter from './routes/videos';
+import maintenanceTasksRouter from './routes/maintenanceTasks';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3451', 10);
@@ -60,6 +61,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/quotes', quotesRouter);
 app.use('/api/videos', videosRouter);
+app.use('/api/maintenance-tasks', maintenanceTasksRouter);
 
 // Serve uploaded files
 const uploadsPath = path.join(__dirname, '../uploads');
