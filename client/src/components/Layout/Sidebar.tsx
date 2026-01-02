@@ -82,24 +82,50 @@ export function Sidebar({ isOpen }: SidebarProps) {
     return false;
   };
 
-  const renderNavItem = (item: NavItem, isChild = false, isLast = false) => {
+  const renderNavItem = (item: NavItem, depth = 0, isLast = false, parentHasMore = false) => {
     const IconComponent = MuiIcons[item.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.id);
     const isActive = isItemActive(item);
+    const isChild = depth > 0;
+
+    // Calculate indentation based on depth (for tree structure)
+    const indent = depth * 16; // 16px per level
 
     return (
       <div key={item.id} className="relative">
-        {/* Tree line connector for child items */}
+        {/* Tree line connectors for child items */}
         {isChild && isOpen && (
           <>
-            {/* Vertical line from parent */}
+            {/* Vertical line from parent - continues if not last item */}
             <div
-              className="absolute left-5 top-0 w-px bg-slate-600/50"
-              style={{ height: isLast ? '50%' : '100%' }}
+              className="absolute w-px bg-slate-600/60"
+              style={{
+                left: `${8 + (depth - 1) * 16}px`,
+                top: 0,
+                height: isLast ? '50%' : '100%'
+              }}
             />
-            {/* Horizontal line to item */}
-            <div className="absolute left-5 top-1/2 w-3 h-px bg-slate-600/50" />
+            {/* Horizontal connector line to the item */}
+            <div
+              className="absolute h-px bg-slate-600/60"
+              style={{
+                left: `${8 + (depth - 1) * 16}px`,
+                top: '50%',
+                width: '12px'
+              }}
+            />
+            {/* Continuing vertical lines for ancestors that have more siblings */}
+            {parentHasMore && depth > 1 && (
+              <div
+                className="absolute w-px bg-slate-600/60"
+                style={{
+                  left: `${8 + (depth - 2) * 16}px`,
+                  top: 0,
+                  height: '100%'
+                }}
+              />
+            )}
           </>
         )}
 
@@ -108,13 +134,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
           title={!isOpen ? item.label : undefined}
           data-testid={`nav-${item.id}`}
           className={`
-            w-full flex items-center gap-3 px-3 py-2 rounded-lg
+            w-full flex items-center gap-2 py-2 rounded-lg
             text-slate-300 hover:bg-slate-700/50 hover:text-white
             transition-all duration-150
             group text-left
-            ${isChild ? 'ml-6' : ''}
             ${isActive ? 'bg-slate-700/30 text-white' : ''}
           `}
+          style={{
+            paddingLeft: isOpen ? `${12 + indent}px` : '12px',
+            paddingRight: '12px'
+          }}
         >
           <div className="flex items-center justify-center w-5 flex-shrink-0">
             <IconComponent
@@ -139,12 +168,11 @@ export function Sidebar({ isOpen }: SidebarProps) {
 
         {/* Render children when expanded with tree structure */}
         {hasChildren && isExpanded && isOpen && (
-          <div className="relative mt-0.5" data-testid={`nav-${item.id}-children`}>
-            {/* Vertical line for tree structure */}
-            <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-600/50" />
-            {item.children!.map((child, index) =>
-              renderNavItem(child, true, index === item.children!.length - 1)
-            )}
+          <div className="relative" data-testid={`nav-${item.id}-children`}>
+            {item.children!.map((child, index) => {
+              const isLastChild = index === item.children!.length - 1;
+              return renderNavItem(child, depth + 1, isLastChild, !isLastChild);
+            })}
           </div>
         )}
       </div>
