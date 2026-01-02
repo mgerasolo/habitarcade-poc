@@ -1,12 +1,21 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useUIStore, useDashboardStore } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
 import { WidgetCatalog } from '../Dashboard/WidgetCatalog';
 
 export function Header() {
   const { toggleSidebar, sidebarOpen, viewMode, setViewMode, toggleRightDrawer, rightDrawerOpen, currentPage } = useUIStore();
-  const { isEditMode, toggleEditMode, resetLayout } = useDashboardStore();
+  const { isEditMode, toggleEditMode, resetLayout, pages, activePageId } = useDashboardStore();
   const [isWidgetCatalogOpen, setIsWidgetCatalogOpen] = useState(false);
+
+  // Get current page name for display
+  const currentPageName = useMemo(() => {
+    if (currentPage === 'dashboard') {
+      const page = pages.find(p => p.id === activePageId);
+      return page?.name ?? 'Dashboard';
+    }
+    return null;
+  }, [currentPage, pages, activePageId]);
 
   return (
     <header className="sticky top-0 z-50 h-16 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50" data-testid="main-header">
@@ -37,6 +46,14 @@ export function Header() {
               </h1>
             </div>
           </div>
+
+          {/* Current page indicator */}
+          {currentPageName && (
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-lg">
+              <MuiIcons.ChevronRight style={{ fontSize: 16 }} className="text-slate-500" />
+              <span className="text-sm font-medium text-slate-300">{currentPageName}</span>
+            </div>
+          )}
         </div>
 
         {/* Right section - View mode & Actions */}
