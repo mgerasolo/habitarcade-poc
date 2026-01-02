@@ -2,29 +2,17 @@ import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS_COLORS, type HabitStatus } from '../../types';
 
-// Ordered statuses for the dropdown list with priority indicators
-const TOOLTIP_STATUSES: { status: HabitStatus; icon: string }[] = [
-  { status: 'complete', icon: '✓' },
-  { status: 'extra', icon: '★' },
-  { status: 'partial', icon: '◐' },
-  { status: 'missed', icon: '✗' },
-  { status: 'exempt', icon: '∅' },
-  { status: 'na', icon: '—' },
-  { status: 'pink', icon: '●' },
-  { status: 'empty', icon: '○' },
+// Ordered statuses for the dropdown list (priority order like task priority selector)
+const TOOLTIP_STATUSES: { status: HabitStatus; label: string; description: string }[] = [
+  { status: 'complete', label: 'Done', description: 'Completed successfully' },
+  { status: 'missed', label: 'Missed', description: 'Failed to complete' },
+  { status: 'partial', label: 'Partial', description: 'Partially completed' },
+  { status: 'exempt', label: 'Exempt', description: 'Excused from this day' },
+  { status: 'na', label: 'N/A', description: 'Not applicable' },
+  { status: 'extra', label: 'Extra', description: 'Bonus completion' },
+  { status: 'pink', label: 'Pink', description: 'Special marker' },
+  { status: 'empty', label: 'Clear', description: 'Remove status' },
 ];
-
-// Status labels for display
-const STATUS_LABELS: Record<HabitStatus, string> = {
-  empty: 'Empty',
-  complete: 'Complete',
-  missed: 'Missed',
-  partial: 'Partial',
-  na: 'N/A',
-  exempt: 'Exempt',
-  extra: 'Extra',
-  pink: 'Pink',
-};
 
 interface StatusTooltipProps {
   currentStatus: HabitStatus;
@@ -48,7 +36,7 @@ export function StatusTooltip({
   useLayoutEffect(() => {
     if (anchorRef?.current) {
       const rect = anchorRef.current.getBoundingClientRect();
-      const tooltipHeight = 320; // Approximate tooltip height
+      const tooltipHeight = 420; // Approximate tooltip height (larger with descriptions)
       const scrollY = window.scrollY;
       const scrollX = window.scrollX;
 
@@ -64,7 +52,7 @@ export function StatusTooltip({
       }
 
       // Keep tooltip within viewport horizontally
-      const tooltipWidth = 140;
+      const tooltipWidth = 200; // Wider for shadcn-style design
       if (left - tooltipWidth / 2 < 10) {
         left = tooltipWidth / 2 + 10;
       } else if (left + tooltipWidth / 2 > window.innerWidth - 10) {
@@ -113,60 +101,80 @@ export function StatusTooltip({
         zIndex: 9999,
       }}
       className="
-        bg-slate-900 rounded-lg shadow-2xl
-        border border-slate-600 py-1
-        min-w-[140px] animate-in fade-in zoom-in-95 duration-150
+        bg-slate-950 rounded-lg shadow-2xl
+        border border-slate-700/50
+        min-w-[180px] overflow-hidden
+        animate-in fade-in slide-in-from-top-2 duration-200
       "
       role="listbox"
       aria-label="Select habit status"
     >
       {/* Header */}
-      <div className="px-3 py-1.5 border-b border-slate-700">
-        <span className="text-xs font-medium text-slate-400">Habit status</span>
+      <div className="px-3 py-2.5 border-b border-slate-800/80 bg-slate-900/50">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</span>
       </div>
 
-      {/* Status list */}
+      {/* Status list - shadcn priority selector style */}
       <div className="py-1">
-        {TOOLTIP_STATUSES.map(({ status, icon }) => {
+        {TOOLTIP_STATUSES.map(({ status, label, description }) => {
           const isSelected = status === currentStatus;
+          const statusColor = STATUS_COLORS[status];
+
           return (
             <button
               key={status}
               onClick={() => onSelect(status)}
               className={`
-                w-full flex items-center gap-2 px-3 py-1.5
-                transition-colors duration-100 cursor-pointer
-                hover:bg-slate-700/60
-                ${isSelected ? 'bg-slate-700/40' : ''}
+                w-full flex items-center gap-3 px-3 py-2
+                transition-all duration-150 cursor-pointer
+                hover:bg-slate-800/80
+                ${isSelected ? 'bg-slate-800/60' : ''}
+                group relative
               `}
               role="option"
               aria-selected={isSelected}
             >
-              {/* Priority indicator icon with color */}
-              <span
-                className="text-sm w-4 flex-shrink-0 text-center"
-                style={{ color: STATUS_COLORS[status] }}
-              >
-                {icon}
-              </span>
-              {/* Color dot */}
+              {/* Colored indicator bar on left side */}
               <div
-                className="w-3 h-3 rounded-sm flex-shrink-0"
-                style={{ backgroundColor: STATUS_COLORS[status] }}
+                className="w-1 h-8 rounded-full flex-shrink-0 transition-all duration-150 group-hover:h-9"
+                style={{ backgroundColor: statusColor }}
               />
-              {/* Label */}
-              <span className={`text-sm flex-1 text-left ${isSelected ? 'text-white font-medium' : 'text-slate-300'}`}>
-                {STATUS_LABELS[status]}
-              </span>
+
+              {/* Color dot indicator */}
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
+                style={{ backgroundColor: statusColor }}
+              />
+
+              {/* Label and description */}
+              <div className="flex-1 text-left min-w-0">
+                <span className={`
+                  block text-sm leading-tight
+                  ${isSelected ? 'text-white font-semibold' : 'text-slate-200 font-medium'}
+                `}>
+                  {label}
+                </span>
+                <span className="block text-xs text-slate-500 truncate mt-0.5">
+                  {description}
+                </span>
+              </div>
+
               {/* Check mark for selected */}
               {isSelected && (
-                <svg className="w-4 h-4 text-teal-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-teal-500/20 flex items-center justify-center">
+                  <svg className="w-3 h-3 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
               )}
             </button>
           );
         })}
+      </div>
+
+      {/* Footer hint */}
+      <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-900/30">
+        <span className="text-xs text-slate-500">Click to select or Esc to close</span>
       </div>
     </div>
   );
