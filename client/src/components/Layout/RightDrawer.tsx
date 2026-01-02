@@ -145,9 +145,9 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
             data-testid="drawer-close-button"
             title="Collapse panel"
           >
-            <MuiIcons.KeyboardDoubleArrowRight
-              style={{ fontSize: 20 }}
-              className="group-hover:translate-x-0.5 transition-transform"
+            <MuiIcons.MenuOpen
+              style={{ fontSize: 20, transform: 'scaleX(-1)' }}
+              className="group-hover:scale-110 transition-transform"
             />
           </button>
         </div>

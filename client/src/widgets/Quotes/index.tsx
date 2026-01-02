@@ -3,6 +3,12 @@ import * as MuiIcons from '@mui/icons-material';
 import { useQuotes, useToggleFavorite, useQuoteCategories } from '../../api';
 import type { Quote } from '../../types';
 
+// Helper to capitalize category names
+const capitalizeCategory = (category: string): string => {
+  if (!category) return '';
+  return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+};
+
 interface QuotesWidgetProps {
   showControls?: boolean;
   autoRotate?: boolean;
@@ -127,7 +133,7 @@ export function QuotesWidget({
             <option value="">All Categories</option>
             {categories.map((cat) => (
               <option key={cat} value={cat}>
-                {cat}
+                {capitalizeCategory(cat)}
               </option>
             ))}
           </select>
@@ -168,7 +174,7 @@ export function QuotesWidget({
         )}
         {currentQuote.category && (
           <span className="mt-2 text-xs px-2 py-0.5 rounded-full bg-slate-700/50 text-slate-400">
-            {currentQuote.category}
+            {capitalizeCategory(currentQuote.category)}
           </span>
         )}
       </div>

@@ -14,27 +14,33 @@ import type { Quote } from '../../types';
 
 // Default quote categories
 const DEFAULT_CATEGORIES = [
-  'motivational',
-  'productivity',
-  'mindset',
-  'success',
-  'wisdom',
-  'creativity',
-  'perseverance',
+  'Motivational',
+  'Productivity',
+  'Mindset',
+  'Success',
+  'Wisdom',
+  'Creativity',
+  'Perseverance',
 ];
+
+// Helper to capitalize category names
+const capitalizeCategory = (category: string): string => {
+  if (!category) return '';
+  return category.charAt(0).toUpperCase() + category.slice(1).toLowerCase();
+};
 
 // Starter quotes for new users
 const STARTER_QUOTES: Partial<Quote>[] = [
-  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs", category: "motivational" },
-  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius", category: "perseverance" },
-  { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill", category: "success" },
-  { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt", category: "motivational" },
-  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt", category: "mindset" },
-  { text: "The only impossible journey is the one you never begin.", author: "Tony Robbins", category: "motivational" },
-  { text: "What you get by achieving your goals is not as important as what you become by achieving your goals.", author: "Zig Ziglar", category: "wisdom" },
-  { text: "Your limitation—it's only your imagination.", author: "Unknown", category: "mindset" },
-  { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb", category: "wisdom" },
-  { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson", category: "productivity" },
+  { text: "The only way to do great work is to love what you do.", author: "Steve Jobs", category: "Motivational" },
+  { text: "It does not matter how slowly you go as long as you do not stop.", author: "Confucius", category: "Perseverance" },
+  { text: "Success is not final, failure is not fatal: it is the courage to continue that counts.", author: "Winston Churchill", category: "Success" },
+  { text: "The future belongs to those who believe in the beauty of their dreams.", author: "Eleanor Roosevelt", category: "Motivational" },
+  { text: "Believe you can and you're halfway there.", author: "Theodore Roosevelt", category: "Mindset" },
+  { text: "The only impossible journey is the one you never begin.", author: "Tony Robbins", category: "Motivational" },
+  { text: "What you get by achieving your goals is not as important as what you become by achieving your goals.", author: "Zig Ziglar", category: "Wisdom" },
+  { text: "Your limitation—it's only your imagination.", author: "Unknown", category: "Mindset" },
+  { text: "The best time to plant a tree was 20 years ago. The second best time is now.", author: "Chinese Proverb", category: "Wisdom" },
+  { text: "Don't watch the clock; do what it does. Keep going.", author: "Sam Levenson", category: "Productivity" },
 ];
 
 export function ManageQuotes() {
@@ -223,7 +229,7 @@ export function ManageQuotes() {
           <option value="">All Categories</option>
           {allCategories.map((cat) => (
             <option key={cat} value={cat}>
-              {cat}
+              {capitalizeCategory(cat)}
             </option>
           ))}
         </select>
@@ -295,7 +301,7 @@ export function ManageQuotes() {
                   <option value="">No category</option>
                   {allCategories.map((cat) => (
                     <option key={cat} value={cat}>
-                      {cat}
+                      {capitalizeCategory(cat)}
                     </option>
                   ))}
                 </select>
@@ -360,7 +366,7 @@ export function ManageQuotes() {
                     )}
                     {quote.category && (
                       <span className="px-2 py-0.5 rounded-full bg-slate-700/50 text-xs">
-                        {quote.category}
+                        {capitalizeCategory(quote.category)}
                       </span>
                     )}
                   </div>

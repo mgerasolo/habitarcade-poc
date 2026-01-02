@@ -88,18 +88,52 @@ export function Sidebar({ isOpen }: SidebarProps) {
     const isExpanded = expandedItems.has(item.id);
     const isActive = isItemActive(item);
 
+    // Base classes - left-aligned, no centering
+    const commonClasses = `
+      w-full flex items-center gap-2 py-2 rounded-lg
+      text-slate-300 hover:bg-slate-700/50 hover:text-white
+      transition-all duration-150
+      group text-left
+      ${isChild ? 'pl-8 pr-3' : 'px-3'}
+      ${isActive ? 'bg-slate-700/30 text-white' : ''}
+    `;
+
+    const iconAndLabel = (
+      <>
+        <div className="flex items-center justify-center w-5 flex-shrink-0">
+          <IconComponent
+            style={{ fontSize: isChild ? 16 : 20 }}
+            className="text-current group-hover:scale-110 transition-transform"
+          />
+        </div>
+        {isOpen && (
+          <>
+            <span className={`font-medium ${isChild ? 'text-xs' : 'text-sm'} whitespace-nowrap flex-1 text-left`}>
+              {item.label}
+            </span>
+            {hasChildren && (
+              <MuiIcons.ChevronRight
+                style={{ fontSize: 16 }}
+                className={`transition-transform duration-200 text-slate-500 ${isExpanded ? 'rotate-90' : ''}`}
+              />
+            )}
+          </>
+        )}
+      </>
+    );
+
     return (
       <div key={item.id} className="relative">
-        {/* Tree line connector for child items */}
+        {/* Tree line connectors for child items - file explorer style */}
         {isChild && isOpen && (
           <>
-            {/* Vertical line from parent */}
+            {/* Vertical line from parent - extends full height unless last item */}
             <div
-              className="absolute left-5 top-0 w-px bg-slate-600/50"
+              className="absolute left-4 top-0 w-px bg-slate-600/60"
               style={{ height: isLast ? '50%' : '100%' }}
             />
-            {/* Horizontal line to item */}
-            <div className="absolute left-5 top-1/2 w-3 h-px bg-slate-600/50" />
+            {/* Horizontal line connecting to item */}
+            <div className="absolute left-4 top-1/2 w-3 h-px bg-slate-600/60" />
           </>
         )}
 
@@ -107,41 +141,16 @@ export function Sidebar({ isOpen }: SidebarProps) {
           onClick={() => handleNavClick(item)}
           title={!isOpen ? item.label : undefined}
           data-testid={`nav-${item.id}`}
-          className={`
-            w-full flex items-center gap-3 px-3 py-2 rounded-lg
-            text-slate-300 hover:bg-slate-700/50 hover:text-white
-            transition-all duration-150
-            group text-left
-            ${isChild ? 'ml-6' : ''}
-            ${isActive ? 'bg-slate-700/30 text-white' : ''}
-          `}
+          className={commonClasses}
         >
-          <div className="flex items-center justify-center w-5 flex-shrink-0">
-            <IconComponent
-              style={{ fontSize: isChild ? 16 : 20 }}
-              className="text-current group-hover:scale-110 transition-transform"
-            />
-          </div>
-          {isOpen && (
-            <>
-              <span className={`font-medium ${isChild ? 'text-xs' : 'text-sm'} whitespace-nowrap flex-1 text-left`}>
-                {item.label}
-              </span>
-              {hasChildren && (
-                <MuiIcons.ChevronRight
-                  style={{ fontSize: 16 }}
-                  className={`transition-transform duration-200 text-slate-500 ${isExpanded ? 'rotate-90' : ''}`}
-                />
-              )}
-            </>
-          )}
+          {iconAndLabel}
         </button>
 
         {/* Render children when expanded with tree structure */}
         {hasChildren && isExpanded && isOpen && (
           <div className="relative mt-0.5" data-testid={`nav-${item.id}-children`}>
-            {/* Vertical line for tree structure */}
-            <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-600/50" />
+            {/* Vertical trunk line for tree structure */}
+            <div className="absolute left-4 top-0 bottom-2 w-px bg-slate-600/60" />
             {item.children!.map((child, index) =>
               renderNavItem(child, true, index === item.children!.length - 1)
             )}
