@@ -24,7 +24,6 @@ const STATUS_LABELS: Record<HabitStatus, string> = {
   na: 'N/A',
   exempt: 'Exempt',
   extra: 'Extra',
-  trending: 'Trending',
   pink: 'Pink',
 };
 

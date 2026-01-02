@@ -7,26 +7,25 @@ export type HabitStatus =
   | 'na'
   | 'exempt'
   | 'extra'
-  | 'trending'
   | 'pink';
 
 export const HABIT_STATUSES: HabitStatus[] = [
-  'empty', 'complete', 'missed', 'partial', 'na', 'exempt', 'extra', 'trending', 'pink'
+  'empty', 'complete', 'missed', 'partial', 'na', 'exempt', 'extra', 'pink'
 ];
 
-// Common statuses for click cycling (green → red → blue → white)
+// Common statuses for click cycling (green → red → orange → white)
 export const COMMON_STATUSES: HabitStatus[] = ['complete', 'missed', 'partial', 'empty'];
 
 // Status colors mapping
+// partial = orange, exempt = blue, na = gray
 export const STATUS_COLORS: Record<HabitStatus, string> = {
   empty: '#f3f4f6',
   complete: '#10b981',
   missed: '#ef4444',
-  partial: '#3b82f6',
+  partial: '#f97316',  // Orange
   na: '#9ca3af',
-  exempt: '#fbbf24',
+  exempt: '#3b82f6',   // Blue
   extra: '#047857',
-  trending: '#f97316',
   pink: '#ec4899',
 };
 

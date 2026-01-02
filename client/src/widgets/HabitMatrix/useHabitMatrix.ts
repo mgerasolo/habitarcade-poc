@@ -198,17 +198,18 @@ export function useHabitMatrix(
   const todayScore = useMemo<CompletionScore>(() => {
     const effectiveToday = getEffectiveDate(new Date(), dayBoundaryHour);
     const todayStr = format(effectiveToday, 'yyyy-MM-dd');
-    return calculateCompletionScore(matrixHabits, [todayStr]);
+    return calculateCompletionScore(matrixHabits, [todayStr], todayStr);
   }, [matrixHabits, dayBoundaryHour]);
 
   // Calculate current month's completion score (up to effective today)
   const monthScore = useMemo<CompletionScore>(() => {
     const now = new Date();
     const effectiveToday = getEffectiveDate(now, dayBoundaryHour);
+    const todayStr = format(effectiveToday, 'yyyy-MM-dd');
     const monthStart = startOfMonth(effectiveToday);
     const monthDates = eachDayOfInterval({ start: monthStart, end: effectiveToday })
       .map(d => format(d, 'yyyy-MM-dd'));
-    return calculateCompletionScore(matrixHabits, monthDates);
+    return calculateCompletionScore(matrixHabits, monthDates, todayStr);
   }, [matrixHabits, dayBoundaryHour]);
 
   return {
@@ -256,28 +257,52 @@ export function getEffectiveHabitStatus(
 
 /**
  * Calculate completion score for habits on given dates
- * Formula: (completed + partial*0.5) / (total - exempt - na)
+ *
+ * Scoring rules:
+ * - Only count "completed days" (past days, not including today unless filled)
+ * - Today is only included if user has filled in a value (not 'empty')
+ * - N/A and Exempt are excluded from the denominator
+ *
+ * Formula: (completed + partial*0.5) / (countedDays - exempt - na)
  */
 export function calculateCompletionScore(
   habits: MatrixHabit[],
-  dates: string[]
+  dates: string[],
+  todayStr?: string
 ): CompletionScore {
   let completed = 0;
   let partial = 0;
   let exempt = 0;
   let na = 0;
-  const total = habits.length * dates.length;
+  let countedCells = 0; // Only cells that should be in the denominator
+
+  // Get today's date string if not provided
+  const today = todayStr || format(new Date(), 'yyyy-MM-dd');
 
   for (const habit of habits) {
     for (const date of dates) {
       const status = getHabitStatus(habit, date);
+      const isToday = date === today;
+      const hasEntry = status !== 'empty';
+
+      // Only count this cell if:
+      // 1. It's a past day (not today), OR
+      // 2. It's today AND user has filled in a value (not empty)
+      const shouldCount = !isToday || hasEntry;
+
+      if (!shouldCount) {
+        // Skip today's empty cells - they don't count toward denominator yet
+        continue;
+      }
+
+      countedCells++;
+
       switch (status) {
         case 'complete':
         case 'extra':
           completed++;
           break;
         case 'partial':
-        case 'trending':
           partial++;
           break;
         case 'exempt':
@@ -292,12 +317,12 @@ export function calculateCompletionScore(
   }
 
   const excluded = exempt + na;
-  const effectiveTotal = total - excluded;
+  const effectiveTotal = countedCells - excluded;
   const percentage = effectiveTotal > 0
     ? Math.round(((completed + partial * 0.5) / effectiveTotal) * 100)
     : 0;
 
-  return { percentage, completed, partial, total, excluded };
+  return { percentage, completed, partial, total: countedCells, excluded };
 }
 
 /**

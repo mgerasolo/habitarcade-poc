@@ -17,24 +17,41 @@ function getScoreColor(percentage: number): string {
 
 /**
  * Calculate completion percentage for a single habit across given dates
- * Formula: (complete + extra + partial*0.5) / (total - na - exempt) * 100
+ * Formula: (complete + extra + partial*0.5) / (countedCells - na - exempt) * 100
+ *
+ * Scoring rules:
+ * - Only count "completed days" (past days, not including today unless filled)
+ * - Today is only included if user has filled in a value (not 'empty')
+ * - N/A and Exempt are excluded from the denominator
  */
 function calculateHabitCompletion(habit: MatrixHabit, dates: DateColumn[]): number {
   let completed = 0;
   let partial = 0;
   let exempt = 0;
   let na = 0;
-  const total = dates.length;
+  let countedCells = 0;
 
   for (const dateCol of dates) {
     const status = getHabitStatus(habit, dateCol.date);
+    const hasEntry = status !== 'empty';
+
+    // Only count this cell if:
+    // 1. It's a past day (not today), OR
+    // 2. It's today AND user has filled in a value (not empty)
+    const shouldCount = !dateCol.isToday || hasEntry;
+
+    if (!shouldCount) {
+      continue;
+    }
+
+    countedCells++;
+
     switch (status) {
       case 'complete':
       case 'extra':
         completed++;
         break;
       case 'partial':
-      case 'trending':
         partial++;
         break;
       case 'exempt':
@@ -48,7 +65,7 @@ function calculateHabitCompletion(habit: MatrixHabit, dates: DateColumn[]): numb
   }
 
   const excluded = exempt + na;
-  const effectiveTotal = total - excluded;
+  const effectiveTotal = countedCells - excluded;
 
   if (effectiveTotal <= 0) return 0;
 

@@ -7,7 +7,6 @@ const TOOLTIP_STATUSES: { status: HabitStatus; icon: string }[] = [
   { status: 'complete', icon: '✓' },
   { status: 'extra', icon: '★' },
   { status: 'partial', icon: '◐' },
-  { status: 'trending', icon: '↗' },
   { status: 'missed', icon: '✗' },
   { status: 'exempt', icon: '∅' },
   { status: 'na', icon: '—' },
@@ -24,7 +23,6 @@ const STATUS_LABELS: Record<HabitStatus, string> = {
   na: 'N/A',
   exempt: 'Exempt',
   extra: 'Extra',
-  trending: 'Trending',
   pink: 'Pink',
 };
 

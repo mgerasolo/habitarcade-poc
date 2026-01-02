@@ -58,9 +58,15 @@ function calculateCurrentStreak(entries: HabitEntry[]): number {
 
 /**
  * Calculate this month's completion percentage
+ *
+ * Scoring rules:
+ * - Only count "completed days" (past days, not including today unless filled)
+ * - Today is only included if user has filled in a value (not 'empty')
+ * - N/A and Exempt are excluded from the denominator
  */
 function calculateMonthCompletion(entries: HabitEntry[]): number {
   const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
   const monthStart = startOfMonth(today);
   const monthDates = eachDayOfInterval({ start: monthStart, end: today });
 
@@ -73,11 +79,24 @@ function calculateMonthCompletion(entries: HabitEntry[]): number {
   let partial = 0;
   let exempt = 0;
   let na = 0;
-  const total = monthDates.length;
+  let countedCells = 0;
 
   for (const date of monthDates) {
     const dateStr = format(date, 'yyyy-MM-dd');
     const status = entryMap.get(dateStr) || 'empty';
+    const isToday = dateStr === todayStr;
+    const hasEntry = status !== 'empty';
+
+    // Only count this cell if:
+    // 1. It's a past day (not today), OR
+    // 2. It's today AND user has filled in a value (not empty)
+    const shouldCount = !isToday || hasEntry;
+
+    if (!shouldCount) {
+      continue;
+    }
+
+    countedCells++;
 
     switch (status) {
       case 'complete':
@@ -85,7 +104,6 @@ function calculateMonthCompletion(entries: HabitEntry[]): number {
         completed++;
         break;
       case 'partial':
-      case 'trending':
         partial++;
         break;
       case 'exempt':
@@ -98,7 +116,7 @@ function calculateMonthCompletion(entries: HabitEntry[]): number {
   }
 
   const excluded = exempt + na;
-  const effectiveTotal = total - excluded;
+  const effectiveTotal = countedCells - excluded;
 
   if (effectiveTotal <= 0) return 0;
 
