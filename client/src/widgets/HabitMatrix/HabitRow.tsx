@@ -187,8 +187,8 @@ export const HabitRow = memo(function HabitRow({
         )}
       </div>
 
-      {/* Status cells for each date */}
-      <div className="flex gap-0.5">
+      {/* Status cells for each date - flex-1 to fill available width (#47) */}
+      <div className="flex gap-0.5 flex-1">
         {dates.map((dateCol, index) => {
           // Determine if this is a parent habit (has children)
           const isParentHabit = !!(habit.children && habit.children.length > 0);
@@ -293,8 +293,8 @@ export const HabitRowCompact = memo(function HabitRowCompact({
         </button>
       </div>
 
-      {/* Status cells - larger for touch */}
-      <div className="flex gap-1">
+      {/* Status cells - larger for touch, flex-1 to fill width (#47) */}
+      <div className="flex gap-1 flex-1">
         {dates.map((dateCol, index) => {
           // Determine if this is a parent habit (has children)
           const isParentHabit = !!(habit.children && habit.children.length > 0);

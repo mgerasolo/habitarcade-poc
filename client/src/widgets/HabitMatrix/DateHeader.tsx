@@ -22,8 +22,8 @@ export const DateHeader = memo(function DateHeader({
       {/* Spacer for habit name column */}
       <div style={{ width: habitNameWidth }} className="flex-shrink-0" />
 
-      {/* Date columns */}
-      <div className="flex gap-0.5 flex-1">
+      {/* Date columns - flex-1 to fill width (#47) */}
+      <div className="flex gap-0.5 flex-1 justify-start">
         {dates.map((dateCol) => (
           <div
             key={dateCol.date}
@@ -80,8 +80,8 @@ export const DateHeaderCompact = memo(function DateHeaderCompact({
       {/* Spacer for habit name column */}
       <div style={{ width: habitNameWidth }} className="flex-shrink-0" />
 
-      {/* Date columns */}
-      <div className="flex gap-1 flex-1">
+      {/* Date columns - flex-1 to fill width (#47) */}
+      <div className="flex gap-1 flex-1 justify-start">
         {dates.map((dateCol) => (
           <div
             key={dateCol.date}

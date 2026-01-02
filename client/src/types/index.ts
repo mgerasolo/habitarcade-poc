@@ -19,11 +19,11 @@ export const COMMON_STATUSES: HabitStatus[] = ['complete', 'missed', 'partial', 
 // Status colors mapping
 // partial = orange, exempt = blue, na = gray
 export const STATUS_COLORS: Record<HabitStatus, string> = {
-  empty: '#f3f4f6',
+  empty: '#ffffff',    // White - truly empty/unset cells (#41)
   complete: '#10b981',
   missed: '#ef4444',
   partial: '#f97316',  // Orange
-  na: '#9ca3af',
+  na: '#666666',       // Darker gray for visibility against weekend backgrounds (#56)
   exempt: '#3b82f6',   // Blue
   extra: '#047857',
   pink: '#ec4899',

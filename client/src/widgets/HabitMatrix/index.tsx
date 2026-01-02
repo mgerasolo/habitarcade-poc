@@ -10,12 +10,12 @@ import type { CustomHeaderControls } from '../../components/Dashboard/WidgetCont
 export { DAYS_CONFIG, getResponsiveDays };
 export { ContributionGraph } from './ContributionGraph';
 
-// Configuration constants
+// Configuration constants (#47 - responsive auto-fill width)
 const HABIT_NAME_WIDTH_DESKTOP = 140;
 const HABIT_NAME_WIDTH_TABLET = 100;
 const HABIT_NAME_WIDTH_MOBILE = 80;
 const MIN_CELL_SIZE = 16;
-const MAX_CELL_SIZE = 28;
+const MAX_CELL_SIZE = 36; // Increased to allow cells to fill more width
 
 interface HabitMatrixProps {
   /** Number of days to show. Auto-responsive if not specified */
@@ -115,12 +115,13 @@ export function HabitMatrix({
     return HABIT_NAME_WIDTH_DESKTOP;
   }, [isCompact, isMobile]);
 
-  // Calculate cell size based on available width - auto-fill mode
+  // Calculate cell size based on available width - auto-fill mode (#47)
   const cellSize = useMemo(() => {
-    const padding = 32; // px-4 on both sides
-    const categoryIndent = 24; // category toggle button width
-    const gap = daysToShow * 2; // gap between cells
-    const availableWidth = containerWidth - padding - habitNameWidth - gap - categoryIndent;
+    const padding = 16; // px-2 on both sides (reduced for more space)
+    const categoryIndent = 20; // category toggle button width
+    const gap = daysToShow * 2; // gap between cells (gap-0.5 = 2px)
+    const scoreColumn = 40; // completion percentage column width
+    const availableWidth = containerWidth - padding - habitNameWidth - gap - categoryIndent - scoreColumn;
     const calculatedSize = Math.floor(availableWidth / daysToShow);
     // Allow cells to grow larger to fill width, with reasonable min/max
     return Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, calculatedSize));
@@ -399,7 +400,7 @@ function StatusLegend() {
     { status: 'missed', label: 'Missed', color: '#ef4444' },
     { status: 'partial', label: 'Partial', color: '#f97316' },  // Orange
     { status: 'exempt', label: 'Exempt', color: '#3b82f6' },    // Blue
-    { status: 'na', label: 'N/A', color: '#9ca3af' },
+    { status: 'na', label: 'N/A', color: '#666666' },           // Darker gray for visibility (#56)
   ];
 
   return (

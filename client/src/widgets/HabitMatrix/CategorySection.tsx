@@ -172,11 +172,11 @@ export const CategorySection = memo(function CategorySection({
         )}
       </button>
 
-      {/* Collapsed summary row with percentages */}
+      {/* Collapsed summary row with percentages (#47) */}
       {isCollapsed && (
         <div className="flex items-center gap-0.5 py-0.5 pl-6 mt-1">
           <div style={{ width: habitNameWidth - 20 }} className="flex-shrink-0" />
-          <div className="flex gap-0.5">
+          <div className="flex gap-0.5 flex-1">
             {dailyPercentages.map(({ date, percentage, isToday }) => (
               <div
                 key={date}

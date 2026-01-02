@@ -210,7 +210,7 @@ export function StatusCell({
   };
 
   return (
-    <div className={`relative flex items-center justify-center ${showTooltip ? 'z-[100]' : ''}`}>
+    <div className="relative flex items-center justify-center">
       <div
         ref={cellRef}
         className={`
@@ -248,33 +248,35 @@ export function StatusCell({
           }
         }}
       >
-        {/* Count-based habit: show count number */}
+        {/* Count-based habit: show count number (#44) */}
         {isCountBased && currentCount > 0 && (
           <span
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
               fontSize: size > 20 ? '11px' : '9px',
-              color: 'rgba(255, 255, 255, 0.9)',
+              color: 'rgba(255, 255, 255, 0.95)',
               fontWeight: 700,
               lineHeight: 1,
-              textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+              textShadow: '0 1px 2px rgba(0,0,0,0.5), 0 0 4px rgba(0,0,0,0.3)',
+              position: 'relative',
+              zIndex: 20,
             }}
           >
             {currentCount}
           </span>
         )}
-        {/* Day number - show always for non-count-based habits with appropriate contrast */}
+        {/* Day number - show always for non-count-based habits with appropriate contrast (#44) */}
         {(!isCountBased || currentCount === 0) && (
           <span
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
               fontSize: size > 20 ? '11px' : '9px',
-              color: status === 'empty' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.85)',
-              fontWeight: status === 'empty' ? 500 : 700,
+              color: status === 'empty' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.95)',
+              fontWeight: status === 'empty' ? 600 : 700,
               lineHeight: 1,
-              textShadow: status !== 'empty' ? '0 1px 2px rgba(0,0,0,0.4)' : 'none',
+              textShadow: status !== 'empty' ? '0 1px 2px rgba(0,0,0,0.5), 0 0 4px rgba(0,0,0,0.3)' : 'none',
               position: 'relative',
-              zIndex: 10,
+              zIndex: 20,
             }}
           >
             {dayOfMonth}
