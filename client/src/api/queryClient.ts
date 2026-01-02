@@ -17,12 +17,15 @@ export async function apiFetch<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
+  // Destructure headers from options to prevent override when spreading
+  const { headers: optionHeaders, ...restOptions } = options || {};
+
   const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...restOptions,
     headers: {
       'Content-Type': 'application/json',
-      ...options?.headers,
+      ...(optionHeaders as Record<string, string>),
     },
-    ...options,
   });
 
   if (!response.ok) {
