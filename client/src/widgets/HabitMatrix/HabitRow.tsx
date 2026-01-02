@@ -61,6 +61,8 @@ interface HabitRowProps {
   habitNameWidth?: number;
   cellSize?: number;
   index?: number;
+  /** Compact vertical mode - tighter row spacing */
+  compactVertical?: boolean;
 }
 
 /**
@@ -73,6 +75,7 @@ export const HabitRow = memo(function HabitRow({
   habitNameWidth = 120,
   cellSize,
   index = 0,
+  compactVertical = false,
 }: HabitRowProps) {
   const { openModal } = useUIStore();
   const { data: settingsResponse } = useSettings();
@@ -116,14 +119,14 @@ export const HabitRow = memo(function HabitRow({
   );
 
   return (
-    <div className={`flex items-center gap-0.5 py-0.5 group hover:bg-slate-700/20 rounded transition-colors duration-150 ${index % 2 === 1 ? 'bg-slate-800/30' : 'bg-transparent'}`}>
+    <div className={`flex items-center gap-0.5 group hover:bg-slate-700/20 rounded transition-colors duration-150 ${compactVertical ? 'py-px' : 'py-0.5'} ${index % 2 === 1 ? 'bg-slate-800/30' : 'bg-transparent'}`}>
       {/* Habit name and icon */}
       <div
         style={{ width: habitNameWidth }}
-        className="flex-shrink-0 flex items-center gap-1.5 pr-2 min-w-0"
+        className={`flex-shrink-0 flex items-center min-w-0 ${compactVertical ? 'gap-1 pr-1' : 'gap-1.5 pr-2'}`}
       >
-        {/* Icon */}
-        {habit.icon && (
+        {/* Icon - hidden in compactVertical to save space */}
+        {habit.icon && !compactVertical && (
           <span
             className="flex-shrink-0 text-sm opacity-80 group-hover:opacity-100 transition-opacity"
             style={{ color: habit.iconColor || '#94a3b8' }}
@@ -135,14 +138,14 @@ export const HabitRow = memo(function HabitRow({
         {/* Habit name - clickable to open detail modal */}
         <button
           onClick={handleHabitClick}
-          className="font-condensed text-xs truncate text-slate-200 group-hover:text-teal-400 transition-colors duration-150 hover:underline cursor-pointer text-left"
+          className={`font-condensed truncate text-slate-200 group-hover:text-teal-400 transition-colors duration-150 hover:underline cursor-pointer text-left ${compactVertical ? 'text-[11px]' : 'text-xs'}`}
           title={`${habit.name} - Click for details`}
         >
           {habit.name}
         </button>
 
-        {/* Streak indicator */}
-        {streakInfo.currentStreak >= 3 && (
+        {/* Streak indicator - hidden in compactVertical */}
+        {!compactVertical && streakInfo.currentStreak >= 3 && (
           <span
             className="
               flex-shrink-0 text-[9px] font-bold px-1 py-0.5 rounded
@@ -184,16 +187,18 @@ export const HabitRow = memo(function HabitRow({
         })}
       </div>
 
-      {/* Completion percentage */}
-      <div
-        className={`
-          flex-shrink-0 w-10 text-right text-xs font-condensed font-medium
-          ${getScoreColor(completionPercent)}
-        `}
-        title={`${completionPercent}% completion this period`}
-      >
-        {completionPercent}%
-      </div>
+      {/* Completion percentage - hidden in compactVertical to save space */}
+      {!compactVertical && (
+        <div
+          className={`
+            flex-shrink-0 w-10 text-right text-xs font-condensed font-medium
+            ${getScoreColor(completionPercent)}
+          `}
+          title={`${completionPercent}% completion this period`}
+        >
+          {completionPercent}%
+        </div>
+      )}
     </div>
   );
 });

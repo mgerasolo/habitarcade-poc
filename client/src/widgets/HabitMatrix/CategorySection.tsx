@@ -12,6 +12,8 @@ interface CategorySectionProps {
   isCompact?: boolean;
   defaultCollapsed?: boolean;
   cellSize?: number;
+  /** Compact vertical mode - tighter spacing, minimal headers */
+  compactVertical?: boolean;
 }
 
 /**
@@ -26,6 +28,7 @@ export const CategorySection = memo(function CategorySection({
   isCompact = false,
   defaultCollapsed = false,
   cellSize,
+  compactVertical = false,
 }: CategorySectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
 
@@ -103,20 +106,21 @@ export const CategorySection = memo(function CategorySection({
   const RowComponent = isCompact ? HabitRowCompact : HabitRow;
 
   return (
-    <div className="mb-2" data-testid="category-section">
+    <div className={compactVertical ? 'mb-0' : 'mb-2'} data-testid="category-section">
       {/* Category divider line */}
-      <div className="border-t-2 border-slate-600/80 mt-2" data-testid="category-divider" />
+      <div className={`border-t ${compactVertical ? 'border-slate-700/50 mt-0' : 'border-t-2 border-slate-600/80 mt-2'}`} data-testid="category-divider" />
 
       {/* Category header with distinct background */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="
-          w-full flex items-center gap-2 py-2 px-3 rounded-b
+        className={`
+          w-full flex items-center gap-2 rounded-b
           bg-slate-700/50 hover:bg-slate-700/70
           border-x border-b border-slate-600/40
           transition-colors duration-150
           group cursor-pointer
-        "
+          ${compactVertical ? 'py-0.5 px-2' : 'py-2 px-3'}
+        `}
         aria-expanded={!isCollapsed}
         aria-controls={`category-${category?.id || 'uncategorized'}`}
         data-testid="category-header"
@@ -130,8 +134,8 @@ export const CategorySection = memo(function CategorySection({
           `}
         >
           <svg
-            width="14"
-            height="14"
+            width={compactVertical ? '10' : '14'}
+            height={compactVertical ? '10' : '14'}
             viewBox="0 0 12 12"
             fill="currentColor"
             className="transform"
@@ -143,7 +147,7 @@ export const CategorySection = memo(function CategorySection({
         {/* Category icon */}
         {categoryIcon && (
           <span
-            className="text-base"
+            className={compactVertical ? 'text-xs' : 'text-base'}
             style={{ color: categoryColor }}
           >
             <i className={categoryIcon} />
@@ -151,19 +155,19 @@ export const CategorySection = memo(function CategorySection({
         )}
 
         {/* Category name - bold and prominent */}
-        <span className="font-condensed text-sm font-bold text-slate-100 uppercase tracking-wider" data-testid="category-name">
+        <span className={`font-condensed font-bold text-slate-100 uppercase tracking-wider ${compactVertical ? 'text-[10px]' : 'text-sm'}`} data-testid="category-name">
           {categoryName}
         </span>
 
         {/* Habit count badge */}
-        <span className="text-xs text-slate-400 font-condensed">
-          {habits.length} habit{habits.length !== 1 ? 's' : ''}
+        <span className={`text-slate-400 font-condensed ${compactVertical ? 'text-[10px]' : 'text-xs'}`}>
+          {habits.length}
         </span>
 
         {/* Today's progress indicator */}
         {stats.completedToday > 0 && (
-          <span className="ml-auto text-xs font-condensed text-emerald-400 font-medium">
-            {stats.completedToday}/{habits.length} today
+          <span className={`ml-auto font-condensed text-emerald-400 font-medium ${compactVertical ? 'text-[10px]' : 'text-xs'}`}>
+            {stats.completedToday}/{habits.length}
           </span>
         )}
       </button>
@@ -209,7 +213,7 @@ export const CategorySection = memo(function CategorySection({
           ${isCollapsed ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-[2000px] opacity-100 overflow-visible'}
         `}
       >
-        <div className="pl-4 border-l border-slate-700/50 ml-1 mt-1">
+        <div className={`pl-4 border-l border-slate-700/50 ml-1 ${compactVertical ? 'mt-0' : 'mt-1'}`}>
           {habits.map((habit, index) => (
             <RowComponent
               key={habit.id}
@@ -218,6 +222,7 @@ export const CategorySection = memo(function CategorySection({
               habitNameWidth={habitNameWidth - 20}
               cellSize={cellSize}
               index={index}
+              compactVertical={compactVertical}
             />
           ))}
         </div>
@@ -237,6 +242,7 @@ export const CategorySectionFlat = memo(function CategorySectionFlat({
   habitNameWidth = 120,
   isCompact = false,
   cellSize,
+  compactVertical = false,
 }: Omit<CategorySectionProps, 'defaultCollapsed'>) {
   const categoryName = category?.name || 'Uncategorized';
   const categoryIcon = category?.icon;
@@ -245,34 +251,34 @@ export const CategorySectionFlat = memo(function CategorySectionFlat({
   const RowComponent = isCompact ? HabitRowCompact : HabitRow;
 
   return (
-    <div className="mb-3" data-testid="category-section-flat">
+    <div className={compactVertical ? 'mb-0' : 'mb-3'} data-testid="category-section-flat">
       {/* Category header - non-interactive with distinct background */}
       {category && (
         <>
           {/* Category divider line */}
-          <div className="border-t-2 border-slate-600/80 mt-2" data-testid="category-divider" />
+          <div className={`border-t ${compactVertical ? 'border-slate-700/50 mt-0' : 'border-t-2 border-slate-600/80 mt-2'}`} data-testid="category-divider" />
 
           <div
-            className="flex items-center gap-2 py-2 px-3 mb-1 rounded-b bg-slate-700/50 border-x border-b border-slate-600/40"
+            className={`flex items-center gap-2 rounded-b bg-slate-700/50 border-x border-b border-slate-600/40 ${compactVertical ? 'py-0.5 px-2 mb-0' : 'py-2 px-3 mb-1'}`}
             data-testid="category-header-flat"
           >
             {categoryIcon && (
-              <span className="text-base" style={{ color: categoryColor }}>
+              <span className={compactVertical ? 'text-xs' : 'text-base'} style={{ color: categoryColor }}>
                 <i className={categoryIcon} />
               </span>
             )}
-            <span className="font-condensed text-sm font-bold text-slate-100 uppercase tracking-wider" data-testid="category-name">
+            <span className={`font-condensed font-bold text-slate-100 uppercase tracking-wider ${compactVertical ? 'text-[10px]' : 'text-sm'}`} data-testid="category-name">
               {categoryName}
             </span>
-            <span className="text-xs text-slate-400 font-condensed">
-              {habits.length} habit{habits.length !== 1 ? 's' : ''}
+            <span className={`text-slate-400 font-condensed ${compactVertical ? 'text-[10px]' : 'text-xs'}`}>
+              {habits.length}
             </span>
           </div>
         </>
       )}
 
       {/* Habit rows */}
-      <div className={category ? 'pl-4 border-l border-slate-700/50 ml-1' : ''}>
+      <div className={category ? `pl-4 border-l border-slate-700/50 ml-1 ${compactVertical ? 'mt-0' : ''}` : ''}>
         {habits.map((habit, index) => (
           <RowComponent
             key={habit.id}
@@ -281,6 +287,7 @@ export const CategorySectionFlat = memo(function CategorySectionFlat({
             habitNameWidth={category ? habitNameWidth - 20 : habitNameWidth}
             cellSize={cellSize}
             index={index}
+            compactVertical={compactVertical}
           />
         ))}
       </div>

@@ -26,6 +26,8 @@ interface HabitMatrixProps {
   className?: string;
   /** Callback to provide header controls to parent */
   onHeaderControlsReady?: (controls: CustomHeaderControls) => void;
+  /** Compact vertical mode - removes header row, legend, tightens spacing */
+  compactVertical?: boolean;
 }
 
 /**
@@ -54,6 +56,7 @@ export function HabitMatrix({
   flatCategories = false,
   className = '',
   onHeaderControlsReady,
+  compactVertical = false,
 }: HabitMatrixProps) {
   // Container ref for measuring width
   const containerRef = useRef<HTMLDivElement>(null);
@@ -198,15 +201,17 @@ export function HabitMatrix({
         {/* Matrix content - auto-fill width, controls are in WidgetContainer */}
         <div className="flex-1 overflow-y-visible">
           <div className="w-full">
-            {/* Date header row showing day numbers */}
-            {isMobile ? (
-              <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
-            ) : (
-              <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
+            {/* Date header row showing day numbers - hidden in compactVertical mode */}
+            {!compactVertical && (
+              isMobile ? (
+                <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
+              ) : (
+                <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
+              )
             )}
 
             {/* Category sections with habits */}
-            <div className="space-y-1">
+            <div className={compactVertical ? 'space-y-0' : 'space-y-1'}>
               {categoryGroups.map((group) => (
                 <CategoryComponent
                   key={group.category?.id || 'uncategorized'}
@@ -216,14 +221,15 @@ export function HabitMatrix({
                   habitNameWidth={habitNameWidth}
                   isCompact={isCompact}
                   cellSize={cellSize}
+                  compactVertical={compactVertical}
                 />
               ))}
             </div>
           </div>
         </div>
 
-        {/* Legend (desktop only) */}
-        {!isCompact && <StatusLegend />}
+        {/* Legend (desktop only) - hidden in compactVertical mode */}
+        {!isCompact && !compactVertical && <StatusLegend />}
       </div>
     </HabitMatrixProvider>
   );
