@@ -44,23 +44,21 @@ export function StatusTooltip({
   const tooltipRef = useRef<HTMLDivElement>(null);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
 
-  // Calculate position based on anchor element
+  // Calculate position based on anchor element (for fixed positioning)
   useLayoutEffect(() => {
     if (anchorRef?.current) {
       const rect = anchorRef.current.getBoundingClientRect();
       const tooltipHeight = 320; // Approximate tooltip height
-      const scrollY = window.scrollY;
-      const scrollX = window.scrollX;
 
-      // Calculate left position (centered on anchor)
-      let left = rect.left + scrollX + rect.width / 2;
+      // For fixed positioning, use viewport coordinates directly (no scroll offset needed)
+      let left = rect.left + rect.width / 2;
 
       // Calculate top position based on above/below
       let top: number;
       if (position === 'above') {
-        top = rect.top + scrollY - tooltipHeight - 8;
+        top = rect.top - tooltipHeight - 8;
       } else {
-        top = rect.bottom + scrollY + 8;
+        top = rect.bottom + 8;
       }
 
       // Keep tooltip within viewport horizontally
@@ -106,11 +104,12 @@ export function StatusTooltip({
     <div
       ref={tooltipRef}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: coords.top,
         left: coords.left,
         transform: 'translateX(-50%)',
-        zIndex: 9999,
+        zIndex: 99999,
+        isolation: 'isolate',
       }}
       className="
         bg-slate-900 rounded-lg shadow-2xl

@@ -254,10 +254,10 @@ export function StatusCell({
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
               fontSize: size > 20 ? '11px' : '9px',
-              color: status === 'empty' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.85)',
-              fontWeight: status === 'empty' ? 500 : 700,
+              color: status === 'empty' ? 'rgba(0, 0, 0, 0.5)' : '#ffffff',
+              fontWeight: status === 'empty' ? 600 : 700,
               lineHeight: 1,
-              textShadow: status !== 'empty' ? '0 1px 2px rgba(0,0,0,0.4)' : 'none',
+              textShadow: status !== 'empty' ? '0 1px 3px rgba(0,0,0,0.6), 0 0 2px rgba(0,0,0,0.3)' : 'none',
               position: 'relative',
               zIndex: 10,
             }}

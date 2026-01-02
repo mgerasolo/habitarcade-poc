@@ -2,7 +2,7 @@ import { useUIStore, useDashboardStore } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
 
 export function Header() {
-  const { toggleSidebar, sidebarOpen, viewMode, setViewMode, toggleRightDrawer, rightDrawerOpen, currentPage } = useUIStore();
+  const { toggleSidebar, sidebarOpen, toggleRightDrawer, rightDrawerOpen, currentPage } = useUIStore();
   const { isEditMode, toggleEditMode, resetLayout } = useDashboardStore();
 
   return (
@@ -78,24 +78,6 @@ export function Header() {
             </div>
           )}
 
-          {/* View mode toggle */}
-          <div className="hidden sm:flex bg-slate-800 rounded-xl p-1">
-            {(['day', 'week', 'month'] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                className={`
-                  px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150
-                  ${viewMode === mode
-                    ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25'
-                    : 'text-slate-400 hover:text-white'
-                  }
-                `}
-              >
-                {mode.charAt(0).toUpperCase() + mode.slice(1)}
-              </button>
-            ))}
-          </div>
 
           {/* Build info indicator */}
           <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-slate-800/50 rounded-xl">
@@ -107,7 +89,7 @@ export function Header() {
             </div>
           </div>
 
-          {/* Right Drawer Toggle */}
+          {/* Right Drawer Toggle - mirrors left sidebar toggle but flipped */}
           <button
             onClick={toggleRightDrawer}
             data-drawer-toggle
@@ -125,12 +107,11 @@ export function Header() {
             title={rightDrawerOpen ? 'Collapse panel' : 'Open panel'}
           >
             {rightDrawerOpen ? (
-              <MuiIcons.KeyboardDoubleArrowRight
-                style={{ fontSize: 22 }}
-                className="group-hover:translate-x-0.5 transition-transform"
+              <MuiIcons.MenuOpen
+                style={{ fontSize: 24, transform: 'scaleX(-1)' }}
               />
             ) : (
-              <MuiIcons.ViewSidebar style={{ fontSize: 22 }} />
+              <MuiIcons.Menu style={{ fontSize: 24, transform: 'scaleX(-1)' }} />
             )}
           </button>
 
