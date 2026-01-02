@@ -44,6 +44,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
       label: 'Manage',
       children: [
         { id: 'manage-habits', icon: 'CheckCircle', label: 'Habits' },
+        { id: 'manage-tasks', icon: 'Build', label: 'Maintenance Tasks' },
         { id: 'manage-categories', icon: 'Category', label: 'Categories' },
         { id: 'manage-projects', icon: 'Folder', label: 'Projects' },
         { id: 'manage-tags', icon: 'LocalOffer', label: 'Tags' },

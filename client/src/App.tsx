@@ -10,6 +10,7 @@ import { Today } from './pages/Today';
 import { Habits } from './pages/Habits';
 import {
   ManageHabits,
+  ManageTasks,
   ManageCategories,
   ManageProjects,
   ManageTags,
@@ -79,6 +80,8 @@ function PageRouter() {
     // Manage section pages
     case 'manage-habits':
       return <ManageHabits />;
+    case 'manage-tasks':
+      return <ManageTasks />;
     case 'manage-categories':
       return <ManageCategories />;
     case 'manage-projects':

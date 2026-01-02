@@ -1,4 +1,5 @@
 export { ManageHabits } from './ManageHabits';
+export { ManageTasks } from './ManageTasks';
 export { ManageCategories } from './ManageCategories';
 export { ManageProjects } from './ManageProjects';
 export { ManageTags } from './ManageTags';
