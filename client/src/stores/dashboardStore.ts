@@ -8,8 +8,8 @@ const DEFAULT_LAYOUT: DashboardLayoutItem[] = [
   // Left column (wide) - 18 columns
   { i: 'habit-matrix', x: 0, y: 0, w: 18, h: 10, minW: 8, minH: 6 },
   { i: 'weekly-kanban', x: 0, y: 10, w: 18, h: 8, minW: 6, minH: 4 },
-  // Right column (narrow) - 6 columns
-  { i: 'target-graph', x: 18, y: 0, w: 6, h: 6, minW: 4, minH: 4 },
+  // Right column (narrow) - 6 columns: Priorities, Time Blocks, Quick Capture
+  { i: 'priorities', x: 18, y: 0, w: 6, h: 6, minW: 4, minH: 4 },
   { i: 'time-blocks', x: 18, y: 6, w: 6, h: 6, minW: 4, minH: 4 },
   { i: 'parking-lot', x: 18, y: 12, w: 6, h: 6, minW: 4, minH: 3 },
 ];
