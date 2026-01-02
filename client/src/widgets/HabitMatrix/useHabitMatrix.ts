@@ -48,6 +48,10 @@ export interface DateColumn {
 
 export interface MatrixHabit extends Habit {
   entriesByDate: Map<string, HabitEntry>;
+  /** For parent habits: computed best status from children for each date */
+  computedStatusByDate?: Map<string, HabitStatus>;
+  /** For child habits: indicates if a sibling is already complete (for graying out) */
+  siblingCompletedByDate?: Map<string, boolean>;
 }
 
 export interface CategoryGroup {
@@ -70,6 +74,50 @@ export interface HabitMatrixData {
   monthScore: CompletionScore;
   isLoading: boolean;
   isError: boolean;
+}
+
+/**
+ * Status priority for parent habit "best color" calculation
+ * Higher priority = shown on parent when any child has this status
+ * Order: green (best) > extra > partial > pink > missed > exempt > na > empty (worst)
+ */
+const STATUS_PRIORITY: Record<HabitStatus, number> = {
+  complete: 8,
+  extra: 7,
+  partial: 6,
+  pink: 5,
+  missed: 4,
+  exempt: 3,
+  na: 2,
+  empty: 1,
+};
+
+/**
+ * Calculate the "best" status from a list of child statuses
+ * Returns the status with the highest priority (most positive)
+ */
+export function getBestChildStatus(statuses: HabitStatus[]): HabitStatus {
+  if (statuses.length === 0) return 'empty';
+
+  let best: HabitStatus = 'empty';
+  let bestPriority = 0;
+
+  for (const status of statuses) {
+    const priority = STATUS_PRIORITY[status] || 0;
+    if (priority > bestPriority) {
+      bestPriority = priority;
+      best = status;
+    }
+  }
+
+  return best;
+}
+
+/**
+ * Check if a status is considered "complete" for sibling graying out
+ */
+export function isCompletedStatus(status: HabitStatus): boolean {
+  return status === 'complete' || status === 'extra';
 }
 
 /**
@@ -128,9 +176,10 @@ export function useHabitMatrix(
     });
   }, [daysToShow, currentMonth, dayBoundaryHour]);
 
-  // Transform habits with entry lookup maps
+  // Transform habits with entry lookup maps and compute parent/child relationships
   const matrixHabits = useMemo<MatrixHabit[]>(() => {
-    return habits
+    // First pass: create basic matrix habits with entry maps
+    const baseHabits = habits
       .filter(habit => !habit.isDeleted)
       .map(habit => {
         const entriesByDate = new Map<string, HabitEntry>();
@@ -140,9 +189,69 @@ export function useHabitMatrix(
         return {
           ...habit,
           entriesByDate,
+          computedStatusByDate: new Map<string, HabitStatus>(),
+          siblingCompletedByDate: new Map<string, boolean>(),
         };
       })
       .sort((a, b) => a.sortOrder - b.sortOrder);
+
+    // Create a map for quick lookup
+    const habitMap = new Map(baseHabits.map(h => [h.id, h]));
+
+    // Second pass: compute parent statuses and sibling completion states
+    // Group children by parent
+    const childrenByParent = new Map<string, MatrixHabit[]>();
+    baseHabits.forEach(habit => {
+      if (habit.parentHabitId) {
+        if (!childrenByParent.has(habit.parentHabitId)) {
+          childrenByParent.set(habit.parentHabitId, []);
+        }
+        childrenByParent.get(habit.parentHabitId)!.push(habit);
+      }
+    });
+
+    // For each parent, compute best child status for each date
+    // And mark siblings as complete when one is already done
+    childrenByParent.forEach((children, parentId) => {
+      const parent = habitMap.get(parentId);
+      if (!parent) return;
+
+      // Get all unique dates from children
+      const allDates = new Set<string>();
+      children.forEach(child => {
+        child.entriesByDate.forEach((_, date) => allDates.add(date));
+      });
+
+      // For each date, compute parent status and sibling completion
+      allDates.forEach(date => {
+        const childStatuses: HabitStatus[] = [];
+        let hasCompletedSibling = false;
+
+        // First pass: collect statuses and check for completed sibling
+        children.forEach(child => {
+          const entry = child.entriesByDate.get(date);
+          const status = entry?.status || 'empty';
+          childStatuses.push(status);
+          if (status === 'complete' || status === 'extra') {
+            hasCompletedSibling = true;
+          }
+        });
+
+        // Compute best status for parent
+        const bestStatus = getBestChildStatus(childStatuses);
+        parent.computedStatusByDate!.set(date, bestStatus);
+
+        // Mark sibling completion status for each child
+        children.forEach(child => {
+          const myStatus = child.entriesByDate.get(date)?.status || 'empty';
+          // Mark as sibling completed if there's a completed sibling AND I'm not the one completed
+          const isCompleted = myStatus === 'complete' || myStatus === 'extra';
+          child.siblingCompletedByDate!.set(date, hasCompletedSibling && !isCompleted);
+        });
+      });
+    });
+
+    return baseHabits;
   }, [habits]);
 
   // Group habits by category

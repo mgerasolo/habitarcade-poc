@@ -1,9 +1,10 @@
 import { memo, useMemo, useCallback } from 'react';
 import type { DateColumn, MatrixHabit } from './useHabitMatrix';
-import { getHabitStatus, getEffectiveHabitStatus } from './useHabitMatrix';
+import { getHabitStatus, getEffectiveHabitStatus, getBestChildStatus } from './useHabitMatrix';
 import { StatusCell } from './StatusCell';
 import { useUIStore } from '../../stores';
 import { useSettings } from '../../api';
+import type { HabitStatus } from '../../types';
 
 /**
  * Get color class based on completion percentage
@@ -189,13 +190,26 @@ export const HabitRow = memo(function HabitRow({
       {/* Status cells for each date */}
       <div className="flex gap-0.5">
         {dates.map((dateCol, index) => {
-          // Use getEffectiveHabitStatus to apply pink for unfilled past days
-          const status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
+          // Determine if this is a parent habit (has children)
+          const isParentHabit = !!(habit.children && habit.children.length > 0);
+
+          // For parent habits, use computed status from children
+          // For regular habits, use getEffectiveHabitStatus
+          let status: HabitStatus;
+          if (isParentHabit && habit.computedStatusByDate) {
+            status = habit.computedStatusByDate.get(dateCol.date) || 'empty';
+          } else {
+            status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
+          }
+
           // Extract day of month from date string (YYYY-MM-DD format)
           const dayOfMonth = dateCol.date.split('-')[2].replace(/^0/, '');
           // Get count for count-based habits
           const entry = habit.entriesByDate.get(dateCol.date);
           const currentCount = entry?.count ?? 0;
+          // Get sibling completed status for child habits
+          const siblingCompleted = habit.siblingCompletedByDate?.get(dateCol.date) ?? false;
+
           return (
             <StatusCell
               key={dateCol.date}
@@ -209,6 +223,8 @@ export const HabitRow = memo(function HabitRow({
               size={cellSize}
               dailyTarget={habit.dailyTarget}
               currentCount={currentCount}
+              isParentHabit={isParentHabit}
+              siblingCompleted={siblingCompleted}
             />
           );
         })}
@@ -280,12 +296,25 @@ export const HabitRowCompact = memo(function HabitRowCompact({
       {/* Status cells - larger for touch */}
       <div className="flex gap-1">
         {dates.map((dateCol, index) => {
-          // Use getEffectiveHabitStatus to apply pink for unfilled past days
-          const status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
+          // Determine if this is a parent habit (has children)
+          const isParentHabit = !!(habit.children && habit.children.length > 0);
+
+          // For parent habits, use computed status from children
+          // For regular habits, use getEffectiveHabitStatus
+          let status: HabitStatus;
+          if (isParentHabit && habit.computedStatusByDate) {
+            status = habit.computedStatusByDate.get(dateCol.date) || 'empty';
+          } else {
+            status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
+          }
+
           const dayOfMonth = dateCol.date.split('-')[2].replace(/^0/, '');
           // Get count for count-based habits
           const entry = habit.entriesByDate.get(dateCol.date);
           const currentCount = entry?.count ?? 0;
+          // Get sibling completed status for child habits
+          const siblingCompleted = habit.siblingCompletedByDate?.get(dateCol.date) ?? false;
+
           return (
             <StatusCell
               key={dateCol.date}
@@ -299,6 +328,8 @@ export const HabitRowCompact = memo(function HabitRowCompact({
               size={cellSize || 20}
               dailyTarget={habit.dailyTarget}
               currentCount={currentCount}
+              isParentHabit={isParentHabit}
+              siblingCompleted={siblingCompleted}
             />
           );
         })}

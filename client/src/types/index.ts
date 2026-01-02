@@ -48,8 +48,12 @@ export interface Habit {
   name: string;
   categoryId?: string;
   category?: Category;
+  parentHabitId?: string; // Self-reference for parent/child relationships
+  parent?: Habit;
+  children?: Habit[];
   icon?: string;
   iconColor?: string;
+  imageUrl?: string; // Custom uploaded icon/image
   isActive: boolean;
   sortOrder: number;
   dailyTarget?: number; // For count-based habits (e.g., 3 supplements)

@@ -19,8 +19,10 @@ export const habits = pgTable('habits', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   categoryId: uuid('category_id').references(() => categories.id),
+  parentHabitId: uuid('parent_habit_id'), // Self-reference for parent/child relationships
   icon: varchar('icon', { length: 100 }),
   iconColor: varchar('icon_color', { length: 20 }),
+  imageUrl: varchar('image_url', { length: 500 }), // Uploaded custom icon/image
   isActive: boolean('is_active').default(true),
   sortOrder: integer('sort_order').default(0),
   dailyTarget: integer('daily_target'), // For count-based habits (e.g., 3 supplements)
@@ -215,6 +217,12 @@ export const habitsRelations = relations(habits, ({ one, many }) => ({
     fields: [habits.categoryId],
     references: [categories.id],
   }),
+  parent: one(habits, {
+    fields: [habits.parentHabitId],
+    references: [habits.id],
+    relationName: 'parentChild',
+  }),
+  children: many(habits, { relationName: 'parentChild' }),
   entries: many(habitEntries),
   linkedTimeBlocks: many(timeBlocks),
 }));

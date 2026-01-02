@@ -1,9 +1,41 @@
 import { Router } from 'express';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import { db } from '../db';
 import { habits, habitEntries, categories } from '../db/schema';
 import { eq, and, gte, lte, desc, ilike } from 'drizzle-orm';
 
 const router = Router();
+
+// Configure multer for habit image uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../uploads/habits');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp|svg/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (extname && mimetype) {
+      return cb(null, true);
+    }
+    cb(new Error('Only image files are allowed'));
+  }
+});
 
 // Markdown import parser
 interface ParsedHabit {
@@ -76,7 +108,14 @@ router.get('/', async (req, res) => {
 
     const result = await db.query.habits.findMany({
       where: whereCondition,
-      with: { category: true, entries: true },
+      with: {
+        category: true,
+        entries: true,
+        children: {
+          with: { entries: true },
+          where: eq(habits.isDeleted, false),
+        },
+      },
       orderBy: [habits.sortOrder],
     });
     res.json({ data: result, count: result.length });
@@ -106,15 +145,26 @@ router.get('/:id', async (req, res) => {
 // POST /api/habits - Create habit
 router.post('/', async (req, res) => {
   try {
-    const { name, categoryId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
+    const { name, categoryId, parentHabitId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required', code: 'VALIDATION_ERROR' });
     }
 
+    // Validate parent exists if provided
+    if (parentHabitId) {
+      const parent = await db.query.habits.findFirst({
+        where: eq(habits.id, parentHabitId),
+      });
+      if (!parent) {
+        return res.status(400).json({ error: 'Parent habit not found', code: 'VALIDATION_ERROR' });
+      }
+    }
+
     const [result] = await db.insert(habits).values({
       name,
       categoryId,
+      parentHabitId: parentHabitId || null,
       icon,
       iconColor,
       isActive: isActive !== undefined ? isActive : true,
@@ -131,11 +181,26 @@ router.post('/', async (req, res) => {
 // PUT /api/habits/:id - Update habit
 router.put('/:id', async (req, res) => {
   try {
-    const { name, categoryId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
+    const { name, categoryId, parentHabitId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
+
+    // Validate parent exists if provided and prevent circular reference
+    if (parentHabitId !== undefined && parentHabitId !== null) {
+      if (parentHabitId === req.params.id) {
+        return res.status(400).json({ error: 'Habit cannot be its own parent', code: 'VALIDATION_ERROR' });
+      }
+      const parent = await db.query.habits.findFirst({
+        where: eq(habits.id, parentHabitId),
+      });
+      if (!parent) {
+        return res.status(400).json({ error: 'Parent habit not found', code: 'VALIDATION_ERROR' });
+      }
+    }
+
     const [result] = await db.update(habits)
       .set({
         name,
         categoryId,
+        parentHabitId: parentHabitId !== undefined ? (parentHabitId || null) : undefined,
         icon,
         iconColor,
         isActive,
@@ -368,6 +433,82 @@ router.post('/reorder', async (req, res) => {
   } catch (error) {
     console.error('Failed to reorder habits:', error);
     res.status(500).json({ error: 'Failed to reorder habits', code: 'INTERNAL_ERROR' });
+  }
+});
+
+// POST /api/habits/:id/upload-image - Upload habit image
+router.post('/:id/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided', code: 'VALIDATION_ERROR' });
+    }
+
+    // Verify habit exists
+    const habit = await db.query.habits.findFirst({
+      where: eq(habits.id, req.params.id),
+    });
+
+    if (!habit) {
+      // Clean up uploaded file if habit not found
+      fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: 'Habit not found', code: 'HABIT_NOT_FOUND' });
+    }
+
+    // Delete old image if exists
+    if (habit.imageUrl) {
+      const oldImagePath = path.join(__dirname, '../..', habit.imageUrl);
+      if (fs.existsSync(oldImagePath)) {
+        fs.unlinkSync(oldImagePath);
+      }
+    }
+
+    // Store relative path for serving via static middleware
+    const imageUrl = `/uploads/habits/${req.file.filename}`;
+
+    const [result] = await db.update(habits)
+      .set({ imageUrl, updatedAt: new Date() })
+      .where(eq(habits.id, req.params.id))
+      .returning();
+
+    res.json({ data: result });
+  } catch (error) {
+    console.error('Failed to upload habit image:', error);
+    res.status(500).json({ error: 'Failed to upload image', code: 'INTERNAL_ERROR' });
+  }
+});
+
+// DELETE /api/habits/:id/image - Delete habit image
+router.delete('/:id/image', async (req, res) => {
+  try {
+    // Verify habit exists
+    const habit = await db.query.habits.findFirst({
+      where: eq(habits.id, req.params.id),
+    });
+
+    if (!habit) {
+      return res.status(404).json({ error: 'Habit not found', code: 'HABIT_NOT_FOUND' });
+    }
+
+    if (!habit.imageUrl) {
+      return res.status(400).json({ error: 'Habit has no image', code: 'VALIDATION_ERROR' });
+    }
+
+    // Delete image file
+    const imagePath = path.join(__dirname, '../..', habit.imageUrl);
+    if (fs.existsSync(imagePath)) {
+      fs.unlinkSync(imagePath);
+    }
+
+    // Clear imageUrl in database
+    const [result] = await db.update(habits)
+      .set({ imageUrl: null, updatedAt: new Date() })
+      .where(eq(habits.id, req.params.id))
+      .returning();
+
+    res.json({ data: result });
+  } catch (error) {
+    console.error('Failed to delete habit image:', error);
+    res.status(500).json({ error: 'Failed to delete image', code: 'INTERNAL_ERROR' });
   }
 });
 

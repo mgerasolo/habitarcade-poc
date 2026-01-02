@@ -16,6 +16,9 @@ interface StatusCellProps {
   // Count-based habit support
   dailyTarget?: number;
   currentCount?: number;
+  // Parent/child habit support
+  isParentHabit?: boolean;
+  siblingCompleted?: boolean; // True if a sibling is already marked complete
 }
 
 /**
@@ -54,6 +57,8 @@ export function StatusCell({
   size = 16,
   dailyTarget,
   currentCount = 0,
+  isParentHabit = false,
+  siblingCompleted = false,
 }: StatusCellProps) {
   // State
   const [showTooltip, setShowTooltip] = useState(false);
@@ -114,9 +119,11 @@ export function StatusCell({
     setShowTooltip(false);
   }, [habitId, date, updateEntry]);
 
-  // Handle click - cycle status
+  // Handle click - cycle status (disabled for parent habits)
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    // Parent habits are read-only (computed from children)
+    if (isParentHabit) return;
     // Clear hover timer on click
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
@@ -125,7 +132,7 @@ export function StatusCell({
     if (!showTooltip) {
       cycleStatus();
     }
-  }, [showTooltip, cycleStatus]);
+  }, [showTooltip, cycleStatus, isParentHabit]);
 
   // Handle right-click - show tooltip
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
@@ -184,6 +191,12 @@ export function StatusCell({
     return baseColor;
   };
 
+  // Get opacity for sibling grayed out state
+  const getOpacity = () => {
+    if (siblingCompleted) return 0.4; // Gray out siblings when one is complete
+    return 1;
+  };
+
   // Get box shadow for crosshair effect on colored cells
   const getBoxShadow = () => {
     const baseShadow = status !== 'empty'
@@ -201,9 +214,10 @@ export function StatusCell({
       <div
         ref={cellRef}
         className={`
-          rounded-sm cursor-pointer relative
+          rounded-sm relative
           transition-all duration-75 ease-out
           flex items-center justify-center
+          ${isParentHabit ? 'cursor-default' : 'cursor-pointer'}
           ${isHovered ? 'scale-110 shadow-lg z-20' : ''}
           ${isToday ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-slate-800' : ''}
           ${isWeekend && status === 'empty' ? 'opacity-70' : ''}
@@ -214,6 +228,7 @@ export function StatusCell({
           height: size,
           backgroundColor: getBackgroundColor(),
           boxShadow: getBoxShadow(),
+          opacity: getOpacity(),
         }}
         onClick={handleClick}
         onContextMenu={handleContextMenu}
