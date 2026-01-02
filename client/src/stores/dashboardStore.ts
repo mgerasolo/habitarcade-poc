@@ -24,17 +24,27 @@ interface DashboardStore {
   isEditMode: boolean;
   // Map of widget id to original height (before collapse)
   collapsedWidgets: Record<string, number>;
+  // Undo stack for edit mode - stores previous layouts
+  layoutHistory: DashboardLayoutItem[][];
+  // Layout before entering edit mode (for cancel/discard)
+  layoutBeforeEdit: DashboardLayoutItem[] | null;
+  // Flag to track if changes were made during edit session
+  hasUnsavedChanges: boolean;
 
   // Actions
   setLayout: (layout: DashboardLayoutItem[]) => void;
   setActiveWidget: (id: string | null) => void;
   toggleEditMode: () => void;
+  saveAndExitEditMode: () => void;
+  discardAndExitEditMode: () => void;
   resetLayout: () => void;
+  undoLayoutChange: () => void;
   updateWidgetPosition: (id: string, updates: Partial<DashboardLayoutItem>) => void;
   toggleWidgetCollapse: (widgetId: string) => void;
   addWidget: (widgetId: string, defaultSize: { w: number; h: number }, minSize: { w: number; h: number }) => void;
   removeWidget: (widgetId: string) => void;
   isWidgetOnDashboard: (widgetId: string) => boolean;
+  canUndo: () => boolean;
 }
 
 export const useDashboardStore = create<DashboardStore>()(
@@ -44,14 +54,87 @@ export const useDashboardStore = create<DashboardStore>()(
       activeWidgetId: null,
       isEditMode: false,
       collapsedWidgets: {},
+      layoutHistory: [],
+      layoutBeforeEdit: null,
+      hasUnsavedChanges: false,
 
-      setLayout: (layout) => set({ layout }),
+      setLayout: (layout) => {
+        const state = get();
+        // Only track history in edit mode and add current layout to history before change
+        if (state.isEditMode) {
+          const currentLayout = state.layout;
+          // Only add to history if layout actually changed
+          const layoutChanged = JSON.stringify(currentLayout) !== JSON.stringify(layout);
+          if (layoutChanged) {
+            set({
+              layout,
+              layoutHistory: [...state.layoutHistory, currentLayout].slice(-20), // Keep last 20 states
+              hasUnsavedChanges: true,
+            });
+            return;
+          }
+        }
+        set({ layout });
+      },
 
       setActiveWidget: (id) => set({ activeWidgetId: id }),
 
-      toggleEditMode: () => set((state) => ({ isEditMode: !state.isEditMode })),
+      toggleEditMode: () => {
+        const state = get();
+        if (!state.isEditMode) {
+          // Entering edit mode - save current layout as backup
+          set({
+            isEditMode: true,
+            layoutBeforeEdit: [...state.layout],
+            layoutHistory: [],
+            hasUnsavedChanges: false,
+          });
+        } else {
+          // Exiting edit mode via toggle (treat as save)
+          set({
+            isEditMode: false,
+            layoutBeforeEdit: null,
+            layoutHistory: [],
+            hasUnsavedChanges: false,
+          });
+        }
+      },
 
-      resetLayout: () => set({ layout: DEFAULT_LAYOUT, collapsedWidgets: {} }),
+      saveAndExitEditMode: () => set({
+        isEditMode: false,
+        layoutBeforeEdit: null,
+        layoutHistory: [],
+        hasUnsavedChanges: false,
+      }),
+
+      discardAndExitEditMode: () => {
+        const state = get();
+        set({
+          isEditMode: false,
+          layout: state.layoutBeforeEdit || state.layout,
+          layoutBeforeEdit: null,
+          layoutHistory: [],
+          hasUnsavedChanges: false,
+        });
+      },
+
+      resetLayout: () => set({ layout: DEFAULT_LAYOUT, collapsedWidgets: {}, hasUnsavedChanges: true }),
+
+      undoLayoutChange: () => {
+        const state = get();
+        if (state.layoutHistory.length === 0) return;
+
+        const previousLayout = state.layoutHistory[state.layoutHistory.length - 1];
+        const newHistory = state.layoutHistory.slice(0, -1);
+
+        set({
+          layout: previousLayout,
+          layoutHistory: newHistory,
+          hasUnsavedChanges: newHistory.length > 0 || JSON.stringify(previousLayout) !== JSON.stringify(state.layoutBeforeEdit),
+        });
+      },
+
+      canUndo: () => get().layoutHistory.length > 0,
 
       updateWidgetPosition: (id, updates) => set((state) => ({
         layout: state.layout.map((item) =>

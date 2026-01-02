@@ -13,7 +13,7 @@ type ModalType =
   | 'confirm-delete'
   | null;
 
-export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'manage-quotes' | 'manage-videos' | 'settings' | 'targets' | 'time-blocks';
+export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'manage-quotes' | 'manage-videos' | 'manage-maintenance' | 'settings' | 'targets' | 'time-blocks';
 
 type RightDrawerContent = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog' | 'components' | null;
 

@@ -4,7 +4,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { format, isWeekend } from 'date-fns';
-import { TaskCard } from './TaskCard';
+import { TaskCard, type TaskViewMode } from './TaskCard';
 import { QuickAdd } from './QuickAdd';
 import type { Task } from '../../types';
 
@@ -14,6 +14,7 @@ interface DayColumnProps {
   isToday: boolean;
   onEditTask: (task: Task) => void;
   onToggleComplete: (task: Task) => void;
+  viewMode?: TaskViewMode;
 }
 
 export function DayColumn({
@@ -22,6 +23,7 @@ export function DayColumn({
   isToday,
   onEditTask,
   onToggleComplete,
+  viewMode = 'detailed',
 }: DayColumnProps) {
   const dateStr = format(date, 'yyyy-MM-dd');
   const dayName = format(date, 'EEE');
@@ -97,7 +99,7 @@ export function DayColumn({
       </div>
 
       {/* Tasks list */}
-      <div className="flex-1 overflow-y-auto min-h-0 p-1.5 space-y-1.5">
+      <div className={`flex-1 overflow-y-auto min-h-0 p-1.5 ${viewMode === 'compact' ? 'space-y-0.5' : 'space-y-1.5'}`}>
         <SortableContext
           items={tasks.map((t) => t.id)}
           strategy={verticalListSortingStrategy}
@@ -108,6 +110,7 @@ export function DayColumn({
               task={task}
               onEdit={() => onEditTask(task)}
               onToggleComplete={() => onToggleComplete(task)}
+              viewMode={viewMode}
             />
           ))}
         </SortableContext>

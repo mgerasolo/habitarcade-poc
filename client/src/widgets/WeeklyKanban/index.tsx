@@ -21,7 +21,7 @@ import {
 } from 'date-fns';
 import { useTasks, useUpdateTask, useMoveTaskToDate } from '../../api';
 import { DayColumn } from './DayColumn';
-import { TaskCard } from './TaskCard';
+import { TaskCard, type TaskViewMode } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import type { Task } from '../../types';
 
@@ -31,6 +31,7 @@ export function WeeklyKanban() {
   );
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [taskViewMode, setTaskViewMode] = useState<TaskViewMode>('detailed');
 
   // Memoize week calculations
   const weekEnd = useMemo(
@@ -149,6 +150,40 @@ export function WeeklyKanban() {
         {/* Extending line */}
         <div className="flex-1 h-px bg-slate-700/50" />
 
+        {/* View mode toggle */}
+        <div className="flex items-center gap-0.5 bg-slate-700/50 rounded-md p-0.5">
+          <button
+            onClick={() => setTaskViewMode('compact')}
+            className={`
+              p-1 rounded transition-all duration-150
+              ${taskViewMode === 'compact'
+                ? 'bg-teal-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-600/50'
+              }
+            `}
+            title="Compact list view"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setTaskViewMode('detailed')}
+            className={`
+              p-1 rounded transition-all duration-150
+              ${taskViewMode === 'detailed'
+                ? 'bg-teal-600 text-white shadow-sm'
+                : 'text-slate-400 hover:text-white hover:bg-slate-600/50'
+              }
+            `}
+            title="Detailed card view"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+            </svg>
+          </button>
+        </div>
+
         {/* Week navigation controls */}
         <div className="flex items-center gap-1">
           <button
@@ -204,6 +239,7 @@ export function WeeklyKanban() {
                   isToday={isToday(day)}
                   onEditTask={setEditingTask}
                   onToggleComplete={handleToggleComplete}
+                  viewMode={taskViewMode}
                 />
               );
             })}
@@ -217,6 +253,7 @@ export function WeeklyKanban() {
                 onEdit={() => {}}
                 onToggleComplete={() => {}}
                 isDragging
+                viewMode={taskViewMode}
               />
             ) : null}
           </DragOverlay>

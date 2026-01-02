@@ -3,7 +3,16 @@ import * as MuiIcons from '@mui/icons-material';
 
 export function Header() {
   const { toggleSidebar, sidebarOpen, viewMode, setViewMode, toggleRightDrawer, rightDrawerOpen, currentPage } = useUIStore();
-  const { isEditMode, toggleEditMode, resetLayout } = useDashboardStore();
+  const {
+    isEditMode,
+    toggleEditMode,
+    saveAndExitEditMode,
+    discardAndExitEditMode,
+    resetLayout,
+    undoLayoutChange,
+    canUndo,
+    hasUnsavedChanges,
+  } = useDashboardStore();
 
   return (
     <header className="sticky top-0 z-50 h-16 bg-slate-900/95 backdrop-blur-md border-b border-slate-700/50" data-testid="main-header">
@@ -43,25 +52,62 @@ export function Header() {
             <div className="flex items-center gap-2">
               {isEditMode ? (
                 <>
-                  {/* Save button */}
+                  {/* Undo button */}
                   <button
-                    onClick={toggleEditMode}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium transition-colors shadow-lg shadow-teal-600/25"
-                    aria-label="Save changes"
-                    data-testid="save-edit-mode"
+                    onClick={undoLayoutChange}
+                    disabled={!canUndo()}
+                    className={`
+                      flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors
+                      ${canUndo()
+                        ? 'bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white'
+                        : 'bg-slate-800/50 text-slate-500 cursor-not-allowed'
+                      }
+                    `}
+                    aria-label="Undo last change"
+                    data-testid="undo-layout"
+                    title="Undo last change"
                   >
-                    <MuiIcons.Check style={{ fontSize: 16 }} />
-                    <span className="hidden sm:inline">Done</span>
+                    <MuiIcons.Undo style={{ fontSize: 16 }} />
+                    <span className="hidden sm:inline">Undo</span>
                   </button>
                   {/* Reset layout button */}
                   <button
                     onClick={resetLayout}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-xs font-medium transition-colors"
-                    aria-label="Reset layout"
+                    aria-label="Reset to default layout"
                     data-testid="reset-layout"
+                    title="Reset to default layout"
                   >
-                    <MuiIcons.Undo style={{ fontSize: 16 }} />
+                    <MuiIcons.RestartAlt style={{ fontSize: 16 }} />
                     <span className="hidden sm:inline">Reset</span>
+                  </button>
+                  {/* Discard changes button */}
+                  <button
+                    onClick={discardAndExitEditMode}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-red-600/80 text-slate-300 hover:text-white text-xs font-medium transition-colors"
+                    aria-label="Discard changes"
+                    data-testid="discard-edit-mode"
+                    title="Discard all changes made this session"
+                  >
+                    <MuiIcons.Close style={{ fontSize: 16 }} />
+                    <span className="hidden sm:inline">Discard</span>
+                  </button>
+                  {/* Save button */}
+                  <button
+                    onClick={saveAndExitEditMode}
+                    className={`
+                      flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-medium transition-colors shadow-lg
+                      ${hasUnsavedChanges
+                        ? 'bg-teal-600 hover:bg-teal-500 shadow-teal-600/25'
+                        : 'bg-teal-600/70 hover:bg-teal-500 shadow-teal-600/15'
+                      }
+                    `}
+                    aria-label="Save changes"
+                    data-testid="save-edit-mode"
+                    title="Save changes and exit edit mode"
+                  >
+                    <MuiIcons.Check style={{ fontSize: 16 }} />
+                    <span className="hidden sm:inline">Done</span>
                   </button>
                 </>
               ) : (

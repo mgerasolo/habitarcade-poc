@@ -50,6 +50,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
         { id: 'manage-priorities', icon: 'LowPriority', label: 'Priorities' },
         { id: 'manage-quotes', icon: 'FormatQuote', label: 'Quotes' },
         { id: 'manage-videos', icon: 'VideoLibrary', label: 'Videos' },
+        { id: 'manage-maintenance', icon: 'Build', label: 'Maintenance' },
         { id: 'settings', icon: 'Settings', label: 'Settings' },
       ]
     },
