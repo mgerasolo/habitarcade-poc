@@ -33,22 +33,21 @@ export function StatusTooltip({
   const [coords, setCoords] = useState({ top: 0, left: 0 });
 
   // Calculate position based on anchor element
+  // Uses viewport-relative coordinates for position: fixed
   useLayoutEffect(() => {
     if (anchorRef?.current) {
       const rect = anchorRef.current.getBoundingClientRect();
       const tooltipHeight = 420; // Approximate tooltip height (larger with descriptions)
-      const scrollY = window.scrollY;
-      const scrollX = window.scrollX;
 
-      // Calculate left position (centered on anchor)
-      let left = rect.left + scrollX + rect.width / 2;
+      // Calculate left position (centered on anchor) - viewport relative
+      let left = rect.left + rect.width / 2;
 
-      // Calculate top position based on above/below
+      // Calculate top position based on above/below - viewport relative
       let top: number;
       if (position === 'above') {
-        top = rect.top + scrollY - tooltipHeight - 8;
+        top = rect.top - tooltipHeight - 8;
       } else {
-        top = rect.bottom + scrollY + 8;
+        top = rect.bottom + 8;
       }
 
       // Keep tooltip within viewport horizontally
@@ -57,6 +56,13 @@ export function StatusTooltip({
         left = tooltipWidth / 2 + 10;
       } else if (left + tooltipWidth / 2 > window.innerWidth - 10) {
         left = window.innerWidth - tooltipWidth / 2 - 10;
+      }
+
+      // Keep tooltip within viewport vertically
+      if (top < 10) {
+        top = 10;
+      } else if (top + tooltipHeight > window.innerHeight - 10) {
+        top = window.innerHeight - tooltipHeight - 10;
       }
 
       setCoords({ top, left });
@@ -94,11 +100,11 @@ export function StatusTooltip({
     <div
       ref={tooltipRef}
       style={{
-        position: 'absolute',
+        position: 'fixed',
         top: coords.top,
         left: coords.left,
         transform: 'translateX(-50%)',
-        zIndex: 9999,
+        zIndex: 99999,
       }}
       className="
         bg-slate-950 rounded-lg shadow-2xl
