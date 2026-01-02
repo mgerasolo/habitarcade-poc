@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
@@ -6,6 +7,8 @@ import {
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
+  useUploadProjectImage,
+  useDeleteProjectImage,
 } from '../../api';
 
 // Predefined project colors
@@ -38,10 +41,17 @@ export function ProjectForm() {
   const { closeModal, selectedProject, setSelectedProject, openIconPicker } = useUIStore();
   const isEditMode = !!selectedProject;
 
+  // Image upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(selectedProject?.imageUrl || null);
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+
   // API hooks
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
+  const uploadImage = useUploadProjectImage();
+  const deleteImage = useDeleteProjectImage();
 
   // Form state
   const {
@@ -77,9 +87,60 @@ export function ProjectForm() {
     openIconPicker(handleIconSelect);
   };
 
+  // Handle image file selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please select a valid image file (JPG, PNG, GIF, WebP, or SVG)');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImagePreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    setPendingImageFile(file);
+
+    // Clear the icon when an image is selected
+    setValue('icon', '');
+  };
+
+  // Handle image removal
+  const handleRemoveImage = async () => {
+    if (isEditMode && selectedProject?.imageUrl && !pendingImageFile) {
+      // Delete from server
+      try {
+        await deleteImage.mutateAsync(selectedProject.id);
+        toast.success('Image removed');
+      } catch (error) {
+        toast.error('Failed to remove image');
+        return;
+      }
+    }
+    setImagePreview(null);
+    setPendingImageFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // Handle form submission
   const onSubmit = async (data: ProjectFormData) => {
     try {
+      let projectId: string;
+
       if (isEditMode && selectedProject) {
         await updateProject.mutateAsync({
           id: selectedProject.id,
@@ -89,17 +150,30 @@ export function ProjectForm() {
           iconColor: data.iconColor || undefined,
           color: data.color || undefined,
         });
+        projectId = selectedProject.id;
         toast.success('Project updated successfully');
       } else {
-        await createProject.mutateAsync({
+        const result = await createProject.mutateAsync({
           name: data.name,
           description: data.description || undefined,
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           color: data.color || undefined,
         });
+        projectId = result.data.id;
         toast.success('Project created successfully');
       }
+
+      // Upload image if there's a pending file
+      if (pendingImageFile && projectId) {
+        try {
+          await uploadImage.mutateAsync({ id: projectId, file: pendingImageFile });
+          toast.success('Image uploaded');
+        } catch (error) {
+          toast.error('Project saved but image upload failed');
+        }
+      }
+
       handleClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save project');
@@ -239,30 +313,95 @@ export function ProjectForm() {
               />
             </div>
 
-            {/* Icon picker */}
+            {/* Icon/Image section */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Icon
+                Project Icon
               </label>
-              <button
-                type="button"
-                onClick={handleOpenIconPicker}
-                className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
-              >
-                {renderIconPreview()}
-                <div className="flex-1 text-left">
-                  <div className="text-white font-medium">
-                    {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
-                  </div>
-                  <div className="text-sm text-slate-400">
-                    {watchedIcon ? 'Click to select a different icon' : 'Select an icon for this project'}
+              <div className="text-xs text-slate-500 mb-3">
+                Choose an icon from the library or upload your own image
+              </div>
+
+              {/* Custom Image Upload */}
+              {imagePreview ? (
+                <div className="mb-3 p-3 bg-slate-700/50 border border-slate-600 rounded-xl">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={imagePreview}
+                      alt="Project icon preview"
+                      className="w-16 h-16 rounded-xl object-cover border border-slate-500"
+                    />
+                    <div className="flex-1">
+                      <div className="text-white font-medium">Custom Image</div>
+                      <div className="text-sm text-slate-400">
+                        {pendingImageFile ? pendingImageFile.name : 'Uploaded image'}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      disabled={deleteImage.isPending}
+                      className="p-2 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600/20 transition-colors"
+                      aria-label="Remove image"
+                    >
+                      {deleteImage.isPending ? (
+                        <div className="w-5 h-5 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
+                      ) : (
+                        <MuiIcons.Close style={{ fontSize: 20 }} />
+                      )}
+                    </button>
                   </div>
                 </div>
-                <MuiIcons.ChevronRight
-                  className="text-slate-400 group-hover:text-white transition-colors"
-                  style={{ fontSize: 24 }}
-                />
-              </button>
+              ) : (
+                <label className="mb-3 flex items-center gap-4 p-3 bg-slate-700/50 border border-dashed border-slate-500 rounded-xl hover:bg-slate-700 hover:border-slate-400 transition-all cursor-pointer group">
+                  <div className="w-12 h-12 rounded-xl bg-slate-600 flex items-center justify-center group-hover:bg-slate-500 transition-colors">
+                    <MuiIcons.CloudUpload style={{ color: '#94a3b8', fontSize: 24 }} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="text-white font-medium">Upload Custom Image</div>
+                    <div className="text-sm text-slate-400">PNG, JPG, GIF, WebP or SVG (max 5MB)</div>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
+                    onChange={handleImageSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
+
+              {/* Divider */}
+              {!imagePreview && (
+                <div className="flex items-center gap-3 my-3">
+                  <div className="flex-1 h-px bg-slate-600" />
+                  <span className="text-xs text-slate-500 uppercase">or</span>
+                  <div className="flex-1 h-px bg-slate-600" />
+                </div>
+              )}
+
+              {/* Icon picker button - only show if no image */}
+              {!imagePreview && (
+                <button
+                  type="button"
+                  onClick={handleOpenIconPicker}
+                  className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
+                >
+                  {renderIconPreview()}
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-medium">
+                      {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
+                    </div>
+                    <div className="text-sm text-slate-400">
+                      {watchedIcon ? 'Click to select a different icon' : 'Select from icon library'}
+                    </div>
+                  </div>
+                  <MuiIcons.ChevronRight
+                    className="text-slate-400 group-hover:text-white transition-colors"
+                    style={{ fontSize: 24 }}
+                  />
+                </button>
+              )}
             </div>
 
             {/* Color picker */}
@@ -304,10 +443,18 @@ export function ProjectForm() {
             <div className="p-4 bg-slate-700/30 rounded-xl">
               <div className="text-xs text-slate-400 mb-2 uppercase tracking-wider">Preview</div>
               <div className="flex items-center gap-3">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: watchedColor }}
-                />
+                {imagePreview ? (
+                  <img
+                    src={imagePreview}
+                    alt="Project icon"
+                    className="w-6 h-6 rounded object-cover"
+                  />
+                ) : (
+                  <div
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: watchedColor }}
+                  />
+                )}
                 <span className="text-white font-medium">
                   {watch('name') || 'Project Name'}
                 </span>

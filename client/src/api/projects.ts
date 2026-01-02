@@ -93,3 +93,45 @@ export function useRestoreProject() {
     },
   });
 }
+
+// Upload project image
+export function useUploadProjectImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`/api/projects/${id}/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload image');
+      }
+
+      return response.json() as Promise<ApiResponse<Project> & { imageUrl: string }>;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(variables.id) });
+    },
+  });
+}
+
+// Delete project image
+export function useDeleteProjectImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<ApiResponse<Project>>(`/projects/${id}/image`, {
+        method: 'DELETE',
+      }),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: projectKeys.all });
+      queryClient.invalidateQueries({ queryKey: projectKeys.detail(id) });
+    },
+  });
+}

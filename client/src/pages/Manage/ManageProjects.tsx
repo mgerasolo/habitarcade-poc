@@ -115,6 +115,17 @@ export function ManageProjects() {
 
   // Render icon
   const renderIcon = (project: Project) => {
+    // Check for uploaded image first
+    if (project.imageUrl) {
+      return (
+        <img
+          src={project.imageUrl}
+          alt={project.name}
+          className="w-8 h-8 rounded-lg object-cover"
+        />
+      );
+    }
+
     if (!project.icon) {
       return (
         <div

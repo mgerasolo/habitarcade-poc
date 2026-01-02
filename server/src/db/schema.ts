@@ -50,6 +50,7 @@ export const projects = pgTable('projects', {
   description: text('description'),
   icon: varchar('icon', { length: 100 }),
   iconColor: varchar('icon_color', { length: 20 }),
+  imageUrl: varchar('image_url', { length: 500 }), // Uploaded custom icon/image
   color: varchar('color', { length: 20 }), // Project color for visual grouping
   isDeleted: boolean('is_deleted').default(false),
   deletedAt: timestamp('deleted_at'),

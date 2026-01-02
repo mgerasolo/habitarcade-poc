@@ -22,6 +22,10 @@ interface UIStore {
   activeModal: ModalType;
   modalData: unknown;
 
+  // Previous modal state (for nested modals like icon picker)
+  previousModal: ModalType;
+  previousModalData: unknown;
+
   // Selected items for editing
   selectedHabit: Habit | null;
   selectedTask: Task | null;
@@ -64,12 +68,15 @@ interface UIStore {
   setRightDrawerContent: (content: RightDrawerContent) => void;
 
   openIconPicker: (onSelect: (icon: string, color: string) => void) => void;
+  closeIconPicker: () => void;
 }
 
 export const useUIStore = create<UIStore>((set) => ({
   // Initial state
   activeModal: null,
   modalData: null,
+  previousModal: null,
+  previousModalData: null,
   selectedHabit: null,
   selectedTask: null,
   selectedProject: null,
@@ -107,8 +114,20 @@ export const useUIStore = create<UIStore>((set) => ({
   closeRightDrawer: () => set({ rightDrawerOpen: false }),
   setRightDrawerContent: (content) => set({ rightDrawerContent: content }),
 
-  openIconPicker: (onSelect) => set({
+  openIconPicker: (onSelect) => set((state) => ({
+    // Save current modal state before opening icon picker
+    previousModal: state.activeModal,
+    previousModalData: state.modalData,
     activeModal: 'icon-picker',
     onIconSelect: onSelect
-  }),
+  })),
+
+  closeIconPicker: () => set((state) => ({
+    // Restore previous modal state
+    activeModal: state.previousModal,
+    modalData: state.previousModalData,
+    previousModal: null,
+    previousModalData: null,
+    onIconSelect: null
+  })),
 }));

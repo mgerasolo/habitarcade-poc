@@ -25,7 +25,7 @@ import * as MuiIcons from '@mui/icons-material';
 type ProviderFilter = 'all' | 'material' | 'fontawesome';
 
 export function IconBrowser() {
-  const { onIconSelect, closeModal } = useUIStore();
+  const { onIconSelect, closeIconPicker } = useUIStore();
   const [search, setSearch] = useState('');
   const [selectedColor, setSelectedColor] = useState(DEFAULT_ICON_COLOR);
   const [selectedIcon, setSelectedIcon] = useState<IconDefinition | null>(null);
@@ -63,7 +63,7 @@ export function IconBrowser() {
           : selectedIcon.class;
 
       onIconSelect(iconValue, selectedColor);
-      closeModal();
+      closeIconPicker();
     }
   };
 
@@ -71,7 +71,7 @@ export function IconBrowser() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        closeModal();
+        closeIconPicker();
       } else if (e.key === 'Enter' && selectedIcon) {
         handleSelect();
       }
@@ -79,7 +79,7 @@ export function IconBrowser() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIcon, closeModal]);
+  }, [selectedIcon, closeIconPicker]);
 
   // Render preview icon
   const renderPreviewIcon = () => {
@@ -131,7 +131,7 @@ export function IconBrowser() {
   return (
     <div
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && closeModal()}
+      onClick={(e) => e.target === e.currentTarget && closeIconPicker()}
     >
       <div className="bg-slate-800 rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-700 overflow-hidden">
         {/* Header */}
@@ -149,7 +149,7 @@ export function IconBrowser() {
               </div>
             </div>
             <button
-              onClick={closeModal}
+              onClick={closeIconPicker}
               className="w-8 h-8 rounded-lg bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors flex items-center justify-center"
               aria-label="Close"
             >
@@ -257,7 +257,7 @@ export function IconBrowser() {
           {/* Action buttons */}
           <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-slate-700">
             <button
-              onClick={closeModal}
+              onClick={closeIconPicker}
               className="px-5 py-2.5 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition-colors font-medium"
             >
               Cancel

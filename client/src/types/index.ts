@@ -80,6 +80,7 @@ export interface Project {
   description?: string;
   icon?: string;
   iconColor?: string;
+  imageUrl?: string; // Uploaded custom icon/image
   color?: string;
   isDeleted: boolean;
   deletedAt?: string;

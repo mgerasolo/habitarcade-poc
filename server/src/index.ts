@@ -61,6 +61,10 @@ app.use('/api/dashboard', dashboardRouter);
 app.use('/api/quotes', quotesRouter);
 app.use('/api/videos', videosRouter);
 
+// Serve uploaded files
+const uploadsPath = path.join(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsPath));
+
 // Serve static files from client dist
 const clientDistPath = path.join(__dirname, '../../client/dist');
 app.use(express.static(clientDistPath, {
