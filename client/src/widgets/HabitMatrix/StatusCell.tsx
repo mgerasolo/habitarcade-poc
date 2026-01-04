@@ -70,6 +70,9 @@ export function StatusCell({
   // Refs
   const cellRef = useRef<HTMLDivElement>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartedRef = useRef<boolean>(false);
+  const longPressTriggeredRef = useRef<boolean>(false);
 
   // Context for crosshair highlighting and tooltip
   const {
@@ -134,8 +137,14 @@ export function StatusCell({
   }, [habitId, date, updateEntry, closeTooltip]);
 
   // Handle click - cycle status (disabled for parent habits)
+  // Note: On touch devices, touchEnd handles the tap, so we skip click if touch was used
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    // Skip if this was a touch event (touchEnd already handled it)
+    if (longPressTriggeredRef.current) {
+      longPressTriggeredRef.current = false;
+      return;
+    }
     // Parent habits are read-only (computed from children)
     if (isParentHabit) return;
     // Clear hover timer on click
@@ -186,6 +195,68 @@ export function StatusCell({
     closeTooltip();
     setHoveredCell(null);
   }, [closeTooltip, setHoveredCell]);
+
+  // Touch start - begin long-press timer (500ms)
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Parent habits are read-only
+    if (isParentHabit) return;
+
+    touchStartedRef.current = true;
+    longPressTriggeredRef.current = false;
+
+    // Start 500ms timer for long-press
+    touchTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      setTooltipPosition(computeTooltipPosition());
+      openTooltip({ habitId, dateIndex });
+      // Provide haptic feedback if available
+      if (navigator.vibrate) {
+        navigator.vibrate(50);
+      }
+    }, 500);
+  }, [isParentHabit, computeTooltipPosition, openTooltip, habitId, dateIndex]);
+
+  // Touch end - if long-press wasn't triggered, cycle status
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    // Clear long-press timer
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+
+    // If long-press was triggered, don't cycle status
+    if (longPressTriggeredRef.current) {
+      e.preventDefault();
+      return;
+    }
+
+    // Short tap - cycle status (only if touch started on this element)
+    if (touchStartedRef.current && !isParentHabit && !showTooltip) {
+      e.preventDefault();
+      cycleStatus();
+    }
+
+    touchStartedRef.current = false;
+  }, [isParentHabit, showTooltip, cycleStatus]);
+
+  // Touch move - cancel long-press (user is scrolling)
+  const handleTouchMove = useCallback(() => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+    touchStartedRef.current = false;
+  }, []);
+
+  // Touch cancel - cleanup
+  const handleTouchCancel = useCallback(() => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+    touchStartedRef.current = false;
+    longPressTriggeredRef.current = false;
+  }, []);
 
   // Determine background color with crosshair highlight
   const getBackgroundColor = () => {
@@ -252,12 +323,16 @@ export function StatusCell({
         onContextMenu={handleContextMenu}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onTouchCancel={handleTouchCancel}
         role="button"
         tabIndex={0}
         aria-label={
           isCountBased
-            ? `${date}: ${currentCount}/${dailyTarget}. Click to increment.`
-            : `${date}: ${status}. Click to cycle, hover or right-click for more options.`
+            ? `${date}: ${currentCount}/${dailyTarget}. Tap to increment, long-press for options.`
+            : `${date}: ${status}. Tap to cycle, long-press for more options.`
         }
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
