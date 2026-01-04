@@ -9,7 +9,7 @@ import {
 } from 'echarts/components';
 import { CanvasRenderer } from 'echarts/renderers';
 import type { EChartsOption } from 'echarts';
-import { format, eachDayOfInterval, startOfYear, subWeeks } from 'date-fns';
+import { format, eachDayOfInterval, startOfYear } from 'date-fns';
 import { STATUS_COLORS, type HabitStatus, type HabitEntry } from '../../types';
 
 // Register ECharts components
@@ -67,40 +67,30 @@ interface ContributionGraphProps {
   entries: HabitEntry[];
   /** Custom class name */
   className?: string;
-  /** Show full year (true) or last 12 weeks (false, default) */
-  fullYear?: boolean;
 }
 
 /**
  * ContributionGraph - GitHub-style contribution heatmap using ECharts
  *
- * Shows habit completion data as a calendar heatmap where:
- * - Each cell represents a day
+ * Shows year-to-date habit completion data as a calendar heatmap where:
+ * - Columns = weeks
+ * - Rows = days of week (Mon, Wed, Fri labeled)
  * - Cell color shows the status (using STATUS_COLORS)
- * - Hover shows date and status details
+ * - Month labels at top (JAN, FEB, etc.)
  */
 export function ContributionGraph({
   habitId,
   entries,
   className = '',
-  fullYear = false,
 }: ContributionGraphProps) {
-  // Calculate date range
+  // Calculate date range: January 1st of current year to today
   const dateRange = useMemo(() => {
     const today = new Date();
-    if (fullYear) {
-      return {
-        start: startOfYear(today),
-        end: today,
-      };
-    } else {
-      // Last 12 weeks
-      return {
-        start: subWeeks(today, 12),
-        end: today,
-      };
-    }
-  }, [fullYear]);
+    return {
+      start: startOfYear(today),
+      end: today,
+    };
+  }, []);
 
   // Create a map of date -> status for quick lookup
   const statusByDate = useMemo(() => {
@@ -133,10 +123,9 @@ export function ContributionGraph({
     });
   }, [dateRange, statusByDate]);
 
-  // ECharts options
+  // ECharts options - GitHub style calendar heatmap
   const options = useMemo((): EChartsOption => {
-    const rangeStart = format(dateRange.start, 'yyyy-MM-dd');
-    const rangeEnd = format(dateRange.end, 'yyyy-MM-dd');
+    const year = new Date().getFullYear();
 
     return {
       tooltip: {
@@ -187,26 +176,29 @@ export function ContributionGraph({
         ],
       },
       calendar: {
-        top: 30,
-        left: 30,
+        top: 25,
+        left: 40,
         right: 10,
-        bottom: 10,
-        cellSize: [12, 12],
-        range: [rangeStart, rangeEnd],
+        bottom: 5,
+        cellSize: [11, 11],
+        range: year,
+        orient: 'horizontal',
         itemStyle: {
-          borderWidth: 1,
-          borderColor: '#334155', // slate-700 - visible border for grid structure
+          borderWidth: 2,
+          borderColor: '#1e293b', // slate-800 background color for gaps
         },
         yearLabel: { show: false },
         dayLabel: {
           show: true,
-          firstDay: 0, // Sunday first
-          nameMap: ['S', 'M', 'T', 'W', 'T', 'F', 'S'],
+          firstDay: 1, // Monday first (GitHub style)
+          nameMap: ['', 'Mon', '', 'Wed', '', 'Fri', ''], // Only show Mon, Wed, Fri
           color: '#64748b', // slate-500
           fontSize: 10,
+          margin: 6,
         },
         monthLabel: {
           show: true,
+          nameMap: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
           color: '#64748b', // slate-500
           fontSize: 10,
         },
@@ -225,10 +217,7 @@ export function ContributionGraph({
         },
       ],
     };
-  }, [dateRange, chartData]);
-
-  // Calculate dynamic height based on view type
-  const chartHeight = fullYear ? 160 : 120;
+  }, [chartData]);
 
   return (
     <div
@@ -240,7 +229,7 @@ export function ContributionGraph({
       <ReactEChartsCore
         echarts={echarts}
         option={options}
-        style={{ height: chartHeight, width: '100%' }}
+        style={{ height: 130, width: '100%' }}
         opts={{ renderer: 'canvas' }}
         notMerge={true}
       />
