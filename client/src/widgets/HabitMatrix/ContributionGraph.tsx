@@ -125,7 +125,8 @@ export function ContributionGraph({
 
   // ECharts options - GitHub style calendar heatmap
   const options = useMemo((): EChartsOption => {
-    const year = new Date().getFullYear();
+    const rangeStart = format(dateRange.start, 'yyyy-MM-dd');
+    const rangeEnd = format(dateRange.end, 'yyyy-MM-dd');
 
     return {
       tooltip: {
@@ -180,11 +181,11 @@ export function ContributionGraph({
         left: 40,
         right: 10,
         bottom: 5,
-        cellSize: [11, 11],
-        range: year,
+        cellSize: [10, 10],
+        range: [rangeStart, rangeEnd],
         orient: 'horizontal',
         itemStyle: {
-          borderWidth: 2,
+          borderWidth: 1,
           borderColor: '#1e293b', // slate-800 background color for gaps
         },
         yearLabel: { show: false },
@@ -217,7 +218,7 @@ export function ContributionGraph({
         },
       ],
     };
-  }, [chartData]);
+  }, [chartData, dateRange]);
 
   return (
     <div
