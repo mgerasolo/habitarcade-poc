@@ -1,63 +1,96 @@
 import { useEffect, useMemo } from 'react';
-import { format, startOfMonth, eachDayOfInterval } from 'date-fns';
+import { format, startOfMonth, eachDayOfInterval, subDays, parseISO, isAfter, isBefore } from 'date-fns';
 import { useUIStore } from '../../stores';
 import type { Habit, HabitEntry, HabitStatus } from '../../types';
 import * as MuiIcons from '@mui/icons-material';
+import { ContributionGraph } from './ContributionGraph';
 
 /**
  * Calculate current and best streak for a habit
+ * Now iterates through CONSECUTIVE DAYS (not just entries) to properly detect gaps
+ *
+ * @param entries - The habit entries
+ * @param createdAt - The habit creation date (optional, to limit streak range)
  */
-function calculateStreaks(entries: HabitEntry[]): { current: number; best: number } {
+function calculateStreaks(
+  entries: HabitEntry[],
+  createdAt?: string
+): { current: number; best: number } {
   if (!entries || entries.length === 0) return { current: 0, best: 0 };
-
-  // Sort entries by date ascending (oldest first)
-  const sortedEntries = [...entries].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-  );
 
   // Create a map for quick lookup
   const entryMap = new Map<string, HabitStatus>();
-  sortedEntries.forEach(entry => {
+  entries.forEach(entry => {
     entryMap.set(entry.date, entry.status);
   });
+
+  const today = new Date();
+  const todayStr = format(today, 'yyyy-MM-dd');
+
+  // Determine the start date for streak calculation
+  // Use creation date if available, otherwise use earliest entry
+  let startDate: Date;
+  if (createdAt) {
+    startDate = parseISO(createdAt);
+  } else {
+    const sortedDates = [...entries]
+      .map(e => parseISO(e.date))
+      .sort((a, b) => a.getTime() - b.getTime());
+    startDate = sortedDates[0] || today;
+  }
+
+  // Don't look at dates before the habit was created or after today
+  if (isAfter(startDate, today)) {
+    return { current: 0, best: 0 };
+  }
+
+  // Generate all days from start to today
+  const allDays = eachDayOfInterval({ start: startDate, end: today });
 
   let currentStreak = 0;
   let bestStreak = 0;
   let tempStreak = 0;
-  const today = format(new Date(), 'yyyy-MM-dd');
 
-  // Calculate best streak by iterating through all entries
-  for (const entry of sortedEntries) {
-    const status = entry.status;
+  // Calculate best streak by iterating through CONSECUTIVE DAYS
+  for (const day of allDays) {
+    const dateStr = format(day, 'yyyy-MM-dd');
+    const status = entryMap.get(dateStr);
+
     if (status === 'complete' || status === 'extra') {
       tempStreak++;
       bestStreak = Math.max(bestStreak, tempStreak);
     } else if (status === 'na' || status === 'exempt') {
       // Don't break streak for na/exempt
     } else {
-      // missed, partial, pink, empty - streak broken
+      // No entry, empty, missed, partial, pink - streak broken
       tempStreak = 0;
     }
   }
 
   // Calculate current streak by going backwards from today
-  let currentDate = today;
+  let currentDate = todayStr;
   while (true) {
     const status = entryMap.get(currentDate);
+    const currentDateObj = parseISO(currentDate);
+
+    // Stop if we've gone before the habit creation date
+    if (createdAt && isBefore(currentDateObj, parseISO(createdAt))) {
+      break;
+    }
 
     if (status === 'complete' || status === 'extra') {
       currentStreak++;
     } else if (status === 'na' || status === 'exempt') {
-      // Don't break streak
-    } else if (currentDate === today && (!status || status === 'empty')) {
+      // Don't break streak for na/exempt
+    } else if (currentDate === todayStr && (!status || status === 'empty')) {
       // Allow empty today (user might not have logged yet)
     } else {
+      // No entry or negative status - streak broken
       break;
     }
 
     // Move to previous day
-    const prevDate = new Date(currentDate);
-    prevDate.setDate(prevDate.getDate() - 1);
+    const prevDate = subDays(currentDateObj, 1);
     currentDate = format(prevDate, 'yyyy-MM-dd');
 
     // Safety limit
@@ -136,6 +169,7 @@ function calculateCompletionForRange(
 
 /**
  * Calculate all completion stats
+ * Only counts days from the habit's creation date onwards
  */
 function calculateCompletionStats(entries: HabitEntry[], createdAt?: string): {
   thisMonth: number;
@@ -146,17 +180,9 @@ function calculateCompletionStats(entries: HabitEntry[], createdAt?: string): {
   const monthStart = startOfMonth(today);
   const yearStart = new Date(today.getFullYear(), 0, 1);
 
-  // For all-time, use creation date or earliest entry
-  let allTimeStart = createdAt ? new Date(createdAt) : yearStart;
-  if (entries && entries.length > 0) {
-    const sortedEntries = [...entries].sort(
-      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-    const earliestEntry = new Date(sortedEntries[0].date);
-    if (earliestEntry < allTimeStart) {
-      allTimeStart = earliestEntry;
-    }
-  }
+  // For all-time, use creation date (do NOT expand to include entries before creation)
+  // If no creation date, fall back to year start
+  const allTimeStart = createdAt ? new Date(createdAt) : yearStart;
 
   return {
     thisMonth: calculateCompletionForRange(entries, monthStart, today),
@@ -172,152 +198,6 @@ function getScoreColor(percentage: number): string {
   if (percentage >= 80) return 'text-emerald-400';
   if (percentage >= 50) return 'text-yellow-400';
   return 'text-red-400';
-}
-
-/**
- * Generate contribution graph data for last 12 weeks
- */
-function generateContributionData(entries: HabitEntry[]): {
-  weeks: { date: string; status: HabitStatus }[][];
-  monthLabels: { label: string; offset: number }[];
-} {
-  const entryMap = new Map<string, HabitStatus>();
-  (entries || []).forEach(entry => {
-    entryMap.set(entry.date, entry.status);
-  });
-
-  const today = new Date();
-  const weeks: { date: string; status: HabitStatus }[][] = [];
-  const monthLabels: { label: string; offset: number }[] = [];
-  let lastMonth = -1;
-
-  // Generate 12 weeks of data (84 days)
-  const startDate = new Date(today);
-  startDate.setDate(startDate.getDate() - 83); // Go back 84 days
-
-  // Align to start of week (Sunday)
-  const dayOfWeek = startDate.getDay();
-  startDate.setDate(startDate.getDate() - dayOfWeek);
-
-  let currentWeek: { date: string; status: HabitStatus }[] = [];
-
-  for (let i = 0; i < 84; i++) {
-    const date = new Date(startDate);
-    date.setDate(date.getDate() + i);
-    const dateStr = format(date, 'yyyy-MM-dd');
-    const status = entryMap.get(dateStr) || 'empty';
-
-    // Track month labels
-    const month = date.getMonth();
-    if (month !== lastMonth) {
-      monthLabels.push({
-        label: format(date, 'MMM'),
-        offset: Math.floor(i / 7),
-      });
-      lastMonth = month;
-    }
-
-    currentWeek.push({ date: dateStr, status });
-
-    if (currentWeek.length === 7) {
-      weeks.push(currentWeek);
-      currentWeek = [];
-    }
-  }
-
-  if (currentWeek.length > 0) {
-    weeks.push(currentWeek);
-  }
-
-  return { weeks, monthLabels };
-}
-
-/**
- * Get contribution cell color based on status
- */
-function getContributionColor(status: HabitStatus): string {
-  switch (status) {
-    case 'complete':
-    case 'extra':
-      return '#10b981'; // emerald-500
-    case 'partial':
-      return '#f97316'; // orange-500
-    case 'missed':
-    case 'pink':
-      return '#ef4444'; // red-500
-    case 'exempt':
-    case 'na':
-      return '#475569'; // slate-600
-    default:
-      return '#1e293b'; // slate-800
-  }
-}
-
-/**
- * GitHub-style contribution graph component
- */
-function ContributionGraph({ entries }: { entries: HabitEntry[] }) {
-  const { weeks, monthLabels } = useMemo(
-    () => generateContributionData(entries),
-    [entries]
-  );
-
-  return (
-    <div className="mt-4">
-      <p className="text-xs text-slate-400 mb-2">Last 12 weeks</p>
-
-      {/* Month labels */}
-      <div className="flex mb-1 ml-4">
-        {monthLabels.map((m, i) => (
-          <div
-            key={i}
-            className="text-[10px] text-slate-500"
-            style={{ marginLeft: i === 0 ? 0 : `${(m.offset - (monthLabels[i - 1]?.offset || 0)) * 12 - 20}px` }}
-          >
-            {m.label}
-          </div>
-        ))}
-      </div>
-
-      {/* Grid */}
-      <div className="flex gap-0.5">
-        {/* Day labels */}
-        <div className="flex flex-col gap-0.5 mr-1">
-          <div className="h-[10px]" /> {/* Empty for alignment */}
-          <div className="h-[10px] text-[9px] text-slate-500 leading-[10px]">M</div>
-          <div className="h-[10px]" />
-          <div className="h-[10px] text-[9px] text-slate-500 leading-[10px]">W</div>
-          <div className="h-[10px]" />
-          <div className="h-[10px] text-[9px] text-slate-500 leading-[10px]">F</div>
-          <div className="h-[10px]" />
-        </div>
-
-        {/* Weeks */}
-        {weeks.map((week, weekIndex) => (
-          <div key={weekIndex} className="flex flex-col gap-0.5">
-            {week.map((day, dayIndex) => (
-              <div
-                key={dayIndex}
-                className="w-[10px] h-[10px] rounded-[2px] transition-colors hover:ring-1 hover:ring-slate-400"
-                style={{ backgroundColor: getContributionColor(day.status) }}
-                title={`${day.date}: ${day.status}`}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-2 mt-2 text-[10px] text-slate-500">
-        <span>Less</span>
-        <div className="flex gap-0.5">
-          <div className="w-[10px] h-[10px] rounded-[2px]" style={{ backgroundColor: '#1e293b' }} />
-          <div className="w-[10px] h-[10px] rounded-[2px]" style={{ backgroundColor: '#10b981' }} />
-        </div>
-        <span>More</span>
-      </div>
-    </div>
-  );
 }
 
 /**
@@ -343,7 +223,7 @@ export function HabitDetailModal() {
   const stats = useMemo(() => {
     if (!habit) return null;
 
-    const streaks = calculateStreaks(habit.entries || []);
+    const streaks = calculateStreaks(habit.entries || [], habit.createdAt);
     const completion = calculateCompletionStats(habit.entries || [], habit.createdAt);
     const createdAt = habit.createdAt ? new Date(habit.createdAt) : null;
 
@@ -370,7 +250,10 @@ export function HabitDetailModal() {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && closeModal()}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-5 border-b border-slate-700">
           <div className="flex items-center justify-between">
