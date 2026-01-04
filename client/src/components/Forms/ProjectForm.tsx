@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
@@ -77,6 +77,14 @@ export function ProjectForm() {
 
   const watchedIconColor = watch('iconColor');
   const watchedColor = watch('color');
+
+  // Sync selectedIconOrImage when selectedProject changes (for edit mode)
+  useEffect(() => {
+    if (selectedProject) {
+      const iconOrImage = selectedProject.imageUrl || selectedProject.icon || null;
+      setSelectedIconOrImage(iconOrImage);
+    }
+  }, [selectedProject]);
 
   // Helper to determine if value is an image URL/data URL vs icon code
   const isImageValue = (value: string | null) => {
@@ -323,7 +331,7 @@ export function ProjectForm() {
                       .filter((c) => !c.isDeleted)
                       .map((category) => (
                         <option key={category.id} value={category.id}>
-                          {category.icon ? `${category.icon} ` : ''}{category.name}
+                          {category.name}
                         </option>
                       ))}
                   </select>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
@@ -40,6 +41,14 @@ export function CategoryForm() {
 
   const watchedIcon = watch('icon');
   const watchedIconColor = watch('iconColor');
+
+  // Sync form values when selectedCategory changes (for edit mode)
+  useEffect(() => {
+    if (selectedCategory) {
+      setValue('icon', selectedCategory.icon || '');
+      setValue('iconColor', selectedCategory.iconColor || '#3b82f6');
+    }
+  }, [selectedCategory, setValue]);
 
   // Icon picker handler
   const handleIconSelect = (icon: string, color: string) => {

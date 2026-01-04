@@ -1,5 +1,5 @@
 import { useForm } from 'react-hook-form';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
 import { useUIStore } from '../../stores';
@@ -74,6 +74,14 @@ export function StatusForm() {
   const watchedColor = watch('color');
   const watchedIcon = watch('icon');
   const watchedIsBreakout = watch('isBreakout');
+
+  // Sync form values when selectedStatus changes (for edit mode)
+  useEffect(() => {
+    if (selectedStatus) {
+      setValue('icon', selectedStatus.icon || '');
+      setValue('color', selectedStatus.color || '#3b82f6');
+    }
+  }, [selectedStatus, setValue]);
 
   // Icon picker handler
   const handleIconSelect = (icon: string, color: string) => {

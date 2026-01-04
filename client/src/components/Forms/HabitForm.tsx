@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
@@ -82,6 +82,14 @@ export function HabitForm() {
   const daysToPercentage = (days: number): number => {
     return Math.round((days / 30) * 100);
   };
+
+  // Sync selectedIconOrImage when selectedHabit changes (for edit mode)
+  useEffect(() => {
+    if (selectedHabit) {
+      const iconOrImage = selectedHabit.imageUrl || selectedHabit.icon || null;
+      setSelectedIconOrImage(iconOrImage);
+    }
+  }, [selectedHabit]);
 
   // Helper to determine if value is an image URL/data URL vs icon code
   const isImageValue = (value: string | null) => {
