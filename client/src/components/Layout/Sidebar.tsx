@@ -182,6 +182,23 @@ export function Sidebar({ isOpen }: SidebarProps) {
             <span className={`font-medium ${isChild ? 'text-xs' : 'text-sm'} whitespace-nowrap flex-1 text-left`}>
               {item.label}
             </span>
+            {/* Edit icon for dashboard pages - appears on hover */}
+            {item.isDashboardPage && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openModal('dashboard-page-form', item.id);
+                }}
+                className="p-0.5 hover:bg-slate-600/50 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                data-testid={`edit-dashboard-page-${item.id}`}
+                title="Edit page"
+              >
+                <MuiIcons.Edit
+                  style={{ fontSize: 14 }}
+                  className="text-slate-400 hover:text-white transition-colors"
+                />
+              </div>
+            )}
             {hasChildren && (
               <div
                 onClick={(e) => {
