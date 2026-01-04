@@ -3,6 +3,7 @@ import { HabitForm } from './Forms/HabitForm';
 import { CategoryForm } from './Forms/CategoryForm';
 import { ProjectForm } from './Forms/ProjectForm';
 import { TagForm } from './Forms/TagForm';
+import { DashboardPageForm } from './Forms/DashboardPageForm';
 import { IconBrowser } from './IconBrowser';
 import { HabitDetailModal } from '../widgets/HabitMatrix/HabitDetailModal';
 import { WidgetCatalog } from './Dashboard/WidgetCatalog';
@@ -238,6 +239,11 @@ export function ModalManager() {
       {formModalToShow === 'status-form' && (
         <div style={{ visibility: isIconPickerOpen ? 'hidden' : 'visible' }}>
           <StatusForm />
+        </div>
+      )}
+      {formModalToShow === 'dashboard-page-form' && (
+        <div style={{ visibility: isIconPickerOpen ? 'hidden' : 'visible' }}>
+          <DashboardPageForm />
         </div>
       )}
 
