@@ -95,3 +95,19 @@ body {
   border-width: 0 0 12px 12px;
   border-color: transparent transparent rgba(45, 212, 191, 0.9) transparent;
 }
+
+/* Widget wrapper styles for collapse animation */
+.widget-wrapper {
+  @apply transition-all duration-200;
+  height: 100%;
+}
+
+/* Hide resize handles on collapsed widgets */
+.widget-wrapper.is-collapsed .react-resizable-handle {
+  @apply hidden;
+}
+
+/* Smooth height transition for grid items */
+.react-grid-item {
+  @apply transition-all duration-200;
+}

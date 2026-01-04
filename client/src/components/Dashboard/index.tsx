@@ -139,8 +139,15 @@ export function Dashboard() {
           useCSSTransforms={true}
           resizeHandles={['s', 'e', 'se']}
         >
-          {layout.map((item) => (
-            <div key={item.i} className="widget-wrapper" data-widget-id={item.i}>
+          {layout.map((item) => {
+            const isCollapsed = item.i in collapsedWidgets;
+            return (
+            <div
+              key={item.i}
+              className={`widget-wrapper ${isCollapsed ? 'is-collapsed' : ''}`}
+              data-widget-id={item.i}
+              data-testid={`widget-${item.i}`}
+            >
               <WidgetContainer
                 widgetId={item.i}
                 headerControls={getHeaderControls(item.i)}
@@ -148,7 +155,8 @@ export function Dashboard() {
                 {getWidget(item.i, item.i === 'habit-matrix' ? { daysToShow: responsiveDays } : undefined)}
               </WidgetContainer>
             </div>
-          ))}
+          );
+          })}
         </GridLayout>
       </div>
 
