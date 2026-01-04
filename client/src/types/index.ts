@@ -131,7 +131,9 @@ export interface Task {
   title: string;
   description?: string;
   plannedDate?: string; // ISO date string YYYY-MM-DD
-  status: TaskStatus;
+  status: TaskStatus; // DEPRECATED - use statusId
+  statusId?: string; // New: references task_statuses table
+  taskStatus?: TaskStatusEntity; // Populated status entity
   priority?: number;
   projectId?: string;
   project?: Project;

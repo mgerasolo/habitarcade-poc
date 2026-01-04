@@ -54,7 +54,7 @@ export function StatusCell({
   dateIndex,
   status,
   isToday,
-  isWeekend = false,
+  isWeekend: _isWeekend = false,
   size = 16,
   cellHeight,
   dailyTarget,
@@ -187,7 +187,7 @@ export function StatusCell({
     // If in highlighted row or column, overlay yellow tint
     if (isHighlightedRow || isHighlightedColumn) {
       if (status === 'empty' && (!isCountBased || currentCount === 0)) {
-        return 'rgba(250, 204, 21, 0.15)'; // Yellow tint on empty
+        return 'rgba(255, 241, 118, 0.25)'; // Light yellow tint on empty
       }
       // For colored cells, we'll use a box-shadow instead
       return baseColor;
@@ -208,7 +208,7 @@ export function StatusCell({
       : 'inset 0 0 0 1px rgba(0,0,0,0.08)';
 
     if ((isHighlightedRow || isHighlightedColumn) && !isHovered) {
-      return `${baseShadow}, inset 0 0 0 100px rgba(250, 204, 21, 0.2)`;
+      return `${baseShadow}, inset 0 0 0 100px rgba(255, 241, 118, 0.3)`;
     }
     return baseShadow;
   };

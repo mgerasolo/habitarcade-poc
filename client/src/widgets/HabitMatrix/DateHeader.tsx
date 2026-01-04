@@ -16,7 +16,7 @@ interface DateHeaderProps {
 export const DateHeader = memo(function DateHeader({
   dates,
   habitNameWidth = 120,
-  cellSize = 16,
+  cellSize: _cellSize = 16,
 }: DateHeaderProps) {
   return (
     <div className="flex items-end gap-0.5 mb-1 sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10 py-1">
@@ -74,7 +74,7 @@ export const DateHeader = memo(function DateHeader({
 export const DateHeaderCompact = memo(function DateHeaderCompact({
   dates,
   habitNameWidth = 80,
-  cellSize = 20,
+  cellSize: _cellSize = 20,
   cellHeight = 18,
 }: DateHeaderProps) {
   return (

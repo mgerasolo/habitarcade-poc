@@ -5,7 +5,7 @@ import type { Task } from '../../types';
 interface TaskCardProps {
   task: Task;
   onEdit: () => void;
-  onToggleComplete: () => void;
+  onToggleComplete?: () => void;
   isDragging?: boolean;
 }
 
@@ -37,7 +37,7 @@ export function TaskCard({
     if ((e.target as HTMLElement).closest('[data-checkbox]')) {
       return;
     }
-    onToggleComplete();
+    onToggleComplete?.();
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
@@ -94,7 +94,7 @@ export function TaskCard({
             data-checkbox
             onClick={(e) => {
               e.stopPropagation();
-              onToggleComplete();
+              onToggleComplete?.();
             }}
             className={`
               flex-shrink-0 w-4 h-4 mt-0.5 rounded border-2 transition-all duration-200
