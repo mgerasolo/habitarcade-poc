@@ -123,6 +123,7 @@ export function StatusTooltip({
         min-w-[180px] overflow-hidden
         animate-in fade-in duration-150
       "
+      data-testid="status-tooltip"
       role="listbox"
       aria-label="Select habit status"
     >
