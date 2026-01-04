@@ -49,7 +49,7 @@ const STATUS_TO_VALUE: Record<HabitStatus, number> = {
 
 // Special value for future days (not yet reached)
 const FUTURE_VALUE = 9;
-const FUTURE_COLOR = 'rgba(255, 255, 255, 0.3)'; // 30% opaque white for future days
+const FUTURE_COLOR = '#475569'; // slate-600 - distinguishable gray for future days
 
 // Reverse mapping for tooltip
 const VALUE_TO_STATUS: Record<number, HabitStatus | 'future'> = {
