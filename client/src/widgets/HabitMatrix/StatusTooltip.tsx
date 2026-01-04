@@ -2,16 +2,16 @@ import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { STATUS_COLORS, type HabitStatus } from '../../types';
 
-// Ordered statuses for the dropdown list (priority order like task priority selector)
-const TOOLTIP_STATUSES: { status: HabitStatus; label: string; description: string }[] = [
-  { status: 'complete', label: 'Done', description: 'Completed successfully' },
-  { status: 'missed', label: 'Missed', description: 'Failed to complete' },
-  { status: 'partial', label: 'Partial', description: 'Partially completed' },
-  { status: 'exempt', label: 'Exempt', description: 'Excused from this day' },
-  { status: 'na', label: 'N/A', description: 'Not applicable' },
-  { status: 'extra', label: 'Extra', description: 'Bonus completion' },
-  { status: 'pink', label: 'Likely Missed', description: 'Probably missed but not confirmed' },
-  { status: 'empty', label: 'Clear', description: 'Remove status' },
+// Compact status options with short labels - arranged for 4-column grid
+const COMPACT_STATUSES: { status: HabitStatus; label: string }[] = [
+  { status: 'complete', label: 'Done' },
+  { status: 'partial', label: 'Partial' },
+  { status: 'missed', label: 'Missed' },
+  { status: 'extra', label: 'Extra' },
+  { status: 'exempt', label: 'Exempt' },
+  { status: 'na', label: 'N/A' },
+  { status: 'pink', label: 'Pink' },
+  { status: 'empty', label: 'Clear' },
 ];
 
 interface StatusTooltipProps {
@@ -37,16 +37,16 @@ export function StatusTooltip({
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   // Calculate position based on anchor element
-  // Uses viewport-relative coordinates for position: fixed
   useLayoutEffect(() => {
     if (anchorRef?.current) {
       const rect = anchorRef.current.getBoundingClientRect();
-      const tooltipHeight = 420; // Approximate tooltip height (larger with descriptions)
+      const tooltipHeight = 90; // Compact tooltip is much shorter
+      const tooltipWidth = 180;
 
-      // Calculate left position (centered on anchor) - viewport relative
+      // Calculate left position (centered on anchor)
       let left = rect.left + rect.width / 2;
 
-      // Calculate top position based on above/below - viewport relative
+      // Calculate top position based on above/below
       let top: number;
       if (position === 'above') {
         top = rect.top - tooltipHeight - 8;
@@ -55,7 +55,6 @@ export function StatusTooltip({
       }
 
       // Keep tooltip within viewport horizontally
-      const tooltipWidth = 200; // Wider for shadcn-style design
       if (left - tooltipWidth / 2 < 10) {
         left = tooltipWidth / 2 + 10;
       } else if (left + tooltipWidth / 2 > window.innerWidth - 10) {
@@ -73,7 +72,7 @@ export function StatusTooltip({
     }
   }, [anchorRef, position]);
 
-  // Close on click outside
+  // Close on click outside and Escape key
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (tooltipRef.current && !tooltipRef.current.contains(event.target as Node)) {
@@ -87,7 +86,6 @@ export function StatusTooltip({
       }
     }
 
-    // Use setTimeout to avoid immediate close from the same click that opened it
     const timer = setTimeout(() => {
       document.addEventListener('mousedown', handleClickOutside);
     }, 0);
@@ -100,7 +98,6 @@ export function StatusTooltip({
     };
   }, [onClose]);
 
-  // Don't render until we have calculated coordinates (prevents flying in from 0,0)
   if (!coords) {
     return null;
   }
@@ -118,23 +115,21 @@ export function StatusTooltip({
         zIndex: 2147483647,
       }}
       className="
-        bg-slate-950 rounded-lg shadow-2xl
+        bg-slate-900 rounded-lg shadow-2xl
         border border-slate-700/50
-        min-w-[180px] overflow-hidden
-        animate-in fade-in duration-150
+        p-1.5 overflow-hidden
+        animate-in fade-in duration-100
       "
       data-testid="status-tooltip"
       role="listbox"
       aria-label="Select habit status"
     >
-      {/* Header */}
-      <div className="px-3 py-2.5 border-b border-slate-800/80 bg-slate-900/50">
-        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Status</span>
-      </div>
-
-      {/* Status list - shadcn priority selector style */}
-      <div className="py-1">
-        {TOOLTIP_STATUSES.map(({ status, label, description }) => {
+      {/* Compact 4-column grid of status options (#77) */}
+      <div
+        className="grid grid-cols-4 gap-0.5"
+        data-testid="status-options-grid"
+      >
+        {COMPACT_STATUSES.map(({ status, label }) => {
           const isSelected = status === currentStatus;
           const statusColor = STATUS_COLORS[status];
 
@@ -143,61 +138,41 @@ export function StatusTooltip({
               key={status}
               onClick={() => onSelect(status)}
               className={`
-                w-full flex items-center gap-3 px-3 py-2
-                transition-all duration-150 cursor-pointer
-                hover:bg-slate-800/80
-                ${isSelected ? 'bg-slate-800/60' : ''}
-                group relative
+                flex flex-col items-center gap-0.5 p-1.5 rounded
+                transition-all duration-100 cursor-pointer
+                hover:bg-slate-700/60
+                ${isSelected ? 'bg-slate-700/80 ring-1 ring-teal-400/50' : ''}
               `}
               role="option"
               aria-selected={isSelected}
+              aria-label={label}
+              title={label}
             >
-              {/* Colored indicator bar on left side */}
+              {/* Color square */}
               <div
-                className="w-1 h-8 rounded-full flex-shrink-0 transition-all duration-150 group-hover:h-9"
+                className={`
+                  w-5 h-5 rounded-sm flex-shrink-0
+                  ${status === 'empty' ? 'border border-slate-500' : ''}
+                  ${isSelected ? 'ring-2 ring-teal-400' : ''}
+                `}
                 style={{ backgroundColor: statusColor }}
+                data-testid="status-color-square"
               />
 
-              {/* Color dot indicator */}
-              <div
-                className="w-3 h-3 rounded-full flex-shrink-0 ring-2 ring-slate-700/50"
-                style={{ backgroundColor: statusColor }}
-              />
-
-              {/* Label and description */}
-              <div className="flex-1 text-left min-w-0">
-                <span className={`
-                  block text-sm leading-tight
-                  ${isSelected ? 'text-white font-semibold' : 'text-slate-200 font-medium'}
-                `}>
-                  {label}
-                </span>
-                <span className="block text-xs text-slate-500 truncate mt-0.5">
-                  {description}
-                </span>
-              </div>
-
-              {/* Check mark for selected */}
-              {isSelected && (
-                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-teal-500/20 flex items-center justify-center">
-                  <svg className="w-3 h-3 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </div>
-              )}
+              {/* Short label */}
+              <span className={`
+                text-[9px] font-medium leading-tight text-center
+                ${isSelected ? 'text-teal-300' : 'text-slate-400'}
+              `}>
+                {label}
+              </span>
             </button>
           );
         })}
       </div>
-
-      {/* Footer hint */}
-      <div className="px-3 py-2 border-t border-slate-800/80 bg-slate-900/30">
-        <span className="text-xs text-slate-500">Click to select or Esc to close</span>
-      </div>
     </div>
   );
 
-  // Render via portal to escape all parent overflow constraints
   return createPortal(tooltipContent, document.body);
 }
 
