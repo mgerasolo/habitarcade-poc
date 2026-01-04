@@ -1,5 +1,19 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useUIStore, useDashboardStore } from '../../stores';
 import type { PageType } from '../../stores';
 import { PAGE_ROUTES } from '../../routes';
@@ -19,13 +33,129 @@ interface SidebarProps {
   isOpen: boolean;
 }
 
+// Sortable nav item component for drag-and-drop
+function SortableNavItem({
+  item,
+  isOpen,
+  isActive,
+  isLast,
+  isEditMode,
+  onNavClick,
+}: {
+  item: NavItem;
+  isOpen: boolean;
+  isActive: boolean;
+  isLast: boolean;
+  isEditMode: boolean;
+  onNavClick: (item: NavItem) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id, disabled: !isEditMode });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  const IconComponent = MuiIcons[item.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
+
+  const commonClasses = `
+    w-full flex items-center gap-2 py-2 rounded-lg
+    text-slate-300 hover:bg-slate-700/50 hover:text-white
+    transition-all duration-150
+    group text-left
+    pl-8 pr-3
+    ${isActive ? 'bg-slate-700/30 text-white' : ''}
+    ${isDragging ? 'shadow-lg bg-slate-700' : ''}
+  `;
+
+  return (
+    <div ref={setNodeRef} style={style} className="relative">
+      {/* Tree line connectors for child items - file explorer style */}
+      {isOpen && (
+        <>
+          {/* Vertical line from parent - extends full height unless last item */}
+          <div
+            className="absolute left-4 top-0 w-px bg-slate-600/60"
+            style={{ height: isLast ? '50%' : '100%' }}
+          />
+          {/* Horizontal line connecting to item */}
+          <div className="absolute left-4 top-1/2 w-3 h-px bg-slate-600/60" />
+        </>
+      )}
+
+      <button
+        onClick={() => onNavClick(item)}
+        title={!isOpen ? item.label : undefined}
+        data-testid={`nav-${item.id}`}
+        className={commonClasses}
+      >
+        {/* Drag handle - only visible in edit mode */}
+        {isEditMode && isOpen && (
+          <div
+            {...attributes}
+            {...listeners}
+            className="flex-shrink-0 cursor-grab active:cursor-grabbing mr-1 -ml-2"
+            title="Drag to reorder"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MuiIcons.DragIndicator style={{ fontSize: 14 }} className="text-slate-500 hover:text-slate-300" />
+          </div>
+        )}
+        <div className="flex items-center justify-center w-5 flex-shrink-0">
+          <IconComponent
+            style={{ fontSize: 16 }}
+            className="text-current group-hover:scale-110 transition-transform"
+          />
+        </div>
+        {isOpen && (
+          <span className="font-medium text-xs whitespace-nowrap flex-1 text-left">
+            {item.label}
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
 export function Sidebar({ isOpen }: SidebarProps) {
   const navigate = useNavigate();
   const { openModal, currentPage, setCurrentPage } = useUIStore();
-  const { pages, activePageId, setActivePage, createPage } = useDashboardStore();
+  const { pages, activePageId, setActivePage, createPage, isEditMode, reorderPages } = useDashboardStore();
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['dashboard', 'tasks']));
   const [showNewPageInput, setShowNewPageInput] = useState(false);
   const [newPageName, setNewPageName] = useState('');
+
+  // Drag-and-drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+
+  // Handle drag end for dashboard page reordering
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const pageIds = pages.map(p => p.id);
+    const oldIndex = pageIds.indexOf(active.id as string);
+    const newIndex = pageIds.indexOf(over.id as string);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      // Reorder the array
+      const newPageIds = [...pageIds];
+      newPageIds.splice(oldIndex, 1);
+      newPageIds.splice(newIndex, 0, active.id as string);
+      reorderPages(newPageIds);
+    }
+  }, [pages, reorderPages]);
 
   // Build dashboard page children dynamically
   const dashboardPageChildren: NavItem[] = useMemo(() => {
@@ -231,9 +361,30 @@ export function Sidebar({ isOpen }: SidebarProps) {
           <div className="relative mt-0.5" data-testid={`nav-${item.id}-children`}>
             {/* Vertical trunk line for tree structure */}
             <div className="absolute left-4 top-0 bottom-2 w-px bg-slate-600/60" />
-            {item.children!.map((child, index) =>
-              renderNavItem(child, true, index === item.children!.length - 1 && item.id !== 'dashboard')
+
+            {/* Dashboard children are sortable in edit mode */}
+            {item.id === 'dashboard' ? (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={item.children!.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                  {item.children!.map((child, index) => (
+                    <SortableNavItem
+                      key={child.id}
+                      item={child}
+                      isOpen={isOpen}
+                      isActive={isItemActive(child)}
+                      isLast={false}
+                      isEditMode={isEditMode}
+                      onNavClick={handleNavClick}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              item.children!.map((child, index) =>
+                renderNavItem(child, true, index === item.children!.length - 1)
+              )
             )}
+
             {/* Add Page button for Dashboard section */}
             {item.id === 'dashboard' && (
               <div className="relative">
