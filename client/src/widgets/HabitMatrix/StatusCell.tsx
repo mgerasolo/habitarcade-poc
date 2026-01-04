@@ -157,15 +157,18 @@ export function StatusCell({
 
   // Mouse enter - set hovered cell for crosshair and start hover timer
   const handleMouseEnter = useCallback(() => {
-    // Cancel any pending close
-    cancelCloseTooltip();
+    // Only cancel pending close if the tooltip belongs to THIS cell
+    // This prevents cell B from keeping cell A's menu open (#79)
+    if (activeTooltipCell?.habitId === habitId && activeTooltipCell?.dateIndex === dateIndex) {
+      cancelCloseTooltip();
+    }
     setHoveredCell({ habitId, dateIndex });
     // Start 1-second timer to show tooltip
     hoverTimerRef.current = setTimeout(() => {
       setTooltipPosition(computeTooltipPosition());
       openTooltip({ habitId, dateIndex });
     }, 1000);
-  }, [habitId, dateIndex, setHoveredCell, computeTooltipPosition, openTooltip, cancelCloseTooltip]);
+  }, [habitId, dateIndex, setHoveredCell, computeTooltipPosition, openTooltip, cancelCloseTooltip, activeTooltipCell]);
 
   // Mouse leave - clear hover timer and schedule tooltip close
   const handleMouseLeave = useCallback(() => {
