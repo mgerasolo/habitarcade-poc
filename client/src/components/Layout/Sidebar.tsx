@@ -93,6 +93,19 @@ export function Sidebar({ isOpen }: SidebarProps) {
     },
   ];
 
+  // Toggle expand/collapse for items with children
+  const handleToggleExpand = useCallback((itemId: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+      } else {
+        newSet.add(itemId);
+      }
+      return newSet;
+    });
+  }, []);
+
   const handleNavClick = (item: NavItem) => {
     if (item.action) {
       item.action();
@@ -101,17 +114,17 @@ export function Sidebar({ isOpen }: SidebarProps) {
       setActivePage(item.id);
       setCurrentPage('dashboard');
       navigate(PAGE_ROUTES['dashboard']);
+    } else if (item.id === 'dashboard') {
+      // Dashboard parent item - navigate to dashboard AND expand if collapsed
+      setCurrentPage('dashboard');
+      navigate(PAGE_ROUTES['dashboard']);
+      // Auto-expand dashboard children if not already expanded
+      if (!expandedItems.has('dashboard')) {
+        handleToggleExpand('dashboard');
+      }
     } else if (item.children) {
-      // Toggle expansion for items with children
-      setExpandedItems(prev => {
-        const newSet = new Set(prev);
-        if (newSet.has(item.id)) {
-          newSet.delete(item.id);
-        } else {
-          newSet.add(item.id);
-        }
-        return newSet;
-      });
+      // Other items with children - just toggle expansion (Tasks, Manage)
+      handleToggleExpand(item.id);
     } else {
       const pageId = item.id as PageType;
       setCurrentPage(pageId);
@@ -170,10 +183,19 @@ export function Sidebar({ isOpen }: SidebarProps) {
               {item.label}
             </span>
             {hasChildren && (
-              <MuiIcons.ChevronRight
-                style={{ fontSize: 16 }}
-                className={`transition-transform duration-200 text-slate-500 ${isExpanded ? 'rotate-90' : ''}`}
-              />
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleToggleExpand(item.id);
+                }}
+                className="p-0.5 hover:bg-slate-600/50 rounded cursor-pointer"
+                data-testid="nav-chevron"
+              >
+                <MuiIcons.ChevronRight
+                  style={{ fontSize: 16 }}
+                  className={`transition-transform duration-200 text-slate-500 ${isExpanded ? 'rotate-90' : ''}`}
+                />
+              </div>
             )}
           </>
         )}
@@ -274,6 +296,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
 
   return (
     <aside
+      data-testid="sidebar"
       className={`
         fixed left-0 top-16 h-[calc(100vh-4rem)]
         bg-slate-800/90 backdrop-blur-md border-r border-slate-700/50
