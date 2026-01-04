@@ -7,4 +7,5 @@ export { ManagePriorities } from './ManagePriorities';
 export { ManageQuotes } from './Quotes';
 export { ManageVideos } from './Videos';
 export { ManageStatuses } from './ManageStatuses';
+export { ManageIcons } from './ManageIcons';
 export { Settings } from './Settings';

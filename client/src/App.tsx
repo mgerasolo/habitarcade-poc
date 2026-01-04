@@ -18,6 +18,7 @@ import {
   ManageQuotes,
   ManageVideos,
   ManageStatuses,
+  ManageIcons,
   Settings,
 } from './pages/Manage';
 import { Targets } from './pages/Targets';
@@ -73,6 +74,8 @@ function PageRouter() {
       return <ManageVideos />;
     case 'manage-statuses':
       return <ManageStatuses />;
+    case 'manage-icons':
+      return <ManageIcons />;
     case 'settings':
       return <Settings />;
     case 'targets':
