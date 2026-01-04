@@ -110,7 +110,10 @@ export function WidgetCatalog() {
       onClick={(e) => e.target === e.currentTarget && closeModal()}
       data-testid="widget-catalog-modal"
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-5xl max-h-[90vh] shadow-2xl border border-slate-700 overflow-hidden flex flex-col">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-5xl max-h-[90vh] shadow-2xl border border-slate-700 overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="p-5 border-b border-slate-700 flex-shrink-0">
           <div className="flex items-center justify-between">

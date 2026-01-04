@@ -25,7 +25,9 @@ export const habits = pgTable('habits', {
   imageUrl: varchar('image_url', { length: 500 }), // Uploaded custom icon/image
   isActive: boolean('is_active').default(true),
   sortOrder: integer('sort_order').default(0),
-  dailyTarget: integer('daily_target'), // For count-based habits (e.g., 3 supplements)
+  targetPercentage: integer('target_percentage').default(90), // Completion % for green (default 90)
+  warningPercentage: integer('warning_percentage').default(75), // Completion % for yellow/red boundary (default 75)
+  grayMissedWhenOnTrack: boolean('gray_missed_when_on_track').default(false), // Low frequency habit - show gray instead of pink when on track
   isDeleted: boolean('is_deleted').default(false),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -50,6 +52,9 @@ export const projects = pgTable('projects', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
   description: text('description'),
+  categoryId: uuid('category_id').references(() => categories.id), // Link to category
+  startDate: date('start_date'), // Project start date
+  targetDate: date('target_date'), // Target completion date
   icon: varchar('icon', { length: 100 }),
   iconColor: varchar('icon_color', { length: 20 }),
   imageUrl: varchar('image_url', { length: 500 }), // Uploaded custom icon/image
@@ -109,6 +114,7 @@ export const tasks = pgTable('tasks', {
   plannedDate: date('planned_date'),
   status: varchar('status', { length: 20 }).default('pending'), // DEPRECATED: use statusId
   statusId: uuid('status_id').references(() => taskStatuses.id), // New: references task_statuses
+  parentTaskId: uuid('parent_task_id'), // Self-reference for parent/child (subtask) relationships
   priority: integer('priority'),
   projectId: uuid('project_id').references(() => projects.id),
   timeBlockId: uuid('time_block_id').references(() => timeBlocks.id),
@@ -251,6 +257,7 @@ export const quoteCollectionAssignments = pgTable('quote_collection_assignments'
 // Define relations
 export const categoriesRelations = relations(categories, ({ many }) => ({
   habits: many(habits),
+  projects: many(projects),
 }));
 
 export const habitsRelations = relations(habits, ({ one, many }) => ({
@@ -275,7 +282,11 @@ export const habitEntriesRelations = relations(habitEntries, ({ one }) => ({
   }),
 }));
 
-export const projectsRelations = relations(projects, ({ many }) => ({
+export const projectsRelations = relations(projects, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [projects.categoryId],
+    references: [categories.id],
+  }),
   tasks: many(tasks),
 }));
 
@@ -302,6 +313,12 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     fields: [tasks.statusId],
     references: [taskStatuses.id],
   }),
+  parent: one(tasks, {
+    fields: [tasks.parentTaskId],
+    references: [tasks.id],
+    relationName: 'parentChild',
+  }),
+  children: many(tasks, { relationName: 'parentChild' }),
   taskTags: many(taskTags),
 }));
 

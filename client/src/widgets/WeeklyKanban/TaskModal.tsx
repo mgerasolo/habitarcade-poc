@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
-import { useUpdateTask, useDeleteTask, useCreateTask, useProjects, useStatuses } from '../../api';
+import { useUpdateTask, useDeleteTask, useCreateTask, useProjects, useStatuses, useTasks } from '../../api';
 import type { Task } from '../../types';
 
 interface TaskModalProps {
@@ -18,6 +18,7 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
   const [priority, setPriority] = useState(task?.priority || 0);
   const [projectId, setProjectId] = useState(task?.projectId || '');
   const [statusId, setStatusId] = useState(task?.statusId || defaultStatusId || '');
+  const [parentTaskId, setParentTaskId] = useState(task?.parentTaskId || '');
 
   const titleRef = useRef<HTMLInputElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -29,6 +30,13 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
   const statuses = statusesData?.data?.filter(s => !s.isBreakout) || [];
   const { data: projectsData } = useProjects();
   const projects = projectsData?.data || [];
+  const { data: tasksData } = useTasks();
+  // Filter out the current task and any tasks that are already children (to avoid circular refs)
+  const availableParentTasks = (tasksData?.data || []).filter(t =>
+    !t.isDeleted &&
+    t.id !== task?.id &&
+    !t.parentTaskId // Only show top-level tasks as potential parents
+  );
 
   useEffect(() => {
     titleRef.current?.focus();
@@ -57,7 +65,7 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, addAnother = false) => {
     e.preventDefault();
 
     if (!title.trim()) return;
@@ -69,6 +77,7 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
       priority: priority || undefined,
       projectId: projectId || undefined,
       statusId: statusId || undefined,
+      parentTaskId: parentTaskId || undefined,
     };
 
     if (isCreateMode) {
@@ -80,7 +89,17 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
         },
         {
           onSuccess: () => {
-            onClose();
+            if (addAnother) {
+              // Reset only title and description, keep project/priority/status/date
+              setTitle('');
+              setDescription('');
+              // Re-focus the title input
+              setTimeout(() => {
+                titleRef.current?.focus();
+              }, 50);
+            } else {
+              onClose();
+            }
           },
         }
       );
@@ -97,6 +116,11 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
         }
       );
     }
+  };
+
+  const handleCreateAndAddAnother = (e: React.MouseEvent) => {
+    e.preventDefault();
+    handleSubmit(e as unknown as React.FormEvent, true);
   };
 
   const handleDelete = () => {
@@ -123,7 +147,7 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <div
         ref={modalRef}
-        className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-slate-700"
+        className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-md md:max-w-2xl mx-4 overflow-hidden border border-slate-700"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-slate-700/50 border-b border-slate-700">
@@ -142,111 +166,152 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Title
-            </label>
-            <input
-              ref={titleRef}
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              placeholder="Task title"
-              required
-            />
-          </div>
+          {/* Two-column layout on desktop */}
+          <div className="md:grid md:grid-cols-2 md:gap-6">
+            {/* Left column - Title and Description */}
+            <div className="space-y-4">
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Title
+                </label>
+                <input
+                  ref={titleRef}
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                  placeholder="Task title"
+                  required
+                />
+              </div>
 
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Description
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
-              placeholder="Optional description..."
-            />
-          </div>
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={4}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent resize-none"
+                  placeholder="Optional description..."
+                />
+              </div>
 
-          {/* Date and Priority row */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Planned Date */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Planned Date
-              </label>
-              <input
-                type="date"
-                value={plannedDate}
-                onChange={(e) => setPlannedDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              />
-            </div>
-
-            {/* Priority */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Priority
-              </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(Number(e.target.value))}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              >
-                {priorityOptions.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Project and Status row */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Project */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Project
-              </label>
-              <select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              >
-                <option value="">No project</option>
-                {projects
-                  .filter((p) => !p.isDeleted)
-                  .map((project) => (
-                    <option key={project.id} value={project.id}>
-                      {project.icon ? `${project.icon} ` : ''}{project.name}
+              {/* Parent Task (for subtasks) - on left column for desktop */}
+              <div className="hidden md:block">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Parent Task <span className="text-slate-500 text-xs">(optional - makes this a subtask)</span>
+                </label>
+                <select
+                  value={parentTaskId}
+                  onChange={(e) => setParentTaskId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                >
+                  <option value="">No parent (top-level task)</option>
+                  {availableParentTasks.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.title}
                     </option>
                   ))}
-              </select>
+                </select>
+              </div>
             </div>
 
-            {/* Status */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Status
-              </label>
-              <select
-                value={statusId}
-                onChange={(e) => setStatusId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
-              >
-                <option value="">No status</option>
-                {statuses.map((status) => (
-                  <option key={status.id} value={status.id}>
-                    {status.name}
-                  </option>
-                ))}
-              </select>
+            {/* Right column - Properties */}
+            <div className="space-y-4 mt-4 md:mt-0">
+              {/* Planned Date */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Planned Date
+                </label>
+                <input
+                  type="date"
+                  value={plannedDate}
+                  onChange={(e) => setPlannedDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Priority
+                </label>
+                <select
+                  value={priority}
+                  onChange={(e) => setPriority(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                >
+                  {priorityOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Project */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Project
+                </label>
+                <select
+                  value={projectId}
+                  onChange={(e) => setProjectId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                >
+                  <option value="">No project</option>
+                  {projects
+                    .filter((p) => !p.isDeleted)
+                    .map((project) => (
+                      <option key={project.id} value={project.id}>
+                        {project.icon ? `${project.icon} ` : ''}{project.name}
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Status
+                </label>
+                <select
+                  value={statusId}
+                  onChange={(e) => setStatusId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                >
+                  <option value="">No status</option>
+                  {statuses.map((status) => (
+                    <option key={status.id} value={status.id}>
+                      {status.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+          </div>
+
+          {/* Parent Task - mobile only (shown below columns on mobile) */}
+          <div className="md:hidden">
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Parent Task <span className="text-slate-500 text-xs">(optional - makes this a subtask)</span>
+            </label>
+            <select
+              value={parentTaskId}
+              onChange={(e) => setParentTaskId(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            >
+              <option value="">No parent (top-level task)</option>
+              {availableParentTasks.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.title}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Task metadata - only in edit mode */}
@@ -285,6 +350,16 @@ export function TaskModal({ task, defaultStatusId, onClose }: TaskModalProps) {
               >
                 Cancel
               </button>
+              {isCreateMode && (
+                <button
+                  type="button"
+                  onClick={handleCreateAndAddAnother}
+                  disabled={!title.trim() || isPending}
+                  className="px-3 py-2 text-sm bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 disabled:cursor-not-allowed text-white rounded-lg transition-colors"
+                >
+                  {isPending ? 'Saving...' : 'Create & Add'}
+                </button>
+              )}
               <button
                 type="submit"
                 disabled={!title.trim() || isPending}

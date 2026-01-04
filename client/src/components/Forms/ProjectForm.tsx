@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
@@ -7,8 +7,7 @@ import {
   useCreateProject,
   useUpdateProject,
   useDeleteProject,
-  useUploadProjectImage,
-  useDeleteProjectImage,
+  useCategories,
 } from '../../api';
 
 // Predefined project colors
@@ -32,6 +31,9 @@ const PROJECT_COLORS = [
 interface ProjectFormData {
   name: string;
   description: string;
+  categoryId: string;
+  startDate: string;
+  targetDate: string;
   icon: string;
   iconColor: string;
   color: string;
@@ -41,17 +43,17 @@ export function ProjectForm() {
   const { closeModal, selectedProject, setSelectedProject, openIconPicker } = useUIStore();
   const isEditMode = !!selectedProject;
 
-  // Image upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(selectedProject?.imageUrl || null);
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
+  // Icon/image preview state - can be icon code, data URL, or external URL
+  const [selectedIconOrImage, setSelectedIconOrImage] = useState<string | null>(
+    selectedProject?.imageUrl || selectedProject?.icon || null
+  );
 
   // API hooks
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
-  const uploadImage = useUploadProjectImage();
-  const deleteImage = useDeleteProjectImage();
+  const { data: categoriesData } = useCategories();
+  const categories = categoriesData?.data || [];
 
   // Form state
   const {
@@ -64,22 +66,38 @@ export function ProjectForm() {
     defaultValues: {
       name: selectedProject?.name || '',
       description: selectedProject?.description || '',
+      categoryId: selectedProject?.categoryId || '',
+      startDate: selectedProject?.startDate || '',
+      targetDate: selectedProject?.targetDate || '',
       icon: selectedProject?.icon || '',
       iconColor: selectedProject?.iconColor || '#6366f1',
       color: selectedProject?.color || '#6366f1',
     },
   });
 
-  const watchedIcon = watch('icon');
   const watchedIconColor = watch('iconColor');
   const watchedColor = watch('color');
 
-  // Icon picker handler
-  const handleIconSelect = (icon: string, color: string) => {
-    setValue('icon', icon);
-    setValue('iconColor', color);
-    // Also sync the project color with icon color
-    setValue('color', color);
+  // Helper to determine if value is an image URL/data URL vs icon code
+  const isImageValue = (value: string | null) => {
+    if (!value) return false;
+    return value.startsWith('data:') || value.startsWith('http://') || value.startsWith('https://');
+  };
+
+  // Icon/image picker handler - receives either icon code or image URL
+  const handleIconSelect = (iconOrImage: string, color: string) => {
+    setSelectedIconOrImage(iconOrImage);
+    if (isImageValue(iconOrImage)) {
+      // It's an image - clear icon fields, set imageUrl via form state
+      setValue('icon', '');
+      setValue('iconColor', '');
+    } else {
+      // It's an icon code
+      setValue('icon', iconOrImage);
+      setValue('iconColor', color);
+      // Also sync the project color with icon color
+      if (color) setValue('color', color);
+    }
   };
 
   // Open icon picker
@@ -87,91 +105,48 @@ export function ProjectForm() {
     openIconPicker(handleIconSelect);
   };
 
-  // Handle image file selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Please select a valid image file (JPG, PNG, GIF, WebP, or SVG)');
-      return;
-    }
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be less than 5MB');
-      return;
-    }
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setImagePreview(event.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    setPendingImageFile(file);
-
-    // Clear the icon when an image is selected
+  // Clear selected icon/image
+  const handleClearSelection = () => {
+    setSelectedIconOrImage(null);
     setValue('icon', '');
-  };
-
-  // Handle image removal
-  const handleRemoveImage = async () => {
-    if (isEditMode && selectedProject?.imageUrl && !pendingImageFile) {
-      // Delete from server
-      try {
-        await deleteImage.mutateAsync(selectedProject.id);
-        toast.success('Image removed');
-      } catch (error) {
-        toast.error('Failed to remove image');
-        return;
-      }
-    }
-    setImagePreview(null);
-    setPendingImageFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    setValue('iconColor', '');
   };
 
   // Handle form submission
   const onSubmit = async (data: ProjectFormData) => {
     try {
-      let projectId: string;
+      // Determine if we have an image URL to save
+      const imageUrl = selectedIconOrImage && isImageValue(selectedIconOrImage)
+        ? selectedIconOrImage
+        : undefined;
 
       if (isEditMode && selectedProject) {
         await updateProject.mutateAsync({
           id: selectedProject.id,
           name: data.name,
           description: data.description || undefined,
+          categoryId: data.categoryId || undefined,
+          startDate: data.startDate || undefined,
+          targetDate: data.targetDate || undefined,
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           color: data.color || undefined,
+          imageUrl: imageUrl,
         });
-        projectId = selectedProject.id;
         toast.success('Project updated successfully');
       } else {
-        const result = await createProject.mutateAsync({
+        await createProject.mutateAsync({
           name: data.name,
           description: data.description || undefined,
+          categoryId: data.categoryId || undefined,
+          startDate: data.startDate || undefined,
+          targetDate: data.targetDate || undefined,
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           color: data.color || undefined,
+          imageUrl: imageUrl,
         });
-        projectId = result.data.id;
         toast.success('Project created successfully');
-      }
-
-      // Upload image if there's a pending file
-      if (pendingImageFile && projectId) {
-        try {
-          await uploadImage.mutateAsync({ id: projectId, file: pendingImageFile });
-          toast.success('Image uploaded');
-        } catch (error) {
-          toast.error('Project saved but image upload failed');
-        }
       }
 
       handleClose();
@@ -199,43 +174,56 @@ export function ProjectForm() {
     closeModal();
   };
 
-  // Render icon preview
-  const renderIconPreview = () => {
-    if (!watchedIcon) {
+  // Render icon/image preview
+  const renderPreview = () => {
+    // If we have an image (data URL or external URL)
+    if (selectedIconOrImage && isImageValue(selectedIconOrImage)) {
       return (
-        <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center">
-          <MuiIcons.Folder style={{ color: '#64748b', fontSize: 24 }} />
+        <img
+          src={selectedIconOrImage}
+          alt="Selected"
+          className="w-12 h-12 rounded-xl object-cover border border-slate-600"
+        />
+      );
+    }
+
+    // If we have an icon code
+    if (selectedIconOrImage) {
+      // Handle Material icons
+      if (selectedIconOrImage.startsWith('material:')) {
+        const iconName = selectedIconOrImage.replace('material:', '');
+        const IconComponent = (MuiIcons as Record<string, React.ComponentType<{ style?: React.CSSProperties }>>)[iconName];
+        if (IconComponent) {
+          return (
+            <div
+              className="w-12 h-12 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: `${watchedIconColor}20` }}
+            >
+              <IconComponent style={{ color: watchedIconColor || '#6366f1', fontSize: 28 }} />
+            </div>
+          );
+        }
+      }
+
+      // Handle Font Awesome icons
+      return (
+        <div
+          className="w-12 h-12 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: `${watchedIconColor}20` }}
+        >
+          <i
+            className={selectedIconOrImage}
+            style={{ color: watchedIconColor || '#6366f1', fontSize: 24 }}
+            aria-hidden="true"
+          />
         </div>
       );
     }
 
-    // Handle Material icons
-    if (watchedIcon.startsWith('material:')) {
-      const iconName = watchedIcon.replace('material:', '');
-      const IconComponent = (MuiIcons as Record<string, React.ComponentType<{ style?: React.CSSProperties }>>)[iconName];
-      if (IconComponent) {
-        return (
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: `${watchedIconColor}20` }}
-          >
-            <IconComponent style={{ color: watchedIconColor, fontSize: 28 }} />
-          </div>
-        );
-      }
-    }
-
-    // Handle Font Awesome icons
+    // No selection - show placeholder
     return (
-      <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center"
-        style={{ backgroundColor: `${watchedIconColor}20` }}
-      >
-        <i
-          className={watchedIcon}
-          style={{ color: watchedIconColor, fontSize: 24 }}
-          aria-hidden="true"
-        />
+      <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center">
+        <MuiIcons.Folder style={{ color: '#64748b', fontSize: 24 }} />
       </div>
     );
   };
@@ -245,7 +233,11 @@ export function ProjectForm() {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-lg md:max-w-3xl shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="project-form"
+      >
         {/* Header */}
         <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-slate-800 to-slate-800/50">
           <div className="flex items-center justify-between">
@@ -274,135 +266,153 @@ export function ProjectForm() {
 
         {/* Form */}
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="p-5 space-y-5 max-h-[60vh] overflow-y-auto">
-            {/* Name field */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Project Name <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                {...register('name', { required: 'Project name is required' })}
-                placeholder="e.g., Website Redesign"
-                className={`
-                  w-full px-4 py-3 bg-slate-700/50 border rounded-xl text-white
-                  placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
-                  focus:border-transparent transition-all
-                  ${errors.name ? 'border-red-500' : 'border-slate-600'}
-                `}
-                autoFocus
-              />
-              {errors.name && (
-                <p className="mt-1.5 text-sm text-red-400 flex items-center gap-1">
-                  <MuiIcons.ErrorOutline style={{ fontSize: 16 }} />
-                  {errors.name.message}
-                </p>
-              )}
-            </div>
+          <div className="p-5 max-h-[60vh] overflow-y-auto">
+            {/* Two-column layout on desktop */}
+            <div className="md:grid md:grid-cols-2 md:gap-6">
+              {/* Left column - Basic info */}
+              <div className="space-y-5">
+                {/* Name field */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Project Name <span className="text-red-400">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    {...register('name', { required: 'Project name is required' })}
+                    placeholder="e.g., Website Redesign"
+                    className={`
+                      w-full px-4 py-3 bg-slate-700/50 border rounded-xl text-white
+                      placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500
+                      focus:border-transparent transition-all
+                      ${errors.name ? 'border-red-500' : 'border-slate-600'}
+                    `}
+                    autoFocus
+                  />
+                  {errors.name && (
+                    <p className="mt-1.5 text-sm text-red-400 flex items-center gap-1">
+                      <MuiIcons.ErrorOutline style={{ fontSize: 16 }} />
+                      {errors.name.message}
+                    </p>
+                  )}
+                </div>
 
-            {/* Description field */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Description
-              </label>
-              <textarea
-                {...register('description')}
-                placeholder="What is this project about?"
-                rows={3}
-                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-              />
-            </div>
+                {/* Description field */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    {...register('description')}
+                    placeholder="What is this project about?"
+                    rows={4}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+                  />
+                </div>
 
-            {/* Icon/Image section */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Project Icon
-              </label>
-              <div className="text-xs text-slate-500 mb-3">
-                Choose an icon from the library or upload your own image
+                {/* Category field */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Category
+                  </label>
+                  <select
+                    {...register('categoryId')}
+                    className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">No category</option>
+                    {categories
+                      .filter((c) => !c.isDeleted)
+                      .map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.icon ? `${category.icon} ` : ''}{category.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Date fields - two columns */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Start Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Start Date
+                    </label>
+                    <input
+                      type="date"
+                      {...register('startDate')}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+
+                  {/* Target Date */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                      Target Date
+                    </label>
+                    <input
+                      type="date"
+                      {...register('targetDate')}
+                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
               </div>
 
-              {/* Custom Image Upload */}
-              {imagePreview ? (
-                <div className="mb-3 p-3 bg-slate-700/50 border border-slate-600 rounded-xl">
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={imagePreview}
-                      alt="Project icon preview"
-                      className="w-16 h-16 rounded-xl object-cover border border-slate-500"
-                    />
-                    <div className="flex-1">
-                      <div className="text-white font-medium">Custom Image</div>
-                      <div className="text-sm text-slate-400">
-                        {pendingImageFile ? pendingImageFile.name : 'Uploaded image'}
+              {/* Right column - Visual customization */}
+              <div className="space-y-5 mt-5 md:mt-0">
+                {/* Icon/Image section - Unified Choose Icon button */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                    Project Icon
+                  </label>
+                  <div className="text-xs text-slate-500 mb-3">
+                    Choose an icon, upload an image, or enter an image URL
+                  </div>
+
+                  {/* Current selection preview with choose/clear buttons */}
+                  <div className="flex items-center gap-3">
+                    {/* Preview */}
+                    {selectedIconOrImage && (
+                      <div data-testid="selected-icon-preview">
+                        {renderPreview()}
                       </div>
-                    </div>
+                    )}
+
+                    {/* Choose Icon button */}
                     <button
                       type="button"
-                      onClick={handleRemoveImage}
-                      disabled={deleteImage.isPending}
-                      className="p-2 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600/20 transition-colors"
-                      aria-label="Remove image"
+                      onClick={handleOpenIconPicker}
+                      data-testid="choose-icon-button"
+                      className="flex-1 flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
                     >
-                      {deleteImage.isPending ? (
-                        <div className="w-5 h-5 border-2 border-red-400/30 border-t-red-400 rounded-full animate-spin" />
-                      ) : (
-                        <MuiIcons.Close style={{ fontSize: 20 }} />
-                      )}
+                      {!selectedIconOrImage && renderPreview()}
+                      <div className="flex-1 text-left">
+                        <div className="text-white font-medium">
+                          {selectedIconOrImage ? 'Change Icon' : 'Choose Icon'}
+                        </div>
+                        <div className="text-sm text-slate-400">
+                          {selectedIconOrImage ? 'Click to select a different icon or image' : 'Select icon, upload image, or enter URL'}
+                        </div>
+                      </div>
+                      <MuiIcons.ChevronRight
+                        className="text-slate-400 group-hover:text-white transition-colors"
+                        style={{ fontSize: 24 }}
+                      />
                     </button>
+
+                    {/* Clear button - only show when something is selected */}
+                    {selectedIconOrImage && (
+                      <button
+                        type="button"
+                        onClick={handleClearSelection}
+                        data-testid="clear-icon-button"
+                        className="p-3 rounded-xl bg-slate-700/50 border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/10 transition-colors"
+                        title="Clear selection"
+                      >
+                        <MuiIcons.Close style={{ fontSize: 20 }} />
+                      </button>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <label className="mb-3 flex items-center gap-4 p-3 bg-slate-700/50 border border-dashed border-slate-500 rounded-xl hover:bg-slate-700 hover:border-slate-400 transition-all cursor-pointer group">
-                  <div className="w-12 h-12 rounded-xl bg-slate-600 flex items-center justify-center group-hover:bg-slate-500 transition-colors">
-                    <MuiIcons.CloudUpload style={{ color: '#94a3b8', fontSize: 24 }} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-white font-medium">Upload Custom Image</div>
-                    <div className="text-sm text-slate-400">PNG, JPG, GIF, WebP or SVG (max 5MB)</div>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/gif,image/webp,image/svg+xml"
-                    onChange={handleImageSelect}
-                    className="hidden"
-                  />
-                </label>
-              )}
-
-              {/* Divider */}
-              {!imagePreview && (
-                <div className="flex items-center gap-3 my-3">
-                  <div className="flex-1 h-px bg-slate-600" />
-                  <span className="text-xs text-slate-500 uppercase">or</span>
-                  <div className="flex-1 h-px bg-slate-600" />
-                </div>
-              )}
-
-              {/* Icon picker button - only show if no image */}
-              {!imagePreview && (
-                <button
-                  type="button"
-                  onClick={handleOpenIconPicker}
-                  className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
-                >
-                  {renderIconPreview()}
-                  <div className="flex-1 text-left">
-                    <div className="text-white font-medium">
-                      {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
-                    </div>
-                    <div className="text-sm text-slate-400">
-                      {watchedIcon ? 'Click to select a different icon' : 'Select from icon library'}
-                    </div>
-                  </div>
-                  <MuiIcons.ChevronRight
-                    className="text-slate-400 group-hover:text-white transition-colors"
-                    style={{ fontSize: 24 }}
-                  />
-                </button>
-              )}
-            </div>
 
             {/* Color picker */}
             <div>
@@ -443,9 +453,9 @@ export function ProjectForm() {
             <div className="p-4 bg-slate-700/30 rounded-xl">
               <div className="text-xs text-slate-400 mb-2 uppercase tracking-wider">Preview</div>
               <div className="flex items-center gap-3">
-                {imagePreview ? (
+                {selectedIconOrImage && isImageValue(selectedIconOrImage) ? (
                   <img
-                    src={imagePreview}
+                    src={selectedIconOrImage}
                     alt="Project icon"
                     className="w-6 h-6 rounded object-cover"
                   />
@@ -465,7 +475,12 @@ export function ProjectForm() {
                 </p>
               )}
             </div>
+            {/* End Preview */}
           </div>
+          {/* End Right column */}
+        </div>
+        {/* End Two-column grid */}
+      </div>
 
           {/* Footer */}
           <div className="p-5 border-t border-slate-700 bg-slate-800/50 flex items-center justify-between">

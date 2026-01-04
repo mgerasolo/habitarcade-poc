@@ -233,6 +233,7 @@ End every session with:
 | Deploy | `deploy:pending`, `deploy:staged`, `deploy:production` |
 | Needs | `needs:verification`, `needs:demo`, `needs:split` |
 | Status | `status:blocked` |
+| Resolution | `resolution:fixed`, `resolution:no-longer-needed`, `resolution:deprioritized`, `resolution:replaced` |
 
 **At session start:** Check for `phase:7-human-review` issues (awaiting human approval via web)
 

@@ -84,6 +84,7 @@ export function Sidebar({ isOpen }: SidebarProps) {
         { id: 'manage-categories', icon: 'Category', label: 'Categories' },
         { id: 'manage-projects', icon: 'Folder', label: 'Projects' },
         { id: 'manage-tags', icon: 'LocalOffer', label: 'Tags' },
+        { id: 'manage-statuses', icon: 'Label', label: 'Statuses' },
         { id: 'manage-priorities', icon: 'LowPriority', label: 'Priorities' },
         { id: 'manage-quotes', icon: 'FormatQuote', label: 'Quotes' },
         { id: 'manage-videos', icon: 'VideoLibrary', label: 'Videos' },

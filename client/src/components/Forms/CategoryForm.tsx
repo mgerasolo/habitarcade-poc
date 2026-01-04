@@ -52,6 +52,12 @@ export function CategoryForm() {
     openIconPicker(handleIconSelect);
   };
 
+  // Clear selected icon
+  const handleClearSelection = () => {
+    setValue('icon', '');
+    setValue('iconColor', '#3b82f6');
+  };
+
   // Handle form submission
   const onSubmit = async (data: CategoryFormData) => {
     try {
@@ -142,7 +148,11 @@ export function CategoryForm() {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && handleClose()}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        data-testid="category-form"
+      >
         {/* Header */}
         <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-slate-800 to-slate-800/50">
           <div className="flex items-center justify-between">
@@ -202,25 +212,49 @@ export function CategoryForm() {
               <label className="block text-sm font-medium text-slate-300 mb-2">
                 Icon & Color
               </label>
-              <button
-                type="button"
-                onClick={handleOpenIconPicker}
-                className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
-              >
-                {renderIconPreview()}
-                <div className="flex-1 text-left">
-                  <div className="text-white font-medium">
-                    {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
+              <div className="flex items-center gap-3">
+                {/* Preview */}
+                {watchedIcon && (
+                  <div data-testid="selected-icon-preview">
+                    {renderIconPreview()}
                   </div>
-                  <div className="text-sm text-slate-400">
-                    {watchedIcon ? 'Click to select a different icon' : 'Select an icon for this category'}
+                )}
+
+                {/* Choose Icon button */}
+                <button
+                  type="button"
+                  onClick={handleOpenIconPicker}
+                  data-testid="choose-icon-button"
+                  className="flex-1 flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
+                >
+                  {!watchedIcon && renderIconPreview()}
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-medium">
+                      {watchedIcon ? 'Change Icon' : 'Choose Icon'}
+                    </div>
+                    <div className="text-sm text-slate-400">
+                      {watchedIcon ? 'Click to select a different icon' : 'Select icon, upload image, or enter URL'}
+                    </div>
                   </div>
-                </div>
-                <MuiIcons.ChevronRight
-                  className="text-slate-400 group-hover:text-white transition-colors"
-                  style={{ fontSize: 24 }}
-                />
-              </button>
+                  <MuiIcons.ChevronRight
+                    className="text-slate-400 group-hover:text-white transition-colors"
+                    style={{ fontSize: 24 }}
+                  />
+                </button>
+
+                {/* Clear button */}
+                {watchedIcon && (
+                  <button
+                    type="button"
+                    onClick={handleClearSelection}
+                    data-testid="clear-icon-button"
+                    className="p-3 rounded-xl bg-slate-700/50 border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/10 transition-colors"
+                    title="Clear selection"
+                  >
+                    <MuiIcons.Close style={{ fontSize: 20 }} />
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 

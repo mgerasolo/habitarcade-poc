@@ -9,19 +9,19 @@ import {
   useDeleteHabit,
   useCategories,
   useHabits,
-  useUploadHabitImage,
-  useDeleteHabitImage,
 } from '../../api';
 import type { Category, Habit } from '../../types';
 
 interface HabitFormData {
   name: string;
   categoryId: string;
-  parentHabitId: string; // For parent/child habit relationships (#61)
+  parentHabitId: string;
   icon: string;
   iconColor: string;
   isActive: boolean;
-  dailyTarget: string; // String for form input, convert to number on submit
+  targetPercentage: string;
+  warningPercentage: string;
+  grayMissedWhenOnTrack: boolean;
 }
 
 export function HabitForm() {
@@ -32,29 +32,21 @@ export function HabitForm() {
   const createHabit = useCreateHabit();
   const updateHabit = useUpdateHabit();
   const deleteHabit = useDeleteHabit();
-  const uploadImage = useUploadHabitImage();
-  const deleteImage = useDeleteHabitImage();
   const { data: categoriesData } = useCategories();
   const { data: habitsData } = useHabits();
 
   const categories: Category[] = categoriesData?.data || [];
-  // Filter habits to only show potential parents (not the current habit, not children of current habit)
   const potentialParents: Habit[] = (habitsData?.data || []).filter(h => {
-    // Don't include the current habit itself
     if (selectedHabit && h.id === selectedHabit.id) return false;
-    // Don't include habits that are already children of another habit
     if (h.parentHabitId) return false;
-    // Don't include habits that are children of the current habit (circular reference)
     if (selectedHabit && h.parentHabitId === selectedHabit.id) return false;
     return true;
   });
 
-  // Image upload state
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(
-    selectedHabit?.imageUrl || null
+  // Icon/image preview state - can be icon code, data URL, or external URL
+  const [selectedIconOrImage, setSelectedIconOrImage] = useState<string | null>(
+    selectedHabit?.imageUrl || selectedHabit?.icon || null
   );
-  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
 
   // Form state
   const {
@@ -71,115 +63,93 @@ export function HabitForm() {
       icon: selectedHabit?.icon || '',
       iconColor: selectedHabit?.iconColor || '#14b8a6',
       isActive: selectedHabit?.isActive ?? true,
-      dailyTarget: selectedHabit?.dailyTarget?.toString() || '',
+      targetPercentage: selectedHabit?.targetPercentage?.toString() || '90',
+      warningPercentage: selectedHabit?.warningPercentage?.toString() || '75',
+      grayMissedWhenOnTrack: selectedHabit?.grayMissedWhenOnTrack ?? false,
     },
   });
 
-  const watchedIcon = watch('icon');
   const watchedIconColor = watch('iconColor');
+  const watchedTargetPercentage = watch('targetPercentage');
+  const watchedWarningPercentage = watch('warningPercentage');
 
-  // Icon picker handler
-  const handleIconSelect = (icon: string, color: string) => {
-    setValue('icon', icon);
-    setValue('iconColor', color);
+  const percentageToDays = (pct: string): number => {
+    const num = parseInt(pct, 10);
+    if (isNaN(num)) return 0;
+    return Math.round((num / 100) * 30);
   };
 
-  // Open icon picker
+  const daysToPercentage = (days: number): number => {
+    return Math.round((days / 30) * 100);
+  };
+
+  // Helper to determine if value is an image URL/data URL vs icon code
+  const isImageValue = (value: string | null) => {
+    if (!value) return false;
+    return value.startsWith('data:') || value.startsWith('http://') || value.startsWith('https://');
+  };
+
+  // Icon/image picker handler
+  const handleIconSelect = (iconOrImage: string, color: string) => {
+    setSelectedIconOrImage(iconOrImage);
+    if (isImageValue(iconOrImage)) {
+      setValue('icon', '');
+      setValue('iconColor', '');
+    } else {
+      setValue('icon', iconOrImage);
+      setValue('iconColor', color);
+    }
+  };
+
   const handleOpenIconPicker = () => {
     openIconPicker(handleIconSelect);
   };
 
-  // Handle image file selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
-    if (!allowedTypes.includes(file.type)) {
-      toast.error('Please select a valid image file (JPEG, PNG, GIF, WebP, or SVG)');
-      return;
-    }
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image must be smaller than 5MB');
-      return;
-    }
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setImagePreview(event.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    setPendingImageFile(file);
-
-    // Clear icon selection when custom image is chosen
+  const handleClearSelection = () => {
+    setSelectedIconOrImage(null);
     setValue('icon', '');
+    setValue('iconColor', '#14b8a6');
   };
 
-  // Handle image removal
-  const handleRemoveImage = async () => {
-    if (isEditMode && selectedHabit?.imageUrl && !pendingImageFile) {
-      // Delete existing image from server
-      try {
-        await deleteImage.mutateAsync(selectedHabit.id);
-        toast.success('Image removed');
-      } catch (error) {
-        toast.error('Failed to remove image');
-        return;
-      }
-    }
-    setImagePreview(null);
-    setPendingImageFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
-
-  // Handle form submission
   const onSubmit = async (data: HabitFormData) => {
     try {
-      // Convert dailyTarget string to number or undefined
-      const dailyTarget = data.dailyTarget ? parseInt(data.dailyTarget, 10) : undefined;
+      const targetPercentage = data.targetPercentage ? parseInt(data.targetPercentage, 10) : 90;
+      const warningPercentage = data.warningPercentage ? parseInt(data.warningPercentage, 10) : 75;
 
-      let habitId: string;
+      // Determine if we have an image URL to save
+      const imageUrl = selectedIconOrImage && isImageValue(selectedIconOrImage)
+        ? selectedIconOrImage
+        : undefined;
 
       if (isEditMode && selectedHabit) {
         await updateHabit.mutateAsync({
           id: selectedHabit.id,
           name: data.name,
           categoryId: data.categoryId || undefined,
-          parentHabitId: data.parentHabitId || undefined, // Parent/child relationship (#61)
+          parentHabitId: data.parentHabitId || undefined,
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           isActive: data.isActive,
-          dailyTarget: dailyTarget || undefined, // Send undefined to clear target
+          targetPercentage,
+          warningPercentage,
+          grayMissedWhenOnTrack: data.grayMissedWhenOnTrack,
+          imageUrl: imageUrl,
         });
-        habitId = selectedHabit.id;
         toast.success('Habit updated successfully');
       } else {
-        const result = await createHabit.mutateAsync({
+        await createHabit.mutateAsync({
           name: data.name,
           categoryId: data.categoryId || undefined,
-          parentHabitId: data.parentHabitId || undefined, // Parent/child relationship (#61)
+          parentHabitId: data.parentHabitId || undefined,
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           isActive: data.isActive,
-          dailyTarget,
+          targetPercentage,
+          warningPercentage,
+          grayMissedWhenOnTrack: data.grayMissedWhenOnTrack,
+          imageUrl: imageUrl,
         });
-        habitId = result.data.id;
         toast.success('Habit created successfully');
-      }
-
-      // Upload pending image if exists
-      if (pendingImageFile) {
-        try {
-          await uploadImage.mutateAsync({ id: habitId, file: pendingImageFile });
-        } catch (error) {
-          toast.error('Habit saved but image upload failed');
-        }
       }
 
       handleClose();
@@ -188,7 +158,6 @@ export function HabitForm() {
     }
   };
 
-  // Handle delete
   const handleDelete = async () => {
     if (!selectedHabit) return;
 
@@ -201,335 +170,324 @@ export function HabitForm() {
     }
   };
 
-  // Close and cleanup
   const handleClose = () => {
     setSelectedHabit(null);
     closeModal();
   };
 
-  // Render icon preview
-  const renderIconPreview = () => {
-    if (!watchedIcon) {
+  const renderPreview = () => {
+    // If we have an image (data URL or external URL)
+    if (selectedIconOrImage && isImageValue(selectedIconOrImage)) {
       return (
-        <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center">
-          <MuiIcons.Add style={{ color: '#64748b', fontSize: 24 }} />
+        <img
+          src={selectedIconOrImage}
+          alt="Selected"
+          className="w-10 h-10 rounded-lg object-cover border border-slate-600"
+        />
+      );
+    }
+
+    // If we have an icon code
+    if (selectedIconOrImage) {
+      if (selectedIconOrImage.startsWith('material:')) {
+        const iconName = selectedIconOrImage.replace('material:', '');
+        const IconComponent = (MuiIcons as Record<string, React.ComponentType<{ style?: React.CSSProperties }>>)[iconName];
+        if (IconComponent) {
+          return (
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: `${watchedIconColor}20` }}
+            >
+              <IconComponent style={{ color: watchedIconColor || '#14b8a6', fontSize: 22 }} />
+            </div>
+          );
+        }
+      }
+
+      return (
+        <div
+          className="w-10 h-10 rounded-lg flex items-center justify-center"
+          style={{ backgroundColor: `${watchedIconColor}20` }}
+        >
+          <i className={selectedIconOrImage} style={{ color: watchedIconColor || '#14b8a6', fontSize: 20 }} aria-hidden="true" />
         </div>
       );
     }
 
-    // Handle Material icons
-    if (watchedIcon.startsWith('material:')) {
-      const iconName = watchedIcon.replace('material:', '');
-      const IconComponent = (MuiIcons as Record<string, React.ComponentType<{ style?: React.CSSProperties }>>)[iconName];
-      if (IconComponent) {
-        return (
-          <div
-            className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: `${watchedIconColor}20` }}
-          >
-            <IconComponent style={{ color: watchedIconColor, fontSize: 28 }} />
-          </div>
-        );
-      }
-    }
-
-    // Handle Font Awesome icons
+    // No selection - show placeholder
     return (
-      <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center"
-        style={{ backgroundColor: `${watchedIconColor}20` }}
-      >
-        <i
-          className={watchedIcon}
-          style={{ color: watchedIconColor, fontSize: 24 }}
-          aria-hidden="true"
-        />
+      <div className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center">
+        <MuiIcons.Add style={{ color: '#64748b', fontSize: 20 }} />
       </div>
     );
   };
 
+  const modalContentRef = useRef<HTMLDivElement>(null);
+
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget &&
+        modalContentRef.current &&
+        !modalContentRef.current.contains(e.target as Node)) {
+      handleClose();
+    }
+  };
+
   return (
     <div
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-      onClick={(e) => e.target === e.currentTarget && handleClose()}
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2"
+      onClick={handleBackdropClick}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) {
+          e.stopPropagation();
+        }
+      }}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden">
-        {/* Header */}
-        <div className="p-5 border-b border-slate-700 bg-gradient-to-r from-slate-800 to-slate-800/50">
+      <div
+        ref={modalContentRef}
+        className="bg-slate-800 rounded-xl w-full max-w-3xl shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        data-testid="habit-form"
+      >
+        {/* Compact Header */}
+        <div className="px-4 py-3 border-b border-slate-700 bg-gradient-to-r from-slate-800 to-slate-800/50">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center">
-                <MuiIcons.CheckCircle style={{ color: 'white', fontSize: 24 }} />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center">
+                <MuiIcons.CheckCircle style={{ color: 'white', fontSize: 18 }} />
               </div>
-              <div>
-                <h2 className="text-xl font-semibold text-white">
-                  {isEditMode ? 'Edit Habit' : 'Create Habit'}
-                </h2>
-                <p className="text-sm text-slate-400">
-                  {isEditMode ? 'Update habit details' : 'Add a new habit to track'}
-                </p>
-              </div>
+              <h2 className="text-lg font-semibold text-white">
+                {isEditMode ? 'Edit Habit' : 'Create Habit'}
+              </h2>
             </div>
             <button
               onClick={handleClose}
-              className="w-8 h-8 rounded-lg bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors flex items-center justify-center"
+              className="w-7 h-7 rounded-lg bg-slate-700 text-slate-400 hover:bg-slate-600 hover:text-white transition-colors flex items-center justify-center"
               aria-label="Close"
             >
-              <MuiIcons.Close style={{ fontSize: 20 }} />
+              <MuiIcons.Close style={{ fontSize: 18 }} />
             </button>
           </div>
         </div>
 
-        {/* Form */}
+        {/* Form - Two Column Layout */}
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="p-5 space-y-5">
-            {/* Name field */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Habit Name <span className="text-red-400">*</span>
-              </label>
-              <input
-                type="text"
-                {...register('name', { required: 'Habit name is required' })}
-                placeholder="e.g., Morning Exercise"
-                className={`
-                  w-full px-4 py-3 bg-slate-700/50 border rounded-xl text-white
-                  placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500
-                  focus:border-transparent transition-all
-                  ${errors.name ? 'border-red-500' : 'border-slate-600'}
-                `}
-                autoFocus
-              />
-              {errors.name && (
-                <p className="mt-1.5 text-sm text-red-400 flex items-center gap-1">
-                  <MuiIcons.ErrorOutline style={{ fontSize: 16 }} />
-                  {errors.name.message}
-                </p>
-              )}
+          <div className="p-4 grid md:grid-cols-2 gap-4">
+            {/* Left Column - Basic Info */}
+            <div className="space-y-3">
+              {/* Name field */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Habit Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  {...register('name', { required: 'Habit name is required' })}
+                  placeholder="e.g., Morning Exercise"
+                  className={`w-full px-3 py-2 bg-slate-700/50 border rounded-lg text-white text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent ${errors.name ? 'border-red-500' : 'border-slate-600'}`}
+                  autoFocus
+                />
+                {errors.name && (
+                  <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
+                )}
+              </div>
+
+              {/* Category & Parent in row */}
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Category</label>
+                  <select
+                    {...register('categoryId')}
+                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="">None</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-300 mb-1">Parent Habit</label>
+                  <select
+                    {...register('parentHabitId')}
+                    className="w-full px-3 py-2 bg-slate-700/50 border border-slate-600 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  >
+                    <option value="">None (standalone)</option>
+                    {potentialParents.map((habit) => (
+                      <option key={habit.id} value={habit.id}>{habit.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Scoring Thresholds - Compact */}
+              <div className="p-3 bg-slate-700/30 rounded-lg space-y-2">
+                <div className="text-xs font-medium text-slate-300">Scoring Thresholds</div>
+
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-slate-400 w-14">Target:</span>
+                  <input
+                    type="number"
+                    {...register('targetPercentage')}
+                    min={1} max={100}
+                    className="w-14 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-white text-center text-xs"
+                  />
+                  <span className="text-slate-500">%</span>
+                  <span className="text-slate-600">=</span>
+                  <input
+                    type="number"
+                    value={percentageToDays(watchedTargetPercentage)}
+                    onChange={(e) => {
+                      const days = parseInt(e.target.value, 10);
+                      if (!isNaN(days) && days >= 0 && days <= 30) {
+                        setValue('targetPercentage', daysToPercentage(days).toString());
+                      }
+                    }}
+                    min={1} max={30}
+                    className="w-12 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-white text-center text-xs"
+                  />
+                  <span className="text-slate-500 text-xs">d/mo</span>
+                  <span className="text-emerald-400 text-xs">= Green</span>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-slate-400 w-14">Warning:</span>
+                  <input
+                    type="number"
+                    {...register('warningPercentage')}
+                    min={1} max={100}
+                    className="w-14 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-white text-center text-xs"
+                  />
+                  <span className="text-slate-500">%</span>
+                  <span className="text-slate-600">=</span>
+                  <input
+                    type="number"
+                    value={percentageToDays(watchedWarningPercentage)}
+                    onChange={(e) => {
+                      const days = parseInt(e.target.value, 10);
+                      if (!isNaN(days) && days >= 0 && days <= 30) {
+                        setValue('warningPercentage', daysToPercentage(days).toString());
+                      }
+                    }}
+                    min={1} max={30}
+                    className="w-12 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-white text-center text-xs"
+                  />
+                  <span className="text-slate-500 text-xs">d/mo</span>
+                  <span className="text-yellow-400 text-xs">= Yellow</span>
+                </div>
+              </div>
+
+              {/* Low Frequency Toggle - Compact */}
+              <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded-lg">
+                <div>
+                  <div className="text-white text-sm">Low frequency habit</div>
+                  <div className="text-xs text-slate-400">Show gray instead of pink/red</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" {...register('grayMissedWhenOnTrack')} className="sr-only peer" />
+                  <div className="w-9 h-5 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500" />
+                </label>
+              </div>
             </div>
 
-            {/* Category select */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Category
-              </label>
-              <select
-                {...register('categoryId')}
-                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all appearance-none cursor-pointer"
-              >
-                <option value="">No category</option>
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-xs text-slate-500">
-                Group habits by category for better organization
-              </p>
-            </div>
-
-            {/* Parent Habit select (#61) */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Parent Habit
-              </label>
-              <select
-                {...register('parentHabitId')}
-                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all appearance-none cursor-pointer"
-              >
-                <option value="">No parent (standalone habit)</option>
-                {potentialParents.map((habit) => (
-                  <option key={habit.id} value={habit.id}>
-                    {habit.name}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1.5 text-xs text-slate-500">
-                Make this a child of another habit. Parent habits roll up child status automatically.
-              </p>
-            </div>
-
-            {/* Daily Target (count-based habit) */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Daily Target (Count-Based)
-              </label>
-              <input
-                type="number"
-                {...register('dailyTarget', {
-                  min: { value: 0, message: 'Target must be 0 or greater' },
-                  max: { value: 99, message: 'Target must be 99 or less' },
-                })}
-                placeholder="e.g., 3 for 3x daily"
-                min={0}
-                max={99}
-                className={`
-                  w-full px-4 py-3 bg-slate-700/50 border rounded-xl text-white
-                  placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500
-                  focus:border-transparent transition-all
-                  ${errors.dailyTarget ? 'border-red-500' : 'border-slate-600'}
-                `}
-              />
-              {errors.dailyTarget && (
-                <p className="mt-1.5 text-sm text-red-400 flex items-center gap-1">
-                  <MuiIcons.ErrorOutline style={{ fontSize: 16 }} />
-                  {errors.dailyTarget.message}
-                </p>
-              )}
-              <p className="mt-1.5 text-xs text-slate-500">
-                Set a count target for habits done multiple times daily (e.g., supplements 3x/day). Leave empty for standard yes/no habits.
-              </p>
-            </div>
-
-            {/* Custom Image Upload */}
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-2">
-                Custom Image
-              </label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-              {imagePreview ? (
-                <div className="flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl">
-                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-700 flex-shrink-0">
-                    <img
-                      src={imagePreview}
-                      alt="Custom habit icon"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-white font-medium">Custom Image</div>
-                    <div className="text-sm text-slate-400">
-                      {pendingImageFile ? 'Ready to upload' : 'Uploaded image'}
+            {/* Right Column - Visual & Settings */}
+            <div className="space-y-3">
+              {/* Icon/Image section - Unified Choose Icon button */}
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">Icon or Image</label>
+                <div className="flex items-center gap-2">
+                  {/* Preview */}
+                  {selectedIconOrImage && (
+                    <div data-testid="selected-icon-preview">
+                      {renderPreview()}
                     </div>
-                  </div>
+                  )}
+
+                  {/* Choose Icon button */}
                   <button
                     type="button"
-                    onClick={handleRemoveImage}
-                    className="p-2 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600/20 hover:text-red-300 transition-colors"
-                    title="Remove image"
+                    onClick={handleOpenIconPicker}
+                    data-testid="choose-icon-button"
+                    className="flex-1 flex items-center gap-3 p-2 bg-slate-700/50 border border-slate-600 rounded-lg hover:bg-slate-700 transition-all text-left"
                   >
-                    <MuiIcons.Close style={{ fontSize: 20 }} />
+                    {!selectedIconOrImage && renderPreview()}
+                    <div className="flex-1">
+                      <div className="text-white text-sm">
+                        {selectedIconOrImage ? 'Change Icon' : 'Choose Icon'}
+                      </div>
+                      <div className="text-xs text-slate-400">
+                        {selectedIconOrImage ? 'Select different icon or image' : 'Select icon, upload image, or enter URL'}
+                      </div>
+                    </div>
+                    <MuiIcons.ChevronRight className="text-slate-400" style={{ fontSize: 20 }} />
                   </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center">
-                    <MuiIcons.CloudUpload style={{ color: '#64748b', fontSize: 24 }} />
-                  </div>
-                  <div className="flex-1 text-left">
-                    <div className="text-white font-medium">Upload Image</div>
-                    <div className="text-sm text-slate-400">
-                      JPEG, PNG, GIF, WebP, or SVG (max 5MB)
-                    </div>
-                  </div>
-                  <MuiIcons.ChevronRight
-                    className="text-slate-400 group-hover:text-white transition-colors"
-                    style={{ fontSize: 24 }}
-                  />
-                </button>
-              )}
-            </div>
 
-            {/* Icon picker (only show if no custom image) */}
-            {!imagePreview && (
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Or Choose an Icon
+                  {/* Clear button */}
+                  {selectedIconOrImage && (
+                    <button
+                      type="button"
+                      onClick={handleClearSelection}
+                      data-testid="clear-icon-button"
+                      className="p-2 rounded-lg bg-slate-700/50 border border-slate-600 text-slate-400 hover:text-red-400 hover:border-red-500/50 hover:bg-red-500/10 transition-colors"
+                      title="Clear selection"
+                    >
+                      <MuiIcons.Close style={{ fontSize: 18 }} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Active toggle - Compact */}
+              <div className="flex items-center justify-between p-2 bg-slate-700/30 rounded-lg">
+                <div>
+                  <div className="text-white text-sm">Active</div>
+                  <div className="text-xs text-slate-400">Inactive habits are hidden from tracking</div>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input type="checkbox" {...register('isActive')} className="sr-only peer" />
+                  <div className="w-9 h-5 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500" />
                 </label>
-                <button
-                  type="button"
-                  onClick={handleOpenIconPicker}
-                  className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
-                >
-                  {renderIconPreview()}
-                  <div className="flex-1 text-left">
-                    <div className="text-white font-medium">
-                      {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
-                    </div>
-                    <div className="text-sm text-slate-400">
-                      {watchedIcon ? 'Click to select a different icon' : 'Select from icon library'}
-                    </div>
-                  </div>
-                  <MuiIcons.ChevronRight
-                    className="text-slate-400 group-hover:text-white transition-colors"
-                    style={{ fontSize: 24 }}
-                  />
-                </button>
               </div>
-            )}
-
-            {/* Active toggle */}
-            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-xl">
-              <div>
-                <div className="text-white font-medium">Active</div>
-                <div className="text-sm text-slate-400">
-                  Inactive habits are hidden from daily tracking
-                </div>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  {...register('isActive')}
-                  className="sr-only peer"
-                />
-                <div className="w-11 h-6 bg-slate-600 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-teal-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500" />
-              </label>
             </div>
           </div>
 
-          {/* Footer */}
-          <div className="p-5 border-t border-slate-700 bg-slate-800/50 flex items-center justify-between">
-            {/* Delete button (edit mode only) */}
+          {/* Compact Footer */}
+          <div className="px-4 py-3 border-t border-slate-700 bg-slate-800/50 flex items-center justify-between">
             {isEditMode ? (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={deleteHabit.isPending}
-                className="px-4 py-2.5 rounded-xl bg-red-600/10 text-red-400 hover:bg-red-600/20 hover:text-red-300 transition-colors font-medium flex items-center gap-2"
+                className="px-3 py-2 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600/20 text-sm font-medium flex items-center gap-1.5"
               >
-                <MuiIcons.DeleteOutline style={{ fontSize: 18 }} />
+                <MuiIcons.DeleteOutline style={{ fontSize: 16 }} />
                 Delete
               </button>
             ) : (
-              <div /> // Spacer
+              <div />
             )}
 
-            {/* Action buttons */}
-            <div className="flex gap-3">
+            <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-5 py-2.5 rounded-xl bg-slate-700 text-white hover:bg-slate-600 transition-colors font-medium"
+                className="px-4 py-2 rounded-lg bg-slate-700 text-white hover:bg-slate-600 text-sm font-medium"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting || createHabit.isPending || updateHabit.isPending}
-                className={`
-                  px-5 py-2.5 rounded-xl font-medium transition-all duration-150
-                  flex items-center gap-2
-                  ${isSubmitting || createHabit.isPending || updateHabit.isPending
+                className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1.5 ${
+                  isSubmitting || createHabit.isPending || updateHabit.isPending
                     ? 'bg-slate-600 text-slate-400 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-teal-600 to-teal-500 text-white hover:from-teal-500 hover:to-teal-400 shadow-lg shadow-teal-600/25'
-                  }
-                `}
+                    : 'bg-gradient-to-r from-teal-600 to-teal-500 text-white hover:from-teal-500 hover:to-teal-400'
+                }`}
               >
                 {(isSubmitting || createHabit.isPending || updateHabit.isPending) && (
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 )}
-                {isEditMode ? 'Save Changes' : 'Create Habit'}
+                {isEditMode ? 'Save' : 'Create'}
               </button>
             </div>
           </div>

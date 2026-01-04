@@ -57,7 +57,7 @@ export function IconGrid({ icons, selectedIcon, selectedColor, onSelect }: IconG
   }
 
   return (
-    <div className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
+    <div data-testid="icon-grid" className="grid grid-cols-6 sm:grid-cols-8 md:grid-cols-10 gap-2">
       {icons.map((icon) => {
         const isSelected = selectedIcon?.name === icon.name && selectedIcon?.provider === icon.provider;
 

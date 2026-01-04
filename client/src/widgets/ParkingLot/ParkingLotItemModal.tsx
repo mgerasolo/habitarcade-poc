@@ -115,6 +115,7 @@ export function ParkingLotItemModal() {
       <div
         ref={modalRef}
         className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-700"
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 bg-slate-700/50 border-b border-slate-700">

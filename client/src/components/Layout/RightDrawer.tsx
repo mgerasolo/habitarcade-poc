@@ -36,7 +36,7 @@ const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons; 
 ];
 
 export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawerProps) {
-  const { rightDrawerContent, setRightDrawerContent, closeRightDrawer } = useUIStore();
+  const { rightDrawerContent, setRightDrawerContent, closeRightDrawer, activeModal } = useUIStore();
   const { isEditMode } = useDashboardStore();
   const drawerRef = useRef<HTMLDivElement>(null);
   // Local state for 'properties' tab which is not in RightSidebarModuleType
@@ -55,6 +55,9 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
     if (!isOpen || !overlay) return;
 
     const handleClickOutside = (event: MouseEvent) => {
+      // Don't close drawer when a modal is open (modal clicks shouldn't affect drawer)
+      if (activeModal) return;
+
       if (drawerRef.current && !drawerRef.current.contains(event.target as Node)) {
         // Check if click is on the toggle button (don't close if so)
         const target = event.target as HTMLElement;
@@ -72,7 +75,7 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
       clearTimeout(timeoutId);
       document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [isOpen, overlay, closeRightDrawer]);
+  }, [isOpen, overlay, closeRightDrawer, activeModal]);
 
   // Handle escape key to close
   useEffect(() => {

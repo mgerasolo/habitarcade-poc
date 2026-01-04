@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
     const includeDeleted = req.query.includeDeleted === 'true';
     const result = await db.query.projects.findMany({
       where: includeDeleted ? undefined : eq(projects.isDeleted, false),
-      with: { tasks: true },
+      with: { tasks: true, category: true },
       orderBy: [asc(projects.name)],
     });
 
@@ -67,6 +67,7 @@ router.get('/:id', async (req, res) => {
     const result = await db.query.projects.findFirst({
       where: eq(projects.id, req.params.id),
       with: {
+        category: true,
         tasks: {
           where: eq(tasks.isDeleted, false),
           orderBy: [asc(tasks.sortOrder)],
@@ -115,7 +116,7 @@ router.get('/:id/tasks', async (req, res) => {
 // POST /api/projects - Create project
 router.post('/', async (req, res) => {
   try {
-    const { name, description, color, icon, iconColor, imageUrl } = req.body;
+    const { name, description, categoryId, startDate, targetDate, color, icon, iconColor, imageUrl } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required', code: 'VALIDATION_ERROR' });
@@ -124,12 +125,22 @@ router.post('/', async (req, res) => {
     const [result] = await db.insert(projects).values({
       name,
       description,
+      categoryId,
+      startDate,
+      targetDate,
       color,
       icon,
       iconColor,
       imageUrl,
     }).returning();
-    res.status(201).json({ data: result });
+
+    // Fetch with category included
+    const fullProject = await db.query.projects.findFirst({
+      where: eq(projects.id, result.id),
+      with: { category: true },
+    });
+
+    res.status(201).json({ data: fullProject });
   } catch (error) {
     console.error('Failed to create project:', error);
     res.status(500).json({ error: 'Failed to create project', code: 'INTERNAL_ERROR' });
@@ -139,15 +150,35 @@ router.post('/', async (req, res) => {
 // PUT /api/projects/:id - Update project
 router.put('/:id', async (req, res) => {
   try {
-    const { name, description, color, icon, iconColor, imageUrl } = req.body;
+    const { name, description, categoryId, startDate, targetDate, color, icon, iconColor, imageUrl } = req.body;
+
+    const updateData: Record<string, unknown> = { updatedAt: new Date() };
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (categoryId !== undefined) updateData.categoryId = categoryId || null;
+    if (startDate !== undefined) updateData.startDate = startDate || null;
+    if (targetDate !== undefined) updateData.targetDate = targetDate || null;
+    if (color !== undefined) updateData.color = color;
+    if (icon !== undefined) updateData.icon = icon;
+    if (iconColor !== undefined) updateData.iconColor = iconColor;
+    if (imageUrl !== undefined) updateData.imageUrl = imageUrl;
+
     const [result] = await db.update(projects)
-      .set({ name, description, color, icon, iconColor, imageUrl, updatedAt: new Date() })
+      .set(updateData)
       .where(eq(projects.id, req.params.id))
       .returning();
+
     if (!result) {
       return res.status(404).json({ error: 'Project not found', code: 'PROJECT_NOT_FOUND' });
     }
-    res.json({ data: result });
+
+    // Fetch with category included
+    const fullProject = await db.query.projects.findFirst({
+      where: eq(projects.id, result.id),
+      with: { category: true },
+    });
+
+    res.json({ data: fullProject });
   } catch (error) {
     console.error('Failed to update project:', error);
     res.status(500).json({ error: 'Failed to update project', code: 'INTERNAL_ERROR' });

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
-import { useProjects, useDeleteProject, useTasks } from '../../api';
+import { useProjects, useDeleteProject, useTasks, useCategories } from '../../api';
 import { useUIStore } from '../../stores';
 import type { Project, Task } from '../../types';
 
@@ -18,11 +18,22 @@ import type { Project, Task } from '../../types';
 export function ManageProjects() {
   const { data: projectsData, isLoading } = useProjects();
   const { data: tasksData } = useTasks();
+  const { data: categoriesData } = useCategories();
   const deleteProject = useDeleteProject();
   const { openModal, setSelectedProject } = useUIStore();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'tasks' | 'created'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'category' | 'tasks' | 'created'>('name');
+
+  // Create a map of category IDs to category objects for quick lookup
+  const categoryMap = useMemo(() => {
+    if (!categoriesData?.data) return {};
+    const map: Record<string, { name: string; icon?: string; iconColor?: string }> = {};
+    categoriesData.data.forEach((c) => {
+      map[c.id] = { name: c.name, icon: c.icon, iconColor: c.iconColor };
+    });
+    return map;
+  }, [categoriesData]);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
 
   // Get task count per project
@@ -59,6 +70,12 @@ export function ManageProjects() {
         case 'name':
           comparison = a.name.localeCompare(b.name);
           break;
+        case 'category': {
+          const catA = a.categoryId ? (categoryMap[a.categoryId]?.name || '') : '';
+          const catB = b.categoryId ? (categoryMap[b.categoryId]?.name || '') : '';
+          comparison = catA.localeCompare(catB);
+          break;
+        }
         case 'tasks':
           comparison = (taskCounts[a.id] || 0) - (taskCounts[b.id] || 0);
           break;
@@ -70,7 +87,7 @@ export function ManageProjects() {
     });
 
     return filtered;
-  }, [projectsData, searchQuery, sortBy, sortDirection, taskCounts]);
+  }, [projectsData, searchQuery, sortBy, sortDirection, taskCounts, categoryMap]);
 
   // Handle edit
   const handleEdit = (project: Project) => {
@@ -205,13 +222,19 @@ export function ManageProjects() {
       <div className="bg-slate-800/50 border border-slate-700 rounded-xl overflow-hidden">
         {/* Table Header */}
         <div className="grid grid-cols-12 gap-4 px-4 py-3 bg-slate-800 border-b border-slate-700 text-sm font-medium text-slate-400">
-          <div className="col-span-5 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('name')}>
+          <div className="col-span-4 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('name')}>
             Project
             {sortBy === 'name' && (
               sortDirection === 'asc' ? <MuiIcons.ArrowUpward style={{ fontSize: 16 }} /> : <MuiIcons.ArrowDownward style={{ fontSize: 16 }} />
             )}
           </div>
-          <div className="col-span-3 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('tasks')}>
+          <div className="col-span-2 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('category')}>
+            Category
+            {sortBy === 'category' && (
+              sortDirection === 'asc' ? <MuiIcons.ArrowUpward style={{ fontSize: 16 }} /> : <MuiIcons.ArrowDownward style={{ fontSize: 16 }} />
+            )}
+          </div>
+          <div className="col-span-2 flex items-center gap-2 cursor-pointer hover:text-white" onClick={() => toggleSort('tasks')}>
             Tasks
             {sortBy === 'tasks' && (
               sortDirection === 'asc' ? <MuiIcons.ArrowUpward style={{ fontSize: 16 }} /> : <MuiIcons.ArrowDownward style={{ fontSize: 16 }} />
@@ -245,54 +268,69 @@ export function ManageProjects() {
           </div>
         ) : (
           <div className="divide-y divide-slate-700/50">
-            {projects.map((project: Project) => (
-              <div
-                key={project.id}
-                className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-700/30 transition-colors"
-              >
-                {/* Project Name */}
-                <div className="col-span-5 flex items-center gap-3">
-                  {renderIcon(project)}
-                  <div>
-                    <span className="text-white font-medium block">{project.name}</span>
-                    {project.description && (
-                      <span className="text-slate-400 text-sm line-clamp-1">{project.description}</span>
+            {projects.map((project: Project) => {
+              const category = project.categoryId ? categoryMap[project.categoryId] : null;
+              return (
+                <div
+                  key={project.id}
+                  className="grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-slate-700/30 transition-colors"
+                >
+                  {/* Project Name */}
+                  <div className="col-span-4 flex items-center gap-3">
+                    {renderIcon(project)}
+                    <div>
+                      <span className="text-white font-medium block">{project.name}</span>
+                      {project.description && (
+                        <span className="text-slate-400 text-sm line-clamp-1">{project.description}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Category */}
+                  <div className="col-span-2">
+                    {category ? (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/50 rounded-lg text-sm text-slate-300">
+                        {category.icon && <span>{category.icon}</span>}
+                        {category.name}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 text-sm">—</span>
                     )}
                   </div>
-                </div>
 
-                {/* Task Count */}
-                <div className="col-span-3">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/50 rounded-lg text-sm text-slate-300">
-                    <MuiIcons.Assignment style={{ fontSize: 14 }} />
-                    {taskCounts[project.id] || 0} task{(taskCounts[project.id] || 0) !== 1 ? 's' : ''}
-                  </span>
-                </div>
+                  {/* Task Count */}
+                  <div className="col-span-2">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-700/50 rounded-lg text-sm text-slate-300">
+                      <MuiIcons.Assignment style={{ fontSize: 14 }} />
+                      {taskCounts[project.id] || 0}
+                    </span>
+                  </div>
 
-                {/* Created */}
-                <div className="col-span-2 text-sm text-slate-400">
-                  {new Date(project.createdAt).toLocaleDateString()}
-                </div>
+                  {/* Created */}
+                  <div className="col-span-2 text-sm text-slate-400">
+                    {new Date(project.createdAt).toLocaleDateString()}
+                  </div>
 
-                {/* Actions */}
-                <div className="col-span-2 flex items-center justify-end gap-2">
-                  <button
-                    onClick={() => handleEdit(project)}
-                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                    title="Edit"
-                  >
-                    <MuiIcons.Edit style={{ fontSize: 18 }} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(project)}
-                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-600/10 rounded-lg transition-colors"
-                    title="Delete"
-                  >
-                    <MuiIcons.Delete style={{ fontSize: 18 }} />
-                  </button>
+                  {/* Actions */}
+                  <div className="col-span-2 flex items-center justify-end gap-2">
+                    <button
+                      onClick={() => handleEdit(project)}
+                      className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <MuiIcons.Edit style={{ fontSize: 18 }} />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(project)}
+                      className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-600/10 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <MuiIcons.Delete style={{ fontSize: 18 }} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

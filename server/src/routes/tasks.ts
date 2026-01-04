@@ -41,8 +41,16 @@ router.get('/', async (req, res) => {
       with: {
         project: true,
         timeBlock: true,
+        taskStatus: true,
         taskTags: {
           with: { tag: true }
+        },
+        children: {
+          with: {
+            project: true,
+            taskStatus: true,
+            taskTags: { with: { tag: true } }
+          }
         }
       },
       orderBy: [asc(tasks.sortOrder), desc(tasks.createdAt)],
@@ -64,8 +72,16 @@ router.get('/unscheduled', async (req, res) => {
       ),
       with: {
         project: true,
+        taskStatus: true,
         taskTags: {
           with: { tag: true }
+        },
+        children: {
+          with: {
+            project: true,
+            taskStatus: true,
+            taskTags: { with: { tag: true } }
+          }
         }
       },
       orderBy: [asc(tasks.sortOrder), desc(tasks.createdAt)],
@@ -93,8 +109,16 @@ router.get('/week/:weekStart', async (req, res) => {
       with: {
         project: true,
         timeBlock: true,
+        taskStatus: true,
         taskTags: {
           with: { tag: true }
+        },
+        children: {
+          with: {
+            project: true,
+            taskStatus: true,
+            taskTags: { with: { tag: true } }
+          }
         }
       },
       orderBy: [asc(tasks.sortOrder)],
@@ -114,8 +138,17 @@ router.get('/:id', async (req, res) => {
       with: {
         project: true,
         timeBlock: true,
+        taskStatus: true,
         taskTags: {
           with: { tag: true }
+        },
+        parent: true,
+        children: {
+          with: {
+            project: true,
+            taskStatus: true,
+            taskTags: { with: { tag: true } }
+          }
         }
       },
     });
@@ -132,10 +165,20 @@ router.get('/:id', async (req, res) => {
 // POST /api/tasks - Create task
 router.post('/', async (req, res) => {
   try {
-    const { title, description, plannedDate, status, priority, projectId, timeBlockId, sortOrder, tagIds } = req.body;
+    const { title, description, plannedDate, status, statusId, parentTaskId, priority, projectId, timeBlockId, sortOrder, tagIds } = req.body;
 
     if (!title) {
       return res.status(400).json({ error: 'Title is required', code: 'VALIDATION_ERROR' });
+    }
+
+    // Validate parentTaskId exists if provided
+    if (parentTaskId) {
+      const parentExists = await db.query.tasks.findFirst({
+        where: eq(tasks.id, parentTaskId),
+      });
+      if (!parentExists) {
+        return res.status(400).json({ error: 'Parent task not found', code: 'VALIDATION_ERROR' });
+      }
     }
 
     const [result] = await db.insert(tasks).values({
@@ -143,6 +186,8 @@ router.post('/', async (req, res) => {
       description,
       plannedDate,
       status: status || 'pending',
+      statusId,
+      parentTaskId,
       priority,
       projectId,
       timeBlockId,
@@ -164,8 +209,17 @@ router.post('/', async (req, res) => {
       with: {
         project: true,
         timeBlock: true,
+        taskStatus: true,
         taskTags: {
           with: { tag: true }
+        },
+        parent: true,
+        children: {
+          with: {
+            project: true,
+            taskStatus: true,
+            taskTags: { with: { tag: true } }
+          }
         }
       },
     });
@@ -180,7 +234,23 @@ router.post('/', async (req, res) => {
 // PUT /api/tasks/:id - Update task
 router.put('/:id', async (req, res) => {
   try {
-    const { title, description, plannedDate, status, priority, projectId, timeBlockId, sortOrder, tagIds } = req.body;
+    const { title, description, plannedDate, status, statusId, parentTaskId, completedAt, priority, projectId, timeBlockId, sortOrder, tagIds } = req.body;
+
+    console.log('PUT /api/tasks/:id - body:', req.body);
+    console.log('PUT /api/tasks/:id - statusId:', statusId);
+
+    // Validate parentTaskId - can't be self or create circular reference
+    if (parentTaskId !== undefined && parentTaskId !== null) {
+      if (parentTaskId === req.params.id) {
+        return res.status(400).json({ error: 'Task cannot be its own parent', code: 'VALIDATION_ERROR' });
+      }
+      const parentExists = await db.query.tasks.findFirst({
+        where: eq(tasks.id, parentTaskId),
+      });
+      if (!parentExists) {
+        return res.status(400).json({ error: 'Parent task not found', code: 'VALIDATION_ERROR' });
+      }
+    }
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (title !== undefined) updateData.title = title;
@@ -194,6 +264,10 @@ router.put('/:id', async (req, res) => {
         updateData.completedAt = null;
       }
     }
+    if (statusId !== undefined) updateData.statusId = statusId;
+    if (parentTaskId !== undefined) updateData.parentTaskId = parentTaskId;
+    console.log('PUT /api/tasks/:id - updateData:', updateData);
+    if (completedAt !== undefined) updateData.completedAt = completedAt ? new Date(completedAt) : null;
     if (priority !== undefined) updateData.priority = priority;
     if (projectId !== undefined) updateData.projectId = projectId;
     if (timeBlockId !== undefined) updateData.timeBlockId = timeBlockId;
@@ -229,8 +303,17 @@ router.put('/:id', async (req, res) => {
       with: {
         project: true,
         timeBlock: true,
+        taskStatus: true,
         taskTags: {
           with: { tag: true }
+        },
+        parent: true,
+        children: {
+          with: {
+            project: true,
+            taskStatus: true,
+            taskTags: { with: { tag: true } }
+          }
         }
       },
     });

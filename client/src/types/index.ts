@@ -7,10 +7,11 @@ export type HabitStatus =
   | 'na'
   | 'exempt'
   | 'extra'
-  | 'pink';
+  | 'pink'
+  | 'gray_missed'; // For low frequency habits: shows gray but counts as missed
 
 export const HABIT_STATUSES: HabitStatus[] = [
-  'empty', 'complete', 'missed', 'partial', 'na', 'exempt', 'extra', 'pink'
+  'empty', 'complete', 'missed', 'partial', 'na', 'exempt', 'extra', 'pink', 'gray_missed'
 ];
 
 // Common statuses for click cycling (green → red → orange → white)
@@ -27,6 +28,7 @@ export const STATUS_COLORS: Record<HabitStatus, string> = {
   exempt: '#3b82f6',   // Blue
   extra: '#047857',
   pink: '#ffd3dc',  // Pink for "Likely Missed" - rgb(255, 211, 220)
+  gray_missed: '#666666', // Gray for low frequency habits - same as N/A but counts as missed
 };
 
 // Category
@@ -56,7 +58,9 @@ export interface Habit {
   imageUrl?: string; // Custom uploaded icon/image
   isActive: boolean;
   sortOrder: number;
-  dailyTarget?: number; // For count-based habits (e.g., 3 supplements)
+  targetPercentage?: number; // Completion % for green (default: 90)
+  warningPercentage?: number; // Completion % for yellow/red boundary (default: 75)
+  grayMissedWhenOnTrack?: boolean; // Low frequency habit - show gray instead of pink when on track
   isDeleted: boolean;
   deletedAt?: string;
   createdAt: string;
@@ -81,6 +85,10 @@ export interface Project {
   id: string;
   name: string;
   description?: string;
+  categoryId?: string;
+  category?: Category;
+  startDate?: string; // ISO date YYYY-MM-DD
+  targetDate?: string; // ISO date YYYY-MM-DD (target completion)
   icon?: string;
   iconColor?: string;
   imageUrl?: string; // Uploaded custom icon/image
@@ -134,6 +142,9 @@ export interface Task {
   status: TaskStatus; // DEPRECATED - use statusId
   statusId?: string; // New: references task_statuses table
   taskStatus?: TaskStatusEntity; // Populated status entity
+  parentTaskId?: string; // Self-reference for parent/child (subtask) relationships
+  parent?: Task;
+  children?: Task[];
   priority?: number;
   projectId?: string;
   project?: Project;

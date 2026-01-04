@@ -151,7 +151,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/habits - Create habit
 router.post('/', async (req, res) => {
   try {
-    const { name, categoryId, parentHabitId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
+    const { name, categoryId, parentHabitId, icon, iconColor, isActive, sortOrder, targetPercentage, warningPercentage, grayMissedWhenOnTrack } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required', code: 'VALIDATION_ERROR' });
@@ -175,7 +175,9 @@ router.post('/', async (req, res) => {
       iconColor,
       isActive: isActive !== undefined ? isActive : true,
       sortOrder,
-      dailyTarget: dailyTarget || null,
+      targetPercentage: targetPercentage ?? 90,
+      warningPercentage: warningPercentage ?? 75,
+      grayMissedWhenOnTrack: grayMissedWhenOnTrack ?? false,
     }).returning();
     res.status(201).json({ data: result });
   } catch (error) {
@@ -187,7 +189,7 @@ router.post('/', async (req, res) => {
 // PUT /api/habits/:id - Update habit
 router.put('/:id', async (req, res) => {
   try {
-    const { name, categoryId, parentHabitId, icon, iconColor, isActive, sortOrder, dailyTarget } = req.body;
+    const { name, categoryId, parentHabitId, icon, iconColor, isActive, sortOrder, targetPercentage, warningPercentage, grayMissedWhenOnTrack } = req.body;
 
     // Validate parent exists if provided and prevent circular reference
     if (parentHabitId !== undefined && parentHabitId !== null) {
@@ -211,7 +213,9 @@ router.put('/:id', async (req, res) => {
         iconColor,
         isActive,
         sortOrder,
-        dailyTarget: dailyTarget !== undefined ? (dailyTarget || null) : undefined,
+        targetPercentage: targetPercentage !== undefined ? targetPercentage : undefined,
+        warningPercentage: warningPercentage !== undefined ? warningPercentage : undefined,
+        grayMissedWhenOnTrack: grayMissedWhenOnTrack !== undefined ? grayMissedWhenOnTrack : undefined,
         updatedAt: new Date(),
       })
       .where(eq(habits.id, req.params.id))

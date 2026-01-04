@@ -18,6 +18,8 @@ interface StatusTooltipProps {
   currentStatus: HabitStatus;
   onSelect: (status: HabitStatus) => void;
   onClose: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
   position?: 'above' | 'below';
   anchorRef?: React.RefObject<HTMLDivElement | null>;
 }
@@ -26,11 +28,13 @@ export function StatusTooltip({
   currentStatus,
   onSelect,
   onClose,
+  onMouseEnter,
+  onMouseLeave,
   position = 'below',
   anchorRef,
 }: StatusTooltipProps) {
   const tooltipRef = useRef<HTMLDivElement>(null);
-  const [coords, setCoords] = useState({ top: 0, left: 0 });
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
 
   // Calculate position based on anchor element
   // Uses viewport-relative coordinates for position: fixed
@@ -96,9 +100,16 @@ export function StatusTooltip({
     };
   }, [onClose]);
 
+  // Don't render until we have calculated coordinates (prevents flying in from 0,0)
+  if (!coords) {
+    return null;
+  }
+
   const tooltipContent = (
     <div
       ref={tooltipRef}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
       style={{
         position: 'fixed',
         top: coords.top,
@@ -110,7 +121,7 @@ export function StatusTooltip({
         bg-slate-950 rounded-lg shadow-2xl
         border border-slate-700/50
         min-w-[180px] overflow-hidden
-        animate-in fade-in slide-in-from-top-2 duration-200
+        animate-in fade-in duration-150
       "
       role="listbox"
       aria-label="Select habit status"

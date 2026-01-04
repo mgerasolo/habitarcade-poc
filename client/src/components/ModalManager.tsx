@@ -1,4 +1,3 @@
-import type { ReactElement } from 'react';
 import { useUIStore } from '../stores';
 import { HabitForm } from './Forms/HabitForm';
 import { CategoryForm } from './Forms/CategoryForm';
@@ -20,7 +19,10 @@ function SettingsModal() {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && closeModal()}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-5 border-b border-slate-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -70,7 +72,10 @@ function ConfirmDeleteModal() {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && closeModal()}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-5 border-b border-slate-700">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center">
@@ -114,7 +119,10 @@ function TaskForm() {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && closeModal()}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-5 border-b border-slate-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -158,7 +166,10 @@ function TimeBlockForm() {
       className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4"
       onClick={(e) => e.target === e.currentTarget && closeModal()}
     >
-      <div className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden">
+      <div
+        className="bg-slate-800 rounded-2xl w-full max-w-lg shadow-2xl border border-slate-700 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="p-5 border-b border-slate-700">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -199,34 +210,49 @@ export function ModalManager() {
   if (!activeModal) return null;
 
   // For nested modals (like icon-picker opened from a form),
-  // keep the parent modal mounted but hidden to preserve its state
-  const isNestedModal = activeModal === 'icon-picker' && previousModal;
+  // keep the parent modal mounted to preserve its state
+  const isIconPickerOpen = activeModal === 'icon-picker';
+  const parentModalType = isIconPickerOpen ? previousModal : null;
 
-  const modals: Record<string, ReactElement> = {
-    'habit-form': <HabitForm />,
-    'habit-detail': <HabitDetailModal />,
-    'task-form': <TaskForm />,
-    'project-form': <ProjectForm />,
-    'category-form': <CategoryForm />,
-    'tag-form': <TagForm />,
-    'time-block-form': <TimeBlockForm />,
-    'icon-picker': <IconBrowser />,
-    'settings': <SettingsModal />,
-    'confirm-delete': <ConfirmDeleteModal />,
-    'widget-catalog': <WidgetCatalog />,
-    'parking-lot-item': <ParkingLotItemModal />,
-    'status-form': <StatusForm />,
-  };
+  // Determine which form modal should be shown (either as active or as parent behind icon picker)
+  const formModalToShow = isIconPickerOpen ? parentModalType : activeModal;
 
   return (
     <>
-      {/* Keep parent modal mounted but hidden when in nested modal */}
-      {isNestedModal && previousModal && (
-        <div style={{ display: 'none' }}>
-          {modals[previousModal]}
+      {/* Form modals - stay mounted when icon picker is open on top */}
+      {formModalToShow === 'habit-form' && (
+        <div style={{ visibility: isIconPickerOpen ? 'hidden' : 'visible' }}>
+          <HabitForm />
         </div>
       )}
-      {modals[activeModal] || null}
+      {formModalToShow === 'project-form' && (
+        <div style={{ visibility: isIconPickerOpen ? 'hidden' : 'visible' }}>
+          <ProjectForm />
+        </div>
+      )}
+      {formModalToShow === 'category-form' && (
+        <div style={{ visibility: isIconPickerOpen ? 'hidden' : 'visible' }}>
+          <CategoryForm />
+        </div>
+      )}
+      {formModalToShow === 'status-form' && (
+        <div style={{ visibility: isIconPickerOpen ? 'hidden' : 'visible' }}>
+          <StatusForm />
+        </div>
+      )}
+
+      {/* Non-form modals - render normally */}
+      {activeModal === 'habit-detail' && <HabitDetailModal />}
+      {activeModal === 'task-form' && <TaskForm />}
+      {activeModal === 'tag-form' && <TagForm />}
+      {activeModal === 'time-block-form' && <TimeBlockForm />}
+      {activeModal === 'settings' && <SettingsModal />}
+      {activeModal === 'confirm-delete' && <ConfirmDeleteModal />}
+      {activeModal === 'widget-catalog' && <WidgetCatalog />}
+      {activeModal === 'parking-lot-item' && <ParkingLotItemModal />}
+
+      {/* Icon picker - renders on top when active */}
+      {isIconPickerOpen && <IconBrowser />}
     </>
   );
 }

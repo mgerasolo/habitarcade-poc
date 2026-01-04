@@ -1,7 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { useHabitMatrix, getResponsiveDays, DAYS_CONFIG, type CompletionScore } from './useHabitMatrix';
 import { CategorySection, CategorySectionFlat, CategorySectionSkeleton } from './CategorySection';
-import { DateHeader, DateHeaderCompact } from './DateHeader';
 import { HabitMatrixProvider } from './HabitMatrixContext';
 import { format, addMonths, subMonths } from 'date-fns';
 import type { CustomHeaderControls } from '../../components/Dashboard/WidgetContainer';
@@ -120,7 +119,7 @@ export function HabitMatrix({
   const cellSize = useMemo(() => {
     const padding = 16; // px-2 on both sides (reduced for more space)
     const categoryIndent = 20; // category toggle button width
-    const gap = daysToShow * 2; // gap between cells (gap-0.5 = 2px)
+    const gap = daysToShow * 4; // gap between cells (gap-1 = 4px) #19: increased spacing
     const scoreColumn = 40; // completion percentage column width
     const availableWidth = containerWidth - padding - habitNameWidth - gap - categoryIndent - scoreColumn;
     const calculatedSize = Math.floor(availableWidth / daysToShow);
@@ -223,15 +222,6 @@ export function HabitMatrix({
         {/* Matrix content - auto-fill width, controls are in WidgetContainer */}
         <div className="flex-1 overflow-y-visible">
           <div className="w-full">
-            {/* Date header row showing day numbers - hidden in compactVertical mode */}
-            {!compactVertical && (
-              isMobile ? (
-                <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} cellHeight={FIXED_CELL_HEIGHT} />
-              ) : (
-                <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} cellHeight={FIXED_CELL_HEIGHT} />
-              )
-            )}
-
             {/* Category sections with habits */}
             <div className={compactVertical ? 'space-y-0' : 'space-y-1'}>
               {categoryGroups.map((group) => (

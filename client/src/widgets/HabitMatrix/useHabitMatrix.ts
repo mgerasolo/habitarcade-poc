@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, subHours, isSameDay } from 'date-fns';
+import { format, subDays, startOfMonth, endOfMonth, eachDayOfInterval, subHours, isSameDay, getDaysInMonth, parseISO } from 'date-fns';
 import { useHabits, useCategories, useSettings } from '../../api';
 import type { Habit, HabitEntry, Category, HabitStatus } from '../../types';
 
@@ -53,6 +53,10 @@ export interface MatrixHabit extends Habit {
   computedStatusByDate?: Map<string, HabitStatus>;
   /** For child habits: indicates if a sibling is already complete (for graying out) */
   siblingCompletedByDate?: Map<string, boolean>;
+  /** For parent habits: array of child MatrixHabits (already processed) */
+  childHabits?: MatrixHabit[];
+  /** True if this habit is a child (has parentHabitId) - used for filtering */
+  isChild?: boolean;
 }
 
 export interface CategoryGroup {
@@ -80,7 +84,7 @@ export interface HabitMatrixData {
 /**
  * Status priority for parent habit "best color" calculation
  * Higher priority = shown on parent when any child has this status
- * Order: green (best) > extra > partial > pink > missed > exempt > na > empty (worst)
+ * Order: green (best) > extra > partial > pink > missed > gray_missed > exempt > na > empty (worst)
  */
 const STATUS_PRIORITY: Record<HabitStatus, number> = {
   complete: 8,
@@ -88,6 +92,7 @@ const STATUS_PRIORITY: Record<HabitStatus, number> = {
   partial: 6,
   pink: 5,
   missed: 4,
+  gray_missed: 3.5, // Visual-only status for low frequency habits, same as missed but gray
   exempt: 3,
   na: 2,
   empty: 1,
@@ -140,15 +145,22 @@ export function useHabitMatrix(
   const categories = categoriesResponse?.data || [];
   const dayBoundaryHour = settingsResponse?.data?.dayBoundaryHour ?? 0;
 
+  // Convert currentMonth to a string key for reliable useMemo dependency comparison
+  // Using format ensures string comparison by value (not reference like Date objects)
+  const currentMonthKey = currentMonth ? format(currentMonth, 'yyyy-MM') : null;
+
   // Generate date columns for the matrix
   const dateColumns = useMemo<DateColumn[]>(() => {
     const now = new Date();
     const effectiveToday = getEffectiveDate(now, dayBoundaryHour);
 
     // For month view (daysToShow >= DAYS_CONFIG.desktop), show the actual days in the month
-    if (daysToShow >= DAYS_CONFIG.desktop && currentMonth) {
-      const monthStart = startOfMonth(currentMonth);
-      const monthEnd = endOfMonth(currentMonth);
+    if (daysToShow >= DAYS_CONFIG.desktop && currentMonthKey) {
+      // Parse the month key to get first day of the target month
+      const [year, month] = currentMonthKey.split('-').map(Number);
+      const monthDate = new Date(year, month - 1, 1); // month is 0-indexed
+      const monthStart = startOfMonth(monthDate);
+      const monthEnd = endOfMonth(monthDate);
 
       // Generate columns for all days in the month
       return eachDayOfInterval({ start: monthStart, end: monthEnd }).map(date => {
@@ -183,7 +195,7 @@ export function useHabitMatrix(
         isFuture,
       };
     });
-  }, [daysToShow, currentMonth, dayBoundaryHour]);
+  }, [daysToShow, currentMonthKey, dayBoundaryHour]);
 
   // Transform habits with entry lookup maps and compute parent/child relationships
   const matrixHabits = useMemo<MatrixHabit[]>(() => {
@@ -200,6 +212,8 @@ export function useHabitMatrix(
           entriesByDate,
           computedStatusByDate: new Map<string, HabitStatus>(),
           siblingCompletedByDate: new Map<string, boolean>(),
+          childHabits: [] as MatrixHabit[],
+          isChild: !!habit.parentHabitId,
         };
       })
       .sort((a, b) => a.sortOrder - b.sortOrder);
@@ -224,6 +238,9 @@ export function useHabitMatrix(
     childrenByParent.forEach((children, parentId) => {
       const parent = habitMap.get(parentId);
       if (!parent) return;
+
+      // Attach children to parent for rendering
+      parent.childHabits = children;
 
       // Get all unique dates from children
       const allDates = new Set<string>();
@@ -260,7 +277,9 @@ export function useHabitMatrix(
       });
     });
 
-    return baseHabits;
+    // Return only top-level habits (parents and standalone habits, not children)
+    // Children will be accessed via parent.childHabits
+    return baseHabits.filter(h => !h.isChild);
   }, [habits]);
 
   // Group habits by category
@@ -349,6 +368,43 @@ export function getHabitStatus(habit: MatrixHabit, date: string): HabitStatus {
 }
 
 /**
+ * Check if a habit is "on track" for its target percentage in the current month.
+ * Used for low frequency habits - when on track, empty past days stay gray instead of pink.
+ *
+ * @param habit - The habit with entries map
+ * @param effectiveToday - The current effective date (considering day boundary)
+ * @returns true if habit is on track (completions >= expected by this day of month)
+ */
+export function isHabitOnTrack(habit: MatrixHabit, effectiveToday: Date): boolean {
+  const targetPct = habit.targetPercentage ?? 90;
+  const daysInMonth = getDaysInMonth(effectiveToday);
+  const dayOfMonth = effectiveToday.getDate();
+
+  // Calculate expected completions by this day of month
+  // e.g., if target is 33% (10 days/month) and we're on day 15 of 30-day month:
+  // expected = (15/30) * 10 = 5 completions
+  const expectedCompletions = (dayOfMonth / daysInMonth) * (targetPct / 100) * daysInMonth;
+
+  // Count actual completions this month (complete, extra, partial counts as 0.5)
+  const monthStart = startOfMonth(effectiveToday);
+  let completions = 0;
+
+  habit.entriesByDate.forEach((entry, dateStr) => {
+    const entryDate = parseISO(dateStr);
+    if (entryDate >= monthStart && entryDate <= effectiveToday) {
+      if (entry.status === 'complete' || entry.status === 'extra') {
+        completions += 1;
+      } else if (entry.status === 'partial') {
+        completions += 0.5;
+      }
+    }
+  });
+
+  // On track if actual completions >= expected (with small tolerance for rounding)
+  return completions >= expectedCompletions - 0.01;
+}
+
+/**
  * Get effective status for a habit on a specific date, considering auto-pink for past unfilled days.
  *
  * @param habit - The habit with entries map
@@ -356,13 +412,15 @@ export function getHabitStatus(habit: MatrixHabit, date: string): HabitStatus {
  * @param isToday - Whether this date is effectively "today" (considering day boundary)
  * @param isFuture - Whether this date is in the future (after today)
  * @param autoMarkPink - Whether to auto-mark unfilled past days as pink
+ * @param effectiveToday - The current effective date (for on-track calculations)
  */
 export function getEffectiveHabitStatus(
   habit: MatrixHabit,
   date: string,
   isToday: boolean,
   isFuture: boolean,
-  autoMarkPink: boolean
+  autoMarkPink: boolean,
+  _effectiveToday?: Date
 ): HabitStatus {
   const status = getHabitStatus(habit, date);
 
@@ -372,9 +430,21 @@ export function getEffectiveHabitStatus(
   }
 
   // If autoMarkPink is enabled and status is 'empty' and this is NOT today (a past day),
-  // return 'pink' instead of 'empty'
+  // we might return 'pink' - but check for low frequency habit first
   if (autoMarkPink && status === 'empty' && !isToday) {
+    // If this is a low frequency habit, always show gray instead of pink
+    // This reduces visual noise for habits only done a few times per month
+    if (habit.grayMissedWhenOnTrack) {
+      return 'gray_missed';
+    }
+    // Not a low frequency habit - show pink
     return 'pink';
+  }
+
+  // For low frequency habits: also convert manually-set 'missed' to 'gray_missed'
+  // This ensures both auto-pink and manually-set missed show as gray
+  if (status === 'missed' && habit.grayMissedWhenOnTrack) {
+    return 'gray_missed';
   }
 
   return status;

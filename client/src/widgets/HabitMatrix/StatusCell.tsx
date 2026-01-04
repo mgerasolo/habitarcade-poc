@@ -65,15 +65,25 @@ export function StatusCell({
   // Use cellHeight if provided, otherwise fall back to size for square cells
   const height = cellHeight ?? size;
   // State
-  const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('below');
 
   // Refs
   const cellRef = useRef<HTMLDivElement>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Context for crosshair highlighting
-  const { hoveredCell, setHoveredCell } = useHabitMatrixContext();
+  // Context for crosshair highlighting and tooltip
+  const {
+    hoveredCell,
+    setHoveredCell,
+    activeTooltipCell,
+    openTooltip,
+    closeTooltip,
+    scheduleCloseTooltip,
+    cancelCloseTooltip,
+  } = useHabitMatrixContext();
+
+  // Check if this cell's tooltip should be shown
+  const showTooltip = activeTooltipCell?.habitId === habitId && activeTooltipCell?.dateIndex === dateIndex;
 
   // API mutation
   const updateEntry = useUpdateHabitEntry();
@@ -120,8 +130,8 @@ export function StatusCell({
   // Handle direct status selection from tooltip
   const handleStatusSelect = useCallback((newStatus: HabitStatus) => {
     updateEntry.mutate({ habitId, date, status: newStatus });
-    setShowTooltip(false);
-  }, [habitId, date, updateEntry]);
+    closeTooltip();
+  }, [habitId, date, updateEntry, closeTooltip]);
 
   // Handle click - cycle status (disabled for parent habits)
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -142,36 +152,37 @@ export function StatusCell({
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setTooltipPosition(computeTooltipPosition());
-    setShowTooltip(true);
-  }, [computeTooltipPosition]);
+    openTooltip({ habitId, dateIndex });
+  }, [computeTooltipPosition, openTooltip, habitId, dateIndex]);
 
   // Mouse enter - set hovered cell for crosshair and start hover timer
   const handleMouseEnter = useCallback(() => {
+    // Cancel any pending close
+    cancelCloseTooltip();
     setHoveredCell({ habitId, dateIndex });
     // Start 1-second timer to show tooltip
     hoverTimerRef.current = setTimeout(() => {
       setTooltipPosition(computeTooltipPosition());
-      setShowTooltip(true);
+      openTooltip({ habitId, dateIndex });
     }, 1000);
-  }, [habitId, dateIndex, setHoveredCell, computeTooltipPosition]);
+  }, [habitId, dateIndex, setHoveredCell, computeTooltipPosition, openTooltip, cancelCloseTooltip]);
 
-  // Mouse leave - clear hover timer and close tooltip
+  // Mouse leave - clear hover timer and schedule tooltip close
   const handleMouseLeave = useCallback(() => {
     // Clear hover timer
     if (hoverTimerRef.current) {
       clearTimeout(hoverTimerRef.current);
       hoverTimerRef.current = null;
     }
-    if (!showTooltip) {
-      setHoveredCell(null);
-    }
-  }, [showTooltip, setHoveredCell]);
+    // Schedule tooltip close
+    scheduleCloseTooltip();
+  }, [scheduleCloseTooltip]);
 
-  // Close tooltip handler
+  // Close tooltip handler (immediate close)
   const handleCloseTooltip = useCallback(() => {
-    setShowTooltip(false);
+    closeTooltip();
     setHoveredCell(null);
-  }, [setHoveredCell]);
+  }, [closeTooltip, setHoveredCell]);
 
   // Determine background color with crosshair highlight
   const getBackgroundColor = () => {
@@ -187,7 +198,7 @@ export function StatusCell({
     // If in highlighted row or column, overlay yellow tint
     if (isHighlightedRow || isHighlightedColumn) {
       if (status === 'empty' && (!isCountBased || currentCount === 0)) {
-        return 'rgba(255, 241, 118, 0.25)'; // Light yellow tint on empty
+        return 'rgba(255, 253, 135, 0.8)'; // Light yellow tint on empty
       }
       // For colored cells, we'll use a box-shadow instead
       return baseColor;
@@ -208,7 +219,7 @@ export function StatusCell({
       : 'inset 0 0 0 1px rgba(0,0,0,0.08)';
 
     if ((isHighlightedRow || isHighlightedColumn) && !isHovered) {
-      return `${baseShadow}, inset 0 0 0 100px rgba(255, 241, 118, 0.3)`;
+      return `${baseShadow}, inset 0 0 0 100px rgba(255, 253, 135, 0.25)`;
     }
     return baseShadow;
   };
@@ -257,7 +268,7 @@ export function StatusCell({
           <span
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
-              fontSize: height > 20 ? '11px' : '9px',
+              fontSize: height > 20 ? '13px' : '11px', // #19: Increased by 2pts
               color: 'rgba(255, 255, 255, 0.95)',
               fontWeight: 700,
               lineHeight: 1,
@@ -270,15 +281,16 @@ export function StatusCell({
           </span>
         )}
         {/* Day number - show always for non-count-based habits with appropriate contrast (#44) */}
+        {/* Pink status uses dark text like empty cells for legibility on light pink background */}
         {(!isCountBased || currentCount === 0) && (
           <span
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
-              fontSize: height > 20 ? '11px' : '9px',
-              color: status === 'empty' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.95)',
-              fontWeight: status === 'empty' ? 600 : 700,
+              fontSize: height > 20 ? '13px' : '11px', // #19: Increased by 2pts
+              color: (status === 'empty' || status === 'pink') ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.95)',
+              fontWeight: (status === 'empty' || status === 'pink') ? 600 : 700,
               lineHeight: 1,
-              textShadow: status !== 'empty' ? '0 1px 2px rgba(0,0,0,0.5), 0 0 4px rgba(0,0,0,0.3)' : 'none',
+              textShadow: (status !== 'empty' && status !== 'pink') ? '0 1px 2px rgba(0,0,0,0.5), 0 0 4px rgba(0,0,0,0.3)' : 'none',
               position: 'relative',
               zIndex: 20,
             }}
@@ -294,6 +306,8 @@ export function StatusCell({
           currentStatus={status}
           onSelect={handleStatusSelect}
           onClose={handleCloseTooltip}
+          onMouseEnter={cancelCloseTooltip}
+          onMouseLeave={scheduleCloseTooltip}
           position={tooltipPosition}
           anchorRef={cellRef}
         />
