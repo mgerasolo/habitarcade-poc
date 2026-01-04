@@ -12,6 +12,7 @@ interface CategorySectionProps {
   isCompact?: boolean;
   defaultCollapsed?: boolean;
   cellSize?: number;
+  cellHeight?: number; // Fixed height for cells (#47)
   /** Compact vertical mode - tighter spacing, minimal headers */
   compactVertical?: boolean;
 }
@@ -28,6 +29,7 @@ export const CategorySection = memo(function CategorySection({
   isCompact = false,
   defaultCollapsed = false,
   cellSize,
+  cellHeight,
   compactVertical = false,
 }: CategorySectionProps) {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
@@ -86,6 +88,7 @@ export const CategorySection = memo(function CategorySection({
               dates={dates}
               habitNameWidth={habitNameWidth}
               cellSize={cellSize}
+              cellHeight={cellHeight}
               index={index}
             />
           ) : (
@@ -95,6 +98,7 @@ export const CategorySection = memo(function CategorySection({
               dates={dates}
               habitNameWidth={habitNameWidth}
               cellSize={cellSize}
+              cellHeight={cellHeight}
               index={index}
             />
           )
@@ -106,7 +110,7 @@ export const CategorySection = memo(function CategorySection({
   const RowComponent = isCompact ? HabitRowCompact : HabitRow;
 
   return (
-    <div className={compactVertical ? 'mb-0' : 'mb-2'} data-testid="category-section">
+    <div className={`relative ${compactVertical ? 'mb-0' : 'mb-2'}`} style={{ zIndex: 1 }} data-testid="category-section">
       {/* Category divider line */}
       <div className={`border-t ${compactVertical ? 'border-slate-700/50 mt-0' : 'border-t-2 border-slate-600/80 mt-2'}`} data-testid="category-divider" />
 
@@ -186,7 +190,7 @@ export const CategorySection = memo(function CategorySection({
                 `}
                 style={{
                   width: cellSize || 16,
-                  height: cellSize || 16,
+                  height: cellHeight || 18, // Use fixed height (#47)
                   backgroundColor: percentage === 100 ? '#10b981' : percentage > 0 ? '#10b98140' : '#1e293b',
                 }}
               >
@@ -194,7 +198,7 @@ export const CategorySection = memo(function CategorySection({
                   className="text-white font-bold leading-none"
                   style={{
                     fontFamily: '"Arial Narrow", "Arial", sans-serif',
-                    fontSize: (cellSize || 16) * 0.55,
+                    fontSize: (cellHeight || 18) * 0.5,
                   }}
                 >
                   {percentage > 0 ? percentage : ''}
@@ -221,6 +225,7 @@ export const CategorySection = memo(function CategorySection({
               dates={dates}
               habitNameWidth={habitNameWidth - 20}
               cellSize={cellSize}
+              cellHeight={cellHeight}
               index={index}
               compactVertical={compactVertical}
             />
@@ -242,6 +247,7 @@ export const CategorySectionFlat = memo(function CategorySectionFlat({
   habitNameWidth = 120,
   isCompact = false,
   cellSize,
+  cellHeight,
   compactVertical = false,
 }: Omit<CategorySectionProps, 'defaultCollapsed'>) {
   const categoryName = category?.name || 'Uncategorized';
@@ -286,6 +292,7 @@ export const CategorySectionFlat = memo(function CategorySectionFlat({
             dates={dates}
             habitNameWidth={category ? habitNameWidth - 20 : habitNameWidth}
             cellSize={cellSize}
+            cellHeight={cellHeight}
             index={index}
             compactVertical={compactVertical}
           />

@@ -1,14 +1,18 @@
-import { useState } from 'react';
-import { useUIStore } from '../../stores';
+import { useState, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUIStore, useDashboardStore } from '../../stores';
 import type { PageType } from '../../stores';
+import { PAGE_ROUTES } from '../../routes';
 import * as MuiIcons from '@mui/icons-material';
 
 interface NavItem {
-  id: PageType;
+  id: PageType | string;
   icon: keyof typeof MuiIcons;
   label: string;
   action?: () => void;
   children?: NavItem[];
+  isDashboardPage?: boolean;
+  iconColor?: string;
 }
 
 interface SidebarProps {
@@ -16,12 +20,44 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen }: SidebarProps) {
+  const navigate = useNavigate();
   const { openModal, currentPage, setCurrentPage } = useUIStore();
-  const [expandedItems, setExpandedItems] = useState<Set<PageType>>(new Set(['tasks']));
+  const { pages, activePageId, setActivePage, createPage } = useDashboardStore();
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['dashboard', 'tasks']));
+  const [showNewPageInput, setShowNewPageInput] = useState(false);
+  const [newPageName, setNewPageName] = useState('');
+
+  // Build dashboard page children dynamically
+  const dashboardPageChildren: NavItem[] = useMemo(() => {
+    return pages
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+      .map(page => ({
+        id: page.id,
+        icon: (page.icon as keyof typeof MuiIcons) || 'Dashboard',
+        label: page.name,
+        isDashboardPage: true,
+        iconColor: page.iconColor,
+      }));
+  }, [pages]);
+
+  // Handle creating a new dashboard page
+  const handleCreatePage = useCallback(() => {
+    if (!newPageName.trim()) return;
+    const newPage = createPage(newPageName.trim());
+    setNewPageName('');
+    setShowNewPageInput(false);
+    setActivePage(newPage.id);
+    setCurrentPage('dashboard');
+  }, [newPageName, createPage, setActivePage, setCurrentPage]);
 
   const NAV_ITEMS: NavItem[] = [
     { id: 'today', icon: 'Today', label: 'Today' },
-    { id: 'dashboard', icon: 'Dashboard', label: 'Dashboard' },
+    {
+      id: 'dashboard',
+      icon: 'Dashboard',
+      label: 'Dashboard',
+      children: dashboardPageChildren,
+    },
     { id: 'habits', icon: 'CheckCircle', label: 'Habits' },
     {
       id: 'tasks',
@@ -59,6 +95,11 @@ export function Sidebar({ isOpen }: SidebarProps) {
   const handleNavClick = (item: NavItem) => {
     if (item.action) {
       item.action();
+    } else if (item.isDashboardPage) {
+      // Handle dashboard page clicks - set active page and navigate to dashboard
+      setActivePage(item.id);
+      setCurrentPage('dashboard');
+      navigate(PAGE_ROUTES['dashboard']);
     } else if (item.children) {
       // Toggle expansion for items with children
       setExpandedItems(prev => {
@@ -71,14 +112,29 @@ export function Sidebar({ isOpen }: SidebarProps) {
         return newSet;
       });
     } else {
-      setCurrentPage(item.id);
+      const pageId = item.id as PageType;
+      setCurrentPage(pageId);
+      // Navigate using React Router directly
+      const route = PAGE_ROUTES[pageId];
+      if (route) {
+        navigate(route);
+      }
     }
   };
 
   const isItemActive = (item: NavItem): boolean => {
+    // For dashboard pages, check if it's the active page AND we're on dashboard
+    if (item.isDashboardPage) {
+      return currentPage === 'dashboard' && activePageId === item.id;
+    }
     if (item.id === currentPage) return true;
     if (item.children) {
-      return item.children.some(child => child.id === currentPage);
+      return item.children.some(child => {
+        if (child.isDashboardPage) {
+          return currentPage === 'dashboard' && activePageId === child.id;
+        }
+        return child.id === currentPage;
+      });
     }
     return false;
   };
@@ -153,7 +209,61 @@ export function Sidebar({ isOpen }: SidebarProps) {
             {/* Vertical trunk line for tree structure */}
             <div className="absolute left-4 top-0 bottom-2 w-px bg-slate-600/60" />
             {item.children!.map((child, index) =>
-              renderNavItem(child, true, index === item.children!.length - 1)
+              renderNavItem(child, true, index === item.children!.length - 1 && item.id !== 'dashboard')
+            )}
+            {/* Add Page button for Dashboard section */}
+            {item.id === 'dashboard' && (
+              <div className="relative">
+                {/* Tree connector for add button */}
+                <div className="absolute left-4 top-0 w-px bg-slate-600/60" style={{ height: '50%' }} />
+                <div className="absolute left-4 top-1/2 w-3 h-px bg-slate-600/60" />
+
+                {showNewPageInput ? (
+                  <div className="pl-8 pr-3 py-1.5 flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newPageName}
+                      onChange={(e) => setNewPageName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleCreatePage();
+                        if (e.key === 'Escape') {
+                          setShowNewPageInput(false);
+                          setNewPageName('');
+                        }
+                      }}
+                      placeholder="Page name..."
+                      autoFocus
+                      className="flex-1 px-2 py-1 text-xs bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-teal-500"
+                    />
+                    <button
+                      onClick={handleCreatePage}
+                      className="p-1 text-teal-400 hover:text-teal-300 transition-colors"
+                      title="Create page"
+                    >
+                      <MuiIcons.Check style={{ fontSize: 14 }} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowNewPageInput(false);
+                        setNewPageName('');
+                      }}
+                      className="p-1 text-slate-400 hover:text-slate-300 transition-colors"
+                      title="Cancel"
+                    >
+                      <MuiIcons.Close style={{ fontSize: 14 }} />
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowNewPageInput(true)}
+                    className="w-full flex items-center gap-2 py-1.5 pl-8 pr-3 text-slate-500 hover:text-teal-400 hover:bg-slate-700/30 rounded-lg transition-colors text-xs"
+                    data-testid="add-dashboard-page"
+                  >
+                    <MuiIcons.Add style={{ fontSize: 14 }} />
+                    <span>Add Page</span>
+                  </button>
+                )}
+              </div>
             )}
           </div>
         )}

@@ -26,7 +26,7 @@ export const STATUS_COLORS: Record<HabitStatus, string> = {
   na: '#666666',       // Darker gray for visibility against weekend backgrounds (#56)
   exempt: '#3b82f6',   // Blue
   extra: '#047857',
-  pink: '#ec4899',
+  pink: '#ffe0e7',  // Light pink for "Likely Missed"
 };
 
 // Category
@@ -102,8 +102,28 @@ export interface Tag {
   createdAt: string;
 }
 
-// Task Status
+// Task Status (legacy - for backward compatibility)
 export type TaskStatus = 'pending' | 'complete';
+
+// Task Status Entity (new dynamic statuses)
+export interface TaskStatusEntity {
+  id: string;
+  name: string;
+  color: string;
+  icon?: string;
+  workflowOrder?: number;
+  isBreakout: boolean;
+  breakoutParentId?: string;
+  breakoutParent?: TaskStatusEntity;
+  breakoutChildren?: TaskStatusEntity[];
+  isDefault: boolean;
+  isInitialStatus: boolean;
+  sortOrder: number;
+  isDeleted: boolean;
+  deletedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
 
 // Task
 export interface Task {
@@ -242,13 +262,44 @@ export interface DashboardLayout {
   updatedAt: string;
 }
 
+// Dashboard Page (user-created pages under Dashboard section)
+export interface DashboardPage {
+  id: string;
+  name: string;
+  icon?: string; // MUI icon name
+  iconColor?: string;
+  layout: DashboardLayoutItem[];
+  collapsedWidgets: Record<string, number>;
+  sortOrder: number;
+  isDefault?: boolean; // 'Today' page is default
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Quote Collection
+export interface QuoteCollection {
+  id: string;
+  name: string;
+  color?: string;
+  icon?: string;
+  description?: string;
+  sortOrder: number;
+  quoteCount?: number; // Computed field from API
+  isDeleted: boolean;
+  deletedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Quote
 export interface Quote {
   id: string;
   text: string;
   author?: string;
   source?: string;
-  category?: string;
+  category?: string; // Legacy - use collections instead
+  collections?: QuoteCollection[];
+  collectionIds?: string[]; // For create/update requests
   isFavorite: boolean;
   isDeleted: boolean;
   deletedAt?: string;

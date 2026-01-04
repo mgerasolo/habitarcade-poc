@@ -13,8 +13,15 @@ import { test, expect } from '@playwright/test';
 
 test.describe('HabitMatrix Striped Rows', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the dashboard (uses baseURL from playwright.config.ts)
+    // Navigate to the app first
     await page.goto('/');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+
+    // Navigate to Dashboard using the nav button
+    const dashboardNav = page.getByTestId('nav-dashboard');
+    await dashboardNav.click();
+    await page.waitForTimeout(500);
 
     // Wait for the habit matrix widget to load (any state: normal, loading, empty, or error)
     await page.waitForSelector('[data-testid="habit-matrix"], [data-testid="habit-matrix-loading"], [data-testid="habit-matrix-empty"], [data-testid="habit-matrix-error"]', {
@@ -23,14 +30,51 @@ test.describe('HabitMatrix Striped Rows', () => {
   });
 
   test('habit rows have alternating background colors', async ({ page }) => {
-    // Find the habit matrix widget container
-    const habitMatrixContainer = page.locator('.widget-wrapper').filter({
-      has: page.locator('[data-testid="habit-matrix"], [data-testid="habit-matrix-loading"], [data-testid="habit-matrix-empty"], [data-testid="habit-matrix-error"]'),
-    });
+    // Find the habit matrix widget using data-widget-id
+    const habitMatrixWidget = page.locator('[data-widget-id="habit-matrix"]');
+    await expect(habitMatrixWidget).toBeVisible({ timeout: 5000 });
 
     // Find all habit rows within the matrix
-    const habitRows = habitMatrixContainer.locator('.flex.items-center.gap-0\\.5, .flex.items-center.gap-1');
-    const rowCount = await habitRows.count();
+    // Habit rows are identified by having gap-0.5 class (category headers have gap-2)
+    // Also look for the hover effect class specific to habit rows
+    const habitRows = habitMatrixWidget.locator('.group.flex.items-center.gap-0\\.5');
+    let rowCount = await habitRows.count();
+
+    // If no rows found with gap-0.5, try the more generic selector but filter
+    if (rowCount === 0) {
+      const allGroupRows = habitMatrixWidget.locator('.group.flex.items-center');
+      const filtered: Array<import('@playwright/test').Locator> = [];
+      const totalCount = await allGroupRows.count();
+
+      for (let i = 0; i < totalCount; i++) {
+        const row = allGroupRows.nth(i);
+        const cls = await row.getAttribute('class') || '';
+        // Habit rows have bg-transparent or bg-slate-800/30 (striping)
+        if (cls.includes('bg-transparent') || cls.includes('bg-slate-800/30')) {
+          filtered.push(row);
+        }
+      }
+
+      rowCount = filtered.length;
+
+      // Skip test if no habit rows are present (empty state)
+      if (rowCount < 2) {
+        test.skip();
+        return;
+      }
+
+      // Check striping on filtered rows
+      for (let i = 0; i < Math.min(rowCount, 4); i++) {
+        const classList = await filtered[i].getAttribute('class') || '';
+
+        if (i % 2 === 1) {
+          expect(classList).toContain('bg-slate-800/30');
+        } else {
+          expect(classList).toContain('bg-transparent');
+        }
+      }
+      return;
+    }
 
     // Skip test if no habit rows are present (empty state)
     if (rowCount < 2) {
@@ -54,14 +98,38 @@ test.describe('HabitMatrix Striped Rows', () => {
   });
 
   test('striping applies visual distinction between rows', async ({ page }) => {
-    // Find the habit matrix widget
-    const habitMatrixContainer = page.locator('.widget-wrapper').filter({
-      has: page.locator('[data-testid="habit-matrix"], [data-testid="habit-matrix-loading"], [data-testid="habit-matrix-empty"], [data-testid="habit-matrix-error"]'),
-    });
+    // Find the habit matrix widget using data-widget-id
+    const habitMatrixWidget = page.locator('[data-widget-id="habit-matrix"]');
+    await expect(habitMatrixWidget).toBeVisible({ timeout: 5000 });
 
-    // Find habit rows
-    const habitRows = habitMatrixContainer.locator('.flex.items-center.gap-0\\.5, .flex.items-center.gap-1');
-    const rowCount = await habitRows.count();
+    // Find habit rows with gap-0.5 (category headers have gap-2)
+    const habitRows = habitMatrixWidget.locator('.group.flex.items-center.gap-0\\.5');
+    let rowCount = await habitRows.count();
+
+    // If no rows found, try filtering by striping classes
+    if (rowCount === 0) {
+      const allGroupRows = habitMatrixWidget.locator('.group.flex.items-center');
+      const filtered: Array<import('@playwright/test').Locator> = [];
+      const totalCount = await allGroupRows.count();
+
+      for (let i = 0; i < totalCount; i++) {
+        const row = allGroupRows.nth(i);
+        const cls = await row.getAttribute('class') || '';
+        if (cls.includes('bg-transparent') || cls.includes('bg-slate-800/30')) {
+          filtered.push(row);
+        }
+      }
+
+      if (filtered.length < 2) {
+        test.skip();
+        return;
+      }
+
+      const evenBg = await filtered[0].evaluate((el) => getComputedStyle(el).backgroundColor);
+      const oddBg = await filtered[1].evaluate((el) => getComputedStyle(el).backgroundColor);
+      expect(evenBg).not.toBe(oddBg);
+      return;
+    }
 
     if (rowCount < 2) {
       test.skip();

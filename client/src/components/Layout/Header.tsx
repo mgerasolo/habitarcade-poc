@@ -2,7 +2,7 @@ import { useUIStore, useDashboardStore } from '../../stores';
 import * as MuiIcons from '@mui/icons-material';
 
 export function Header() {
-  const { toggleSidebar, sidebarOpen, toggleRightDrawer, rightDrawerOpen, currentPage } = useUIStore();
+  const { toggleSidebar, sidebarOpen, toggleRightSidebar, rightSidebarOpen, currentPage, openModal } = useUIStore();
   const { isEditMode, toggleEditMode, undoLayoutChange, hasUnsavedChanges } = useDashboardStore();
   const canUndo = useDashboardStore((state) => state.canUndo());
 
@@ -98,30 +98,46 @@ export function Header() {
             </div>
           </div>
 
-          {/* Right Drawer Toggle */}
+          {/* Widget Catalog button - only show on dashboard in edit mode */}
+          {currentPage === 'dashboard' && isEditMode && (
+            <button
+              onClick={() => openModal('widget-catalog')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white text-xs font-medium transition-colors"
+              aria-label="Open widget catalog"
+              data-testid="widget-catalog-button"
+            >
+              <MuiIcons.Widgets style={{ fontSize: 16 }} />
+              <span className="hidden sm:inline">Widgets</span>
+            </button>
+          )}
+
+          {/* Right Sidebar Toggle */}
           <button
-            onClick={toggleRightDrawer}
-            data-drawer-toggle
-            data-testid="right-drawer-toggle"
+            onClick={toggleRightSidebar}
+            data-sidebar-toggle
+            data-testid="right-sidebar-toggle"
             className={`
               w-10 h-10 flex items-center justify-center rounded-xl
               transition-all duration-150 group
-              ${rightDrawerOpen
+              ${rightSidebarOpen
                 ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25'
                 : 'bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white'
               }
             `}
-            aria-label={rightDrawerOpen ? 'Collapse right drawer' : 'Open right drawer'}
-            aria-expanded={rightDrawerOpen}
-            title={rightDrawerOpen ? 'Collapse panel' : 'Open panel'}
+            aria-label={rightSidebarOpen ? 'Collapse right sidebar' : 'Open right sidebar'}
+            aria-expanded={rightSidebarOpen}
+            title={rightSidebarOpen ? 'Collapse panel' : 'Open panel'}
           >
-            {rightDrawerOpen ? (
+            {rightSidebarOpen ? (
               <MuiIcons.MenuOpen
                 style={{ fontSize: 24, transform: 'scaleX(-1)' }}
                 className="group-hover:scale-110 transition-transform"
               />
             ) : (
-              <MuiIcons.Menu style={{ fontSize: 24 }} />
+              <MuiIcons.Menu
+                style={{ fontSize: 24, transform: 'scaleX(-1)' }}
+                className="group-hover:scale-110 transition-transform"
+              />
             )}
           </button>
 

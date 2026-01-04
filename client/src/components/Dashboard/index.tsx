@@ -66,8 +66,12 @@ export function Dashboard() {
   // Handle layout changes from drag/resize operations
   const handleLayoutChange = useCallback(
     (newLayout: Layout[]) => {
-      // Only update if we're in edit mode to prevent unnecessary saves
-      if (!isEditMode) return;
+      // Note: We don't check isEditMode here because:
+      // 1. Resizing/dragging can only happen when isResizable/isDraggable is true (edit mode)
+      // 2. Checking isEditMode here causes a race condition when user clicks "Done" -
+      //    the final onLayoutChange event may fire AFTER isEditMode becomes false,
+      //    causing the last resize to not be saved.
+      // 3. We only save if layout actually changed to prevent unnecessary writes
 
       const updatedLayout = newLayout.map((item) => {
         const originalItem = layout.find((l) => l.i === item.i);
@@ -87,9 +91,20 @@ export function Dashboard() {
           maxH: originalItem?.maxH,
         };
       });
-      setLayout(updatedLayout as DashboardLayoutItem[]);
+
+      // Only save if layout actually changed (prevents unnecessary writes on initial render)
+      const hasChanged = updatedLayout.some((item, index) => {
+        const current = layout[index];
+        if (!current || current.i !== item.i) return true;
+        return current.x !== item.x || current.y !== item.y ||
+               current.w !== item.w || current.h !== item.h;
+      });
+
+      if (hasChanged) {
+        setLayout(updatedLayout as DashboardLayoutItem[]);
+      }
     },
-    [layout, setLayout, isEditMode, collapsedWidgets]
+    [layout, setLayout, collapsedWidgets]
   );
 
   // Handle drag start - could be used for visual feedback
@@ -103,7 +118,7 @@ export function Dashboard() {
   }, []);
 
   return (
-    <div>
+    <div data-testid="dashboard-page">
       {/* Grid layout container */}
       <div ref={containerRef}>
         <GridLayout
@@ -125,7 +140,7 @@ export function Dashboard() {
           resizeHandles={['s', 'e', 'se']}
         >
           {layout.map((item) => (
-            <div key={item.i} className="widget-wrapper">
+            <div key={item.i} className="widget-wrapper" data-widget-id={item.i}>
               <WidgetContainer
                 widgetId={item.i}
                 headerControls={getHeaderControls(item.i)}

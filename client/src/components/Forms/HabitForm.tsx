@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import * as MuiIcons from '@mui/icons-material';
@@ -7,12 +8,16 @@ import {
   useUpdateHabit,
   useDeleteHabit,
   useCategories,
+  useHabits,
+  useUploadHabitImage,
+  useDeleteHabitImage,
 } from '../../api';
-import type { Category } from '../../types';
+import type { Category, Habit } from '../../types';
 
 interface HabitFormData {
   name: string;
   categoryId: string;
+  parentHabitId: string; // For parent/child habit relationships (#61)
   icon: string;
   iconColor: string;
   isActive: boolean;
@@ -27,9 +32,29 @@ export function HabitForm() {
   const createHabit = useCreateHabit();
   const updateHabit = useUpdateHabit();
   const deleteHabit = useDeleteHabit();
+  const uploadImage = useUploadHabitImage();
+  const deleteImage = useDeleteHabitImage();
   const { data: categoriesData } = useCategories();
+  const { data: habitsData } = useHabits();
 
   const categories: Category[] = categoriesData?.data || [];
+  // Filter habits to only show potential parents (not the current habit, not children of current habit)
+  const potentialParents: Habit[] = (habitsData?.data || []).filter(h => {
+    // Don't include the current habit itself
+    if (selectedHabit && h.id === selectedHabit.id) return false;
+    // Don't include habits that are already children of another habit
+    if (h.parentHabitId) return false;
+    // Don't include habits that are children of the current habit (circular reference)
+    if (selectedHabit && h.parentHabitId === selectedHabit.id) return false;
+    return true;
+  });
+
+  // Image upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    selectedHabit?.imageUrl || null
+  );
+  const [pendingImageFile, setPendingImageFile] = useState<File | null>(null);
 
   // Form state
   const {
@@ -42,6 +67,7 @@ export function HabitForm() {
     defaultValues: {
       name: selectedHabit?.name || '',
       categoryId: selectedHabit?.categoryId || '',
+      parentHabitId: selectedHabit?.parentHabitId || '',
       icon: selectedHabit?.icon || '',
       iconColor: selectedHabit?.iconColor || '#14b8a6',
       isActive: selectedHabit?.isActive ?? true,
@@ -63,34 +89,99 @@ export function HabitForm() {
     openIconPicker(handleIconSelect);
   };
 
+  // Handle image file selection
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Please select a valid image file (JPEG, PNG, GIF, WebP, or SVG)');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be smaller than 5MB');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setImagePreview(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    setPendingImageFile(file);
+
+    // Clear icon selection when custom image is chosen
+    setValue('icon', '');
+  };
+
+  // Handle image removal
+  const handleRemoveImage = async () => {
+    if (isEditMode && selectedHabit?.imageUrl && !pendingImageFile) {
+      // Delete existing image from server
+      try {
+        await deleteImage.mutateAsync(selectedHabit.id);
+        toast.success('Image removed');
+      } catch (error) {
+        toast.error('Failed to remove image');
+        return;
+      }
+    }
+    setImagePreview(null);
+    setPendingImageFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   // Handle form submission
   const onSubmit = async (data: HabitFormData) => {
     try {
       // Convert dailyTarget string to number or undefined
       const dailyTarget = data.dailyTarget ? parseInt(data.dailyTarget, 10) : undefined;
 
+      let habitId: string;
+
       if (isEditMode && selectedHabit) {
         await updateHabit.mutateAsync({
           id: selectedHabit.id,
           name: data.name,
           categoryId: data.categoryId || undefined,
+          parentHabitId: data.parentHabitId || undefined, // Parent/child relationship (#61)
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           isActive: data.isActive,
           dailyTarget: dailyTarget || undefined, // Send undefined to clear target
         });
+        habitId = selectedHabit.id;
         toast.success('Habit updated successfully');
       } else {
-        await createHabit.mutateAsync({
+        const result = await createHabit.mutateAsync({
           name: data.name,
           categoryId: data.categoryId || undefined,
+          parentHabitId: data.parentHabitId || undefined, // Parent/child relationship (#61)
           icon: data.icon || undefined,
           iconColor: data.iconColor || undefined,
           isActive: data.isActive,
           dailyTarget,
         });
+        habitId = result.data.id;
         toast.success('Habit created successfully');
       }
+
+      // Upload pending image if exists
+      if (pendingImageFile) {
+        try {
+          await uploadImage.mutateAsync({ id: habitId, file: pendingImageFile });
+        } catch (error) {
+          toast.error('Habit saved but image upload failed');
+        }
+      }
+
       handleClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save habit');
@@ -238,6 +329,27 @@ export function HabitForm() {
               </p>
             </div>
 
+            {/* Parent Habit select (#61) */}
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-2">
+                Parent Habit
+              </label>
+              <select
+                {...register('parentHabitId')}
+                className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              >
+                <option value="">No parent (standalone habit)</option>
+                {potentialParents.map((habit) => (
+                  <option key={habit.id} value={habit.id}>
+                    {habit.name}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1.5 text-xs text-slate-500">
+                Make this a child of another habit. Parent habits roll up child status automatically.
+              </p>
+            </div>
+
             {/* Daily Target (count-based habit) */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -270,31 +382,92 @@ export function HabitForm() {
               </p>
             </div>
 
-            {/* Icon picker */}
+            {/* Custom Image Upload */}
             <div>
               <label className="block text-sm font-medium text-slate-300 mb-2">
-                Icon & Color
+                Custom Image
               </label>
-              <button
-                type="button"
-                onClick={handleOpenIconPicker}
-                className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
-              >
-                {renderIconPreview()}
-                <div className="flex-1 text-left">
-                  <div className="text-white font-medium">
-                    {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              {imagePreview ? (
+                <div className="flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl">
+                  <div className="w-12 h-12 rounded-xl overflow-hidden bg-slate-700 flex-shrink-0">
+                    <img
+                      src={imagePreview}
+                      alt="Custom habit icon"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                  <div className="text-sm text-slate-400">
-                    {watchedIcon ? 'Click to select a different icon' : 'Select an icon for this habit'}
+                  <div className="flex-1">
+                    <div className="text-white font-medium">Custom Image</div>
+                    <div className="text-sm text-slate-400">
+                      {pendingImageFile ? 'Ready to upload' : 'Uploaded image'}
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="p-2 rounded-lg bg-red-600/10 text-red-400 hover:bg-red-600/20 hover:text-red-300 transition-colors"
+                    title="Remove image"
+                  >
+                    <MuiIcons.Close style={{ fontSize: 20 }} />
+                  </button>
                 </div>
-                <MuiIcons.ChevronRight
-                  className="text-slate-400 group-hover:text-white transition-colors"
-                  style={{ fontSize: 24 }}
-                />
-              </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
+                >
+                  <div className="w-12 h-12 rounded-xl bg-slate-700 flex items-center justify-center">
+                    <MuiIcons.CloudUpload style={{ color: '#64748b', fontSize: 24 }} />
+                  </div>
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-medium">Upload Image</div>
+                    <div className="text-sm text-slate-400">
+                      JPEG, PNG, GIF, WebP, or SVG (max 5MB)
+                    </div>
+                  </div>
+                  <MuiIcons.ChevronRight
+                    className="text-slate-400 group-hover:text-white transition-colors"
+                    style={{ fontSize: 24 }}
+                  />
+                </button>
+              )}
             </div>
+
+            {/* Icon picker (only show if no custom image) */}
+            {!imagePreview && (
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  Or Choose an Icon
+                </label>
+                <button
+                  type="button"
+                  onClick={handleOpenIconPicker}
+                  className="w-full flex items-center gap-4 p-3 bg-slate-700/50 border border-slate-600 rounded-xl hover:bg-slate-700 hover:border-slate-500 transition-all group"
+                >
+                  {renderIconPreview()}
+                  <div className="flex-1 text-left">
+                    <div className="text-white font-medium">
+                      {watchedIcon ? 'Change Icon' : 'Choose an Icon'}
+                    </div>
+                    <div className="text-sm text-slate-400">
+                      {watchedIcon ? 'Click to select a different icon' : 'Select from icon library'}
+                    </div>
+                  </div>
+                  <MuiIcons.ChevronRight
+                    className="text-slate-400 group-hover:text-white transition-colors"
+                    style={{ fontSize: 24 }}
+                  />
+                </button>
+              </div>
+            )}
 
             {/* Active toggle */}
             <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-xl">

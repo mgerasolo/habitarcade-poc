@@ -35,16 +35,16 @@ test.describe('Full Width Layout', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    // Sidebar should be visible
-    const sidebar = page.locator('aside');
+    // Left sidebar should be visible (use testid to distinguish from right sidebar)
+    const sidebar = page.locator('aside').first();
     await expect(sidebar).toBeVisible();
 
     // Sidebar should contain navigation items
     const navButtons = sidebar.locator('nav button');
     await expect(navButtons.first()).toBeVisible();
 
-    // Test sidebar navigation works - click on Dashboard
-    const dashboardButton = page.getByRole('button', { name: /dashboard/i });
+    // Test sidebar navigation works - click on Dashboard (use specific testid)
+    const dashboardButton = page.getByTestId('nav-dashboard');
     await dashboardButton.click();
 
     // Wait for navigation
@@ -105,8 +105,8 @@ test.describe('Full Width Layout', () => {
     await page.goto('/');
     await page.waitForLoadState('domcontentloaded');
 
-    // Navigate to dashboard
-    const dashboardButton = page.getByRole('button', { name: /dashboard/i });
+    // Navigate to dashboard (use specific testid)
+    const dashboardButton = page.getByTestId('nav-dashboard');
     await dashboardButton.click();
 
     await page.waitForTimeout(300);

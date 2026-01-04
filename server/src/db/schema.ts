@@ -60,6 +60,24 @@ export const projects = pgTable('projects', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Task Statuses (workflow states for tasks)
+export const taskStatuses = pgTable('task_statuses', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 50 }).notNull(),
+  color: varchar('color', { length: 20 }).notNull(), // Hex color
+  icon: varchar('icon', { length: 100 }), // Material icon name
+  workflowOrder: integer('workflow_order'), // NULL for breakout statuses
+  isBreakout: boolean('is_breakout').default(false),
+  breakoutParentId: uuid('breakout_parent_id'), // Self-reference for breakout parent
+  isDefault: boolean('is_default').default(false), // Prevent deletion of system statuses
+  isInitialStatus: boolean('is_initial_status').default(false), // Default status for new tasks
+  sortOrder: integer('sort_order').default(0),
+  isDeleted: boolean('is_deleted').default(false),
+  deletedAt: timestamp('deleted_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 // Tags (for labeling tasks)
 export const tags = pgTable('tags', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -89,7 +107,8 @@ export const tasks = pgTable('tasks', {
   title: varchar('title', { length: 255 }).notNull(),
   description: text('description'),
   plannedDate: date('planned_date'),
-  status: varchar('status', { length: 20 }).default('pending'), // pending, complete
+  status: varchar('status', { length: 20 }).default('pending'), // DEPRECATED: use statusId
+  statusId: uuid('status_id').references(() => taskStatuses.id), // New: references task_statuses
   priority: integer('priority'),
   projectId: uuid('project_id').references(() => projects.id),
   timeBlockId: uuid('time_block_id').references(() => timeBlocks.id),
@@ -199,12 +218,34 @@ export const quotes = pgTable('quotes', {
   text: text('text').notNull(),
   author: varchar('author', { length: 255 }),
   source: varchar('source', { length: 255 }), // Book, movie, etc.
-  category: varchar('category', { length: 100 }), // motivational, productivity, mindset, etc.
+  category: varchar('category', { length: 100 }), // DEPRECATED - use quoteCollections instead
   isFavorite: boolean('is_favorite').default(false),
   isDeleted: boolean('is_deleted').default(false),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Quote Collections (for organizing quotes - like tags)
+export const quoteCollections = pgTable('quote_collections', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+  color: varchar('color', { length: 20 }), // Hex color
+  icon: varchar('icon', { length: 100 }), // Material icon name
+  description: text('description'),
+  sortOrder: integer('sort_order').default(0),
+  isDeleted: boolean('is_deleted').default(false),
+  deletedAt: timestamp('deleted_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
+// Quote Collection Assignments (many-to-many)
+export const quoteCollectionAssignments = pgTable('quote_collection_assignments', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  quoteId: uuid('quote_id').references(() => quotes.id).notNull(),
+  collectionId: uuid('collection_id').references(() => quoteCollections.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
 });
 
 // Define relations
@@ -238,6 +279,16 @@ export const projectsRelations = relations(projects, ({ many }) => ({
   tasks: many(tasks),
 }));
 
+export const taskStatusesRelations = relations(taskStatuses, ({ one, many }) => ({
+  breakoutParent: one(taskStatuses, {
+    fields: [taskStatuses.breakoutParentId],
+    references: [taskStatuses.id],
+    relationName: 'breakoutRelation',
+  }),
+  breakoutChildren: many(taskStatuses, { relationName: 'breakoutRelation' }),
+  tasks: many(tasks),
+}));
+
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
   project: one(projects, {
     fields: [tasks.projectId],
@@ -246,6 +297,10 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
   timeBlock: one(timeBlocks, {
     fields: [tasks.timeBlockId],
     references: [timeBlocks.id],
+  }),
+  taskStatus: one(taskStatuses, {
+    fields: [tasks.statusId],
+    references: [taskStatuses.id],
   }),
   taskTags: many(taskTags),
 }));
@@ -297,5 +352,25 @@ export const measurementTargetsRelations = relations(measurementTargets, ({ one 
   measurement: one(measurements, {
     fields: [measurementTargets.measurementId],
     references: [measurements.id],
+  }),
+}));
+
+// Quote relations
+export const quotesRelations = relations(quotes, ({ many }) => ({
+  collectionAssignments: many(quoteCollectionAssignments),
+}));
+
+export const quoteCollectionsRelations = relations(quoteCollections, ({ many }) => ({
+  quoteAssignments: many(quoteCollectionAssignments),
+}));
+
+export const quoteCollectionAssignmentsRelations = relations(quoteCollectionAssignments, ({ one }) => ({
+  quote: one(quotes, {
+    fields: [quoteCollectionAssignments.quoteId],
+    references: [quotes.id],
+  }),
+  collection: one(quoteCollections, {
+    fields: [quoteCollectionAssignments.collectionId],
+    references: [quoteCollections.id],
   }),
 }));

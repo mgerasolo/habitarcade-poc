@@ -12,7 +12,8 @@ export const quoteKeys = {
 
 // Fetch all quotes
 export function useQuotes(options?: {
-  category?: string;
+  category?: string; // Legacy - use collectionId instead
+  collectionId?: string;
   favorites?: boolean;
   search?: string;
   limit?: number;
@@ -20,6 +21,7 @@ export function useQuotes(options?: {
 }) {
   const params = new URLSearchParams();
   if (options?.category) params.set('category', options.category);
+  if (options?.collectionId) params.set('collectionId', options.collectionId);
   if (options?.favorites) params.set('favorites', 'true');
   if (options?.search) params.set('search', options.search);
   if (options?.limit) params.set('limit', options.limit.toString());

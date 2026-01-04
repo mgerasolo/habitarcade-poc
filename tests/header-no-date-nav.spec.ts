@@ -77,7 +77,7 @@ test.describe('Header - No Date Navigation', () => {
 
   test('header still contains right drawer toggle', async ({ page }) => {
     const header = page.locator('[data-testid="main-header"]');
-    const drawerToggle = header.locator('[data-testid="right-drawer-toggle"]');
+    const drawerToggle = header.locator('[data-testid="right-sidebar-toggle"]');
 
     await expect(drawerToggle).toBeVisible();
   });

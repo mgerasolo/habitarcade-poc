@@ -2,6 +2,7 @@
 stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-03-success', 'step-04-journeys', 'step-05-domain-skipped', 'step-06-innovation-skipped', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-complete']
 workflowComplete: true
 completedAt: '2025-12-29'
+lastUpdated: '2026-01-02'
 inputDocuments:
   - imports/project-preplan.md
   - imports/sample-habits.md
@@ -26,12 +27,26 @@ scopeNotes:
   - "6 AM day boundary (user setting, global)"
   - "Pink status for unmarked habits past boundary"
   - "Time blocks = work categories with per-block priority lists"
+changeLog:
+  - date: '2026-01-02'
+    changes:
+      - "Added parent/child habit relationships (FR58-FR62)"
+      - "Added Quotes widget and Quote Library (FR63-FR67)"
+      - "Added Video Clips module (FR68-FR71)"
+      - "Added right sidebar drawer (FR72-FR74)"
+      - "Added edit mode with component management (FR75-FR77)"
+      - "Added user-created dashboard pages (FR78-FR80)"
+      - "Added widget catalog (FR81-FR82)"
+      - "Added maintenance tasks (FR83-FR85)"
+      - "Added list/detailed task views (FR86-FR87)"
+      - "Clarified cell default state behavior"
 ---
 
 # Product Requirements Document - habitarcade-poc
 
 **Author:** Matt
-**Date:** 2025-12-29
+**Created:** 2025-12-29
+**Last Updated:** 2026-01-02
 
 ## Executive Summary
 
@@ -57,6 +72,15 @@ Brain dump inbox for tasks and ideas. Log it, get it out of your head, process l
 
 **Widget Dashboard Architecture**
 24-column grid with drag-and-drop widgets. Mix Habit Matrix, Task Kanban, and other views on a single customizable dashboard.
+
+**Parent/Child Habits** *(Added Jan 2026)*
+Hierarchical habit grouping where parent habits roll up status from children. When you complete one child (e.g., "DDPY"), siblings auto-gray (N/A) and parent shows the completed status. Perfect for "Exercise" parent with multiple workout type children.
+
+**Right Sidebar Drawer** *(Added Jan 2026)*
+Persistent side panel for quick access to Priorities list, Parking Lot capture, and contextual properties. Always available regardless of which dashboard page you're viewing.
+
+**Quotes & Motivation** *(Added Jan 2026)*
+Inspirational quotes widget with a personal quote library. Categorize quotes, display random daily motivation, and build your own collection of meaningful quotes.
 
 ## Project Classification
 
@@ -149,10 +173,28 @@ For a 3-day initial build + 2 weeks iteration:
 
 ### Growth Features (During POC Test Period)
 
-If time permits:
+**Implemented:**
+- ✅ Parking Lot quick capture (right sidebar)
+- ✅ Quotes widget with Quote Library
+- ✅ Video Clips carousel (inspirational shorts)
+- ✅ Parent/child habit relationships with rollup
+- ✅ Right sidebar drawer (Priorities, Parking Lot, Properties)
+- ✅ Edit mode with component drawer
+- ✅ Per-habit completion scoring
+- ✅ GitHub-style annual contribution graph
+- ✅ Habit management page (goals, frequency, links)
+
+**Planned (Open Issues):**
+- User-created dashboard pages with customizable modules (#59)
+- Widget catalog for browsing/adding widgets (#58)
+- Permanent right sidebar with always-visible modules (#57)
+- Maintenance Tasks in Manage section (#53)
+- List view and detailed view for tasks (#52)
+- Edit mode toggle, save, undo in top nav (#48)
+- Habit Matrix auto-fill width (#47)
+
+**Deferred:**
 - Additional Kanban views (Project, Category, Status columns)
-- Parking Lot quick capture
-- Habit deep-dive with GitHub-style annual graph
 - Event duration trackers (fasting)
 
 ### Vision (Life OS - Not This POC)
@@ -448,6 +490,71 @@ Deferred for POC. Standard semantic HTML practices, no WCAG compliance target.
 - FR56: User can view all tasks grouped by project
 - FR57: User can filter tasks by project in Weekly Kanban
 
+### Parent/Child Habit Relationships *(Added Jan 2026 - #61)*
+
+- FR58: User can assign a parent habit to any habit (creating child relationship)
+- FR59: System displays parent habits as collapsible group headers with children indented below
+- FR60: System displays parent row with "best color" rollup from children (green > partial > etc.)
+- FR61: When user marks one child complete, sibling children automatically turn gray (N/A)
+- FR62: System excludes parent habits from scoring when children are counted (no double-counting)
+
+### Quotes & Motivation *(Added Jan 2026 - #34)*
+
+- FR63: User can view a Quotes widget displaying inspirational quotes
+- FR64: User can add quotes to a personal Quote Library with text, author, and category
+- FR65: User can categorize quotes (Motivation, Wisdom, etc.) with proper capitalization
+- FR66: System displays random quote from library or curated defaults
+- FR67: User can edit and delete quotes from the library
+
+### Video Clips Module *(Added Jan 2026 - #35)*
+
+- FR68: User can view a Video Clips widget with carousel interface
+- FR69: User can add video clips by URL (YouTube, etc.)
+- FR70: User can categorize and tag video clips
+- FR71: User can play clips inline within the widget
+
+### Right Sidebar Drawer *(Added Jan 2026 - #27, #28, #29)*
+
+- FR72: User can open/close a right sidebar drawer from any page
+- FR73: Right sidebar displays Priorities list with drag-to-reorder capability
+- FR74: Right sidebar displays Parking Lot for quick idea capture
+
+### Edit Mode & Dashboard Management *(Added Jan 2026 - #32, #48)*
+
+- FR75: User can toggle between edit mode and view mode for dashboard
+- FR76: In edit mode, right drawer shows available components to add
+- FR77: User can save dashboard edits and undo recent layout changes
+
+### User-Created Dashboard Pages *(Planned - #59)*
+
+- FR78: User can create new pages under the Dashboard section
+- FR79: User can add/arrange modules on each page independently
+- FR80: "Today" is one of the default pages under Dashboard
+
+### Widget Catalog *(Planned - #58)*
+
+- FR81: User can browse a widget catalog to discover available widgets
+- FR82: User can add widgets to dashboard directly from the catalog
+
+### Maintenance Tasks *(Planned - #53)*
+
+- FR83: User can access Maintenance Tasks from Manage section
+- FR84: User can create recurring maintenance/upkeep tasks
+- FR85: System tracks maintenance task completion cycles
+
+### Task View Modes *(Planned - #52)*
+
+- FR86: User can switch between list view and detailed view for tasks
+- FR87: List view shows compact task information; detailed view shows full task details
+
+### Habit Matrix Behavior Clarifications *(Added Jan 2026)*
+
+- FR88: Habit Matrix cells start as white/empty (not colored) until user sets a status
+- FR89: N/A gray status uses darker shade (~60% black) to distinguish from weekend background
+- FR90: Habit Matrix adapts column count to actual days in month (28-31)
+- FR91: Hover menus display above all other elements (high z-index)
+- FR92: Cell numbers (targets) remain visible when cell is colored
+
 ## Non-Functional Requirements
 
 ### Performance
@@ -481,4 +588,37 @@ Deferred for POC. Standard semantic HTML practices, no WCAG compliance target.
 - NFR15: Tests run against Chrome and Safari browsers
 - NFR16: Test suite runs in CI/CD pipeline before deployment
 - NFR17: API endpoints have integration test coverage
+
+## Known Issues & Bugs *(As of Jan 2026)*
+
+Open issues tracked in GitHub that affect current functionality:
+
+| Issue | Severity | Description |
+|-------|----------|-------------|
+| #54 | Critical | Quotes fail to save - persistence broken |
+| #42 | High | Hover menu z-index - getting hidden behind next group |
+| #41 | High | Habit Matrix cells start pink instead of white/empty |
+| #56 | Medium | N/A gray hard to distinguish on weekend days |
+| #44 | Medium | Cell numbers not visible when cell is colored |
+
+## Implementation Status Summary *(As of Jan 2026)*
+
+| Feature Area | Status | Notes |
+|--------------|--------|-------|
+| Habit Matrix (core) | ✅ Complete | Monthly grid, status cycling, scoring |
+| Parent/Child Habits | ✅ Complete | Rollup behavior implemented (#61) |
+| Weekly Kanban | ✅ Complete | Day columns, drag-drop |
+| Time Blocks | ✅ Complete | Priorities, timer, habit linking |
+| Target Line Graph | ✅ Complete | Weight tracking with goal line |
+| Parking Lot | ✅ Complete | In right sidebar |
+| Quotes Widget | ⚠️ Partial | Widget exists, save broken (#54) |
+| Video Clips | ✅ Complete | Carousel implemented |
+| Right Sidebar | ✅ Complete | Drawer with priorities/parking lot |
+| Edit Mode | ⚠️ Partial | Component drawer works, needs save/undo (#48) |
+| Dashboard Pages | 🔲 Planned | User-created pages (#59) |
+| Widget Catalog | 🔲 Planned | Browse/add widgets (#58) |
+| Maintenance Tasks | 🔲 Planned | Recurring upkeep tasks (#53) |
+| Task View Modes | 🔲 Planned | List/detailed views (#52) |
+| Wallboard Mode | 🔲 Planned | Week 2 scope |
+| Mobile Optimization | 🔲 Planned | Week 3 scope |
 

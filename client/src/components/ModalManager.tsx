@@ -6,6 +6,9 @@ import { ProjectForm } from './Forms/ProjectForm';
 import { TagForm } from './Forms/TagForm';
 import { IconBrowser } from './IconBrowser';
 import { HabitDetailModal } from '../widgets/HabitMatrix/HabitDetailModal';
+import { WidgetCatalog } from './Dashboard/WidgetCatalog';
+import { ParkingLotItemModal } from '../widgets/ParkingLot/ParkingLotItemModal';
+import { StatusForm } from './Forms/StatusForm';
 import * as MuiIcons from '@mui/icons-material';
 
 // Settings Modal placeholder
@@ -191,9 +194,13 @@ function TimeBlockForm() {
 }
 
 export function ModalManager() {
-  const { activeModal } = useUIStore();
+  const { activeModal, previousModal } = useUIStore();
 
   if (!activeModal) return null;
+
+  // For nested modals (like icon-picker opened from a form),
+  // keep the parent modal mounted but hidden to preserve its state
+  const isNestedModal = activeModal === 'icon-picker' && previousModal;
 
   const modals: Record<string, ReactElement> = {
     'habit-form': <HabitForm />,
@@ -206,9 +213,22 @@ export function ModalManager() {
     'icon-picker': <IconBrowser />,
     'settings': <SettingsModal />,
     'confirm-delete': <ConfirmDeleteModal />,
+    'widget-catalog': <WidgetCatalog />,
+    'parking-lot-item': <ParkingLotItemModal />,
+    'status-form': <StatusForm />,
   };
 
-  return modals[activeModal] || null;
+  return (
+    <>
+      {/* Keep parent modal mounted but hidden when in nested modal */}
+      {isNestedModal && previousModal && (
+        <div style={{ display: 'none' }}>
+          {modals[previousModal]}
+        </div>
+      )}
+      {modals[activeModal] || null}
+    </>
+  );
 }
 
 export default ModalManager;

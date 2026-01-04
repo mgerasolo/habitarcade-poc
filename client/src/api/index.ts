@@ -13,4 +13,6 @@ export * from './parkingLot';
 export * from './settings';
 export * from './dashboard';
 export * from './quotes';
+export * from './quoteCollections';
 export * from './videos';
+export * from './statuses';

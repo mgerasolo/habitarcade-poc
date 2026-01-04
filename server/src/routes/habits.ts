@@ -113,12 +113,18 @@ router.get('/', async (req, res) => {
         entries: true,
         children: {
           with: { entries: true },
-          where: eq(habits.isDeleted, false),
         },
       },
       orderBy: [habits.sortOrder],
     });
-    res.json({ data: result, count: result.length });
+
+    // Filter out deleted children in post-processing (Drizzle ORM type issues with nested where)
+    const filteredResult = result.map((habit) => ({
+      ...habit,
+      children: habit.children?.filter((child) => !child.isDeleted) || [],
+    }));
+
+    res.json({ data: filteredResult, count: filteredResult.length });
   } catch (error) {
     console.error('Failed to fetch habits:', error);
     res.status(500).json({ error: 'Failed to fetch habits', code: 'INTERNAL_ERROR' });

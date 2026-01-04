@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
-import { BrowserRouter, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ClickToComponent } from 'click-to-react-component';
 import { queryClient } from './api';
@@ -17,52 +17,29 @@ import {
   ManagePriorities,
   ManageQuotes,
   ManageVideos,
+  ManageStatuses,
   Settings,
 } from './pages/Manage';
 import { Targets } from './pages/Targets';
 import { TimeBlocks } from './pages/TimeBlocks';
+import { StatusView } from './pages/Kanban';
 import { ModalManager } from './components/ModalManager';
 import { useUIStore } from './stores';
-import { PAGE_ROUTES, getPageFromPath } from './routes';
+import { getPageFromPath } from './routes';
 
-// Sync URL with store state (prevents infinite loop with ref tracking)
+// Sync URL with store state - only syncs URL changes to store (for browser back/forward)
+// Store-to-URL navigation is handled directly by components using useNavigate
 function RouteSync() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { currentPage, setCurrentPage } = useUIStore();
 
-  // Track what caused the last change to prevent ping-pong loops
-  const lastSyncSource = useRef<'url' | 'store' | null>(null);
-
-  // When URL changes (e.g., browser back/forward, new tab), sync to store
+  // Sync URL to store when pathname changes (browser back/forward, direct URL entry)
   useEffect(() => {
-    // Skip if we just synced from store to URL
-    if (lastSyncSource.current === 'store') {
-      lastSyncSource.current = null;
-      return;
-    }
-
     const pageFromUrl = getPageFromPath(location.pathname);
     if (pageFromUrl !== currentPage) {
-      lastSyncSource.current = 'url';
       setCurrentPage(pageFromUrl);
     }
-  }, [location.pathname, currentPage, setCurrentPage]);
-
-  // When store changes (e.g., sidebar click), sync to URL
-  useEffect(() => {
-    // Skip if we just synced from URL to store
-    if (lastSyncSource.current === 'url') {
-      lastSyncSource.current = null;
-      return;
-    }
-
-    const expectedPath = PAGE_ROUTES[currentPage];
-    if (location.pathname !== expectedPath) {
-      lastSyncSource.current = 'store';
-      navigate(expectedPath, { replace: false });
-    }
-  }, [currentPage, location.pathname, navigate]);
+  }, [location.pathname, setCurrentPage]); // Note: currentPage intentionally excluded to prevent loops
 
   return null;
 }
@@ -94,15 +71,19 @@ function PageRouter() {
       return <ManageQuotes />;
     case 'manage-videos':
       return <ManageVideos />;
+    case 'manage-statuses':
+      return <ManageStatuses />;
     case 'settings':
       return <Settings />;
     case 'targets':
       return <Targets />;
     case 'time-blocks':
       return <TimeBlocks />;
+    // Kanban views
+    case 'kanban-status':
+      return <StatusView />;
     // Future pages can be added here
     case 'tasks':
-    case 'kanban-status':
     case 'kanban-project':
     case 'kanban-category':
     case 'projects':

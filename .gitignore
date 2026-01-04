@@ -39,3 +39,6 @@ test-results/
 
 # Misc
 *.tgz
+
+# User uploads
+server/uploads/

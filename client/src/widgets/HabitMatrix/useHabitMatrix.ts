@@ -44,6 +44,7 @@ export interface DateColumn {
   dayOfMonth: string; // 1-31
   isToday: boolean;
   isWeekend: boolean;
+  isFuture: boolean; // True if this date is after today (considering day boundary)
 }
 
 export interface MatrixHabit extends Habit {
@@ -152,12 +153,16 @@ export function useHabitMatrix(
       // Generate columns for all days in the month
       return eachDayOfInterval({ start: monthStart, end: monthEnd }).map(date => {
         const dayOfWeek = date.getDay();
+        const isToday = isEffectiveToday(date, now, dayBoundaryHour);
+        // A date is "future" if it's after today (not today, and date > effectiveToday)
+        const isFuture = !isToday && date > effectiveToday;
         return {
           date: format(date, 'yyyy-MM-dd'),
           dayOfWeek: format(date, 'EEE'),
           dayOfMonth: format(date, 'd'),
-          isToday: isEffectiveToday(date, now, dayBoundaryHour),
+          isToday,
           isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+          isFuture,
         };
       });
     }
@@ -166,12 +171,16 @@ export function useHabitMatrix(
     return Array.from({ length: daysToShow }, (_, i) => {
       const date = subDays(effectiveToday, daysToShow - 1 - i);
       const dayOfWeek = date.getDay();
+      const isToday = isEffectiveToday(date, now, dayBoundaryHour);
+      // A date is "future" if it's after today (not today, and date > effectiveToday)
+      const isFuture = !isToday && date > effectiveToday;
       return {
         date: format(date, 'yyyy-MM-dd'),
         dayOfWeek: format(date, 'EEE'),
         dayOfMonth: format(date, 'd'),
-        isToday: isEffectiveToday(date, now, dayBoundaryHour),
+        isToday,
         isWeekend: dayOfWeek === 0 || dayOfWeek === 6,
+        isFuture,
       };
     });
   }, [daysToShow, currentMonth, dayBoundaryHour]);
@@ -345,15 +354,22 @@ export function getHabitStatus(habit: MatrixHabit, date: string): HabitStatus {
  * @param habit - The habit with entries map
  * @param date - The date string (YYYY-MM-DD format)
  * @param isToday - Whether this date is effectively "today" (considering day boundary)
+ * @param isFuture - Whether this date is in the future (after today)
  * @param autoMarkPink - Whether to auto-mark unfilled past days as pink
  */
 export function getEffectiveHabitStatus(
   habit: MatrixHabit,
   date: string,
   isToday: boolean,
+  isFuture: boolean,
   autoMarkPink: boolean
 ): HabitStatus {
   const status = getHabitStatus(habit, date);
+
+  // Future dates always stay empty (white) - never auto-mark as pink
+  if (isFuture) {
+    return status;
+  }
 
   // If autoMarkPink is enabled and status is 'empty' and this is NOT today (a past day),
   // return 'pink' instead of 'empty'

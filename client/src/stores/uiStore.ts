@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Habit, Task, Project, Category, TimeBlock } from '../types';
+import type { Habit, Task, Project, Category, TimeBlock, TaskStatusEntity } from '../types';
 
 type ModalType =
   | 'habit-form'
@@ -8,14 +8,17 @@ type ModalType =
   | 'task-form'
   | 'project-form'
   | 'category-form'
+  | 'tag-form'
   | 'time-block-form'
   | 'icon-picker'
   | 'settings'
   | 'confirm-delete'
   | 'widget-catalog'
+  | 'parking-lot-item'
+  | 'status-form'
   | null;
 
-export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'manage-quotes' | 'manage-videos' | 'manage-tasks' | 'settings' | 'targets' | 'time-blocks';
+export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'manage-quotes' | 'manage-videos' | 'manage-tasks' | 'manage-statuses' | 'settings' | 'targets' | 'time-blocks';
 
 // Right sidebar module types
 export type RightSidebarModuleType =
@@ -47,6 +50,7 @@ interface UIStore {
   selectedProject: Project | null;
   selectedCategory: Category | null;
   selectedTimeBlock: TimeBlock | null;
+  selectedStatus: TaskStatusEntity | null;
 
   // View state
   currentDate: Date;
@@ -75,6 +79,7 @@ interface UIStore {
   setSelectedProject: (project: Project | null) => void;
   setSelectedCategory: (category: Category | null) => void;
   setSelectedTimeBlock: (block: TimeBlock | null) => void;
+  setSelectedStatus: (status: TaskStatusEntity | null) => void;
 
   setCurrentDate: (date: Date) => void;
   setViewMode: (mode: 'day' | 'week' | 'month') => void;
@@ -115,6 +120,7 @@ export const useUIStore = create<UIStore>()(
       selectedProject: null,
       selectedCategory: null,
       selectedTimeBlock: null,
+      selectedStatus: null,
       currentDate: new Date(),
       viewMode: 'week',
       sidebarOpen: true,
@@ -139,6 +145,7 @@ export const useUIStore = create<UIStore>()(
       setSelectedProject: (project) => set({ selectedProject: project }),
       setSelectedCategory: (category) => set({ selectedCategory: category }),
       setSelectedTimeBlock: (block) => set({ selectedTimeBlock: block }),
+      setSelectedStatus: (status) => set({ selectedStatus: status }),
 
       setCurrentDate: (date) => set({ currentDate: date }),
       setViewMode: (mode) => set({ viewMode: mode }),

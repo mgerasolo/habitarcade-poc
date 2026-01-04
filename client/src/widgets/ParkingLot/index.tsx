@@ -1,16 +1,25 @@
+import { useState } from 'react';
 import {
   useParkingLot,
   useCreateParkingLotItem,
   useDeleteParkingLotItem,
   useConvertParkingLotToTask,
+  useProjects,
 } from '../../api';
 import { QuickInput } from './QuickInput';
 import { CapturedItem } from './CapturedItem';
+import { ProjectContextMenu } from './ProjectContextMenu';
 import type { ParkingLotItem } from '../../types';
 
 interface ParkingLotProps {
   /** Custom class name */
   className?: string;
+}
+
+interface ContextMenuState {
+  isOpen: boolean;
+  position: { x: number; y: number };
+  itemId: string | null;
 }
 
 /**
@@ -20,14 +29,21 @@ interface ParkingLotProps {
  * - Quick capture input at top (type + enter = instant save)
  * - List of captured items below, newest first
  * - Click X to delete (soft delete, no confirmation)
- * - Drag item to calendar to schedule as task
+ * - Right-click to assign to project
  * - Simple, minimal UI
  */
 export function ParkingLot({ className = '' }: ParkingLotProps) {
   const { data: items, isLoading, isError } = useParkingLot();
+  const { data: projectsData } = useProjects();
   const createItem = useCreateParkingLotItem();
   const deleteItem = useDeleteParkingLotItem();
   const convertToTask = useConvertParkingLotToTask();
+
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    isOpen: false,
+    position: { x: 0, y: 0 },
+    itemId: null,
+  });
 
   const handleCapture = (content: string) => {
     createItem.mutate({ content });
@@ -37,8 +53,28 @@ export function ParkingLot({ className = '' }: ParkingLotProps) {
     deleteItem.mutate(id);
   };
 
-  const handleConvertToTask = (id: string, plannedDate?: string) => {
-    convertToTask.mutate({ id, plannedDate });
+  const handleConvertToTask = (id: string, plannedDate?: string, projectId?: string) => {
+    convertToTask.mutate({ id, plannedDate, projectId });
+  };
+
+  const handleContextMenu = (e: React.MouseEvent, itemId: string) => {
+    setContextMenu({
+      isOpen: true,
+      position: { x: e.clientX, y: e.clientY },
+      itemId,
+    });
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenu({ isOpen: false, position: { x: 0, y: 0 }, itemId: null });
+  };
+
+  const handleSelectProject = (projectId: string) => {
+    if (contextMenu.itemId) {
+      const today = new Date().toISOString().split('T')[0];
+      handleConvertToTask(contextMenu.itemId, today, projectId);
+    }
+    handleCloseContextMenu();
   };
 
   // Sort items by createdAt, newest first
@@ -46,6 +82,8 @@ export function ParkingLot({ className = '' }: ParkingLotProps) {
     (a: ParkingLotItem, b: ParkingLotItem) =>
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
+
+  const projects = projectsData?.data || [];
 
   // Loading state
   if (isLoading) {
@@ -71,15 +109,16 @@ export function ParkingLot({ className = '' }: ParkingLotProps) {
       <QuickInput onCapture={handleCapture} isLoading={createItem.isPending} />
 
       {/* Items list */}
-      <div className="flex-1 overflow-y-auto mt-3 space-y-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
+      <div className="flex-1 overflow-y-auto mt-2 space-y-0.5 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-transparent">
         {sortedItems.map((item: ParkingLotItem) => (
           <CapturedItem
             key={item.id}
             item={item}
             onDelete={() => handleDelete(item.id)}
-            onConvertToTask={(plannedDate) =>
-              handleConvertToTask(item.id, plannedDate)
+            onConvertToTask={(plannedDate, projectId) =>
+              handleConvertToTask(item.id, plannedDate, projectId)
             }
+            onContextMenu={handleContextMenu}
             isDeleting={deleteItem.isPending && deleteItem.variables === item.id}
             isConverting={
               convertToTask.isPending && convertToTask.variables?.id === item.id
@@ -99,6 +138,16 @@ export function ParkingLot({ className = '' }: ParkingLotProps) {
             parking lot
           </span>
         </div>
+      )}
+
+      {/* Project context menu */}
+      {contextMenu.isOpen && (
+        <ProjectContextMenu
+          projects={projects}
+          position={contextMenu.position}
+          onSelect={handleSelectProject}
+          onClose={handleCloseContextMenu}
+        />
       )}
     </div>
   );

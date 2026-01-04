@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { DashboardLayoutItem } from '../types';
+import type { DashboardLayoutItem, DashboardPage } from '../types';
 
 // Default layout for the dashboard
 // Layout: Wide modules (Habit Matrix, Weekly Tasks) on left, narrow utility modules on right
@@ -14,6 +14,20 @@ const DEFAULT_LAYOUT: DashboardLayoutItem[] = [
   { i: 'parking-lot', x: 18, y: 7, w: 6, h: 5, minW: 4, minH: 3 },
   { i: 'target-graph', x: 18, y: 12, w: 6, h: 6, minW: 4, minH: 4 },
 ];
+
+// Default "Today" page
+const DEFAULT_TODAY_PAGE: DashboardPage = {
+  id: 'today',
+  name: 'Today',
+  icon: 'Today',
+  iconColor: '#14b8a6',
+  layout: DEFAULT_LAYOUT,
+  collapsedWidgets: {},
+  sortOrder: 0,
+  isDefault: true,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+};
 
 // Height for collapsed widgets (title bar only - approximately 40px at 30px row height)
 const COLLAPSED_HEIGHT = 2;
@@ -38,6 +52,10 @@ interface DashboardStore {
   // Flag to track if there are unsaved changes
   hasUnsavedChanges: boolean;
 
+  // Dashboard pages state (issue #59)
+  pages: DashboardPage[];
+  activePageId: string;
+
   // Actions
   setLayout: (layout: DashboardLayoutItem[]) => void;
   setActiveWidget: (id: string | null) => void;
@@ -53,6 +71,15 @@ interface DashboardStore {
   canUndo: () => boolean;
   saveLayoutSnapshot: () => void;
   clearHistory: () => void;
+
+  // Dashboard pages actions (issue #59)
+  setActivePage: (pageId: string) => void;
+  createPage: (name: string, icon?: string, iconColor?: string) => DashboardPage;
+  updatePage: (pageId: string, updates: Partial<DashboardPage>) => void;
+  deletePage: (pageId: string) => void;
+  reorderPages: (pageIds: string[]) => void;
+  getActivePage: () => DashboardPage;
+  getPageById: (pageId: string) => DashboardPage | undefined;
 }
 
 export const useDashboardStore = create<DashboardStore>()(
@@ -64,6 +91,10 @@ export const useDashboardStore = create<DashboardStore>()(
       collapsedWidgets: {},
       layoutHistory: [],
       hasUnsavedChanges: false,
+
+      // Dashboard pages state (issue #59)
+      pages: [DEFAULT_TODAY_PAGE],
+      activePageId: 'today',
 
       setLayout: (layout) => {
         const state = get();
@@ -213,6 +244,107 @@ export const useDashboardStore = create<DashboardStore>()(
 
       clearHistory: () => set({ layoutHistory: [], hasUnsavedChanges: false }),
 
+      // Dashboard pages actions (issue #59)
+      setActivePage: (pageId: string) => {
+        const state = get();
+        const page = state.pages.find(p => p.id === pageId);
+        if (!page) return;
+
+        // Save current page layout before switching
+        const updatedPages = state.pages.map(p =>
+          p.id === state.activePageId
+            ? { ...p, layout: state.layout, collapsedWidgets: state.collapsedWidgets, updatedAt: new Date().toISOString() }
+            : p
+        );
+
+        set({
+          pages: updatedPages,
+          activePageId: pageId,
+          layout: page.layout,
+          collapsedWidgets: page.collapsedWidgets,
+          layoutHistory: [],
+          hasUnsavedChanges: false,
+        });
+      },
+
+      createPage: (name: string, icon?: string, iconColor?: string) => {
+        const state = get();
+        const newPage: DashboardPage = {
+          id: `page-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name,
+          icon: icon || 'Dashboard',
+          iconColor: iconColor || '#6366f1',
+          layout: [], // Start with empty layout
+          collapsedWidgets: {},
+          sortOrder: state.pages.length,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+
+        set({ pages: [...state.pages, newPage] });
+        return newPage;
+      },
+
+      updatePage: (pageId: string, updates: Partial<DashboardPage>) => {
+        const state = get();
+        const updatedPages = state.pages.map(p =>
+          p.id === pageId
+            ? { ...p, ...updates, updatedAt: new Date().toISOString() }
+            : p
+        );
+        set({ pages: updatedPages });
+
+        // If updating the active page's layout, also update the current layout
+        if (pageId === state.activePageId && updates.layout) {
+          set({ layout: updates.layout });
+        }
+        if (pageId === state.activePageId && updates.collapsedWidgets) {
+          set({ collapsedWidgets: updates.collapsedWidgets });
+        }
+      },
+
+      deletePage: (pageId: string) => {
+        const state = get();
+        // Cannot delete the default page
+        const page = state.pages.find(p => p.id === pageId);
+        if (!page || page.isDefault) return;
+
+        const updatedPages = state.pages.filter(p => p.id !== pageId);
+
+        // If deleting the active page, switch to the default page
+        if (state.activePageId === pageId) {
+          const defaultPage = updatedPages.find(p => p.isDefault) || updatedPages[0];
+          set({
+            pages: updatedPages,
+            activePageId: defaultPage.id,
+            layout: defaultPage.layout,
+            collapsedWidgets: defaultPage.collapsedWidgets,
+          });
+        } else {
+          set({ pages: updatedPages });
+        }
+      },
+
+      reorderPages: (pageIds: string[]) => {
+        const state = get();
+        const reorderedPages = pageIds.map((id, index) => {
+          const page = state.pages.find(p => p.id === id);
+          return page ? { ...page, sortOrder: index } : null;
+        }).filter(Boolean) as DashboardPage[];
+
+        set({ pages: reorderedPages });
+      },
+
+      getActivePage: () => {
+        const state = get();
+        return state.pages.find(p => p.id === state.activePageId) || DEFAULT_TODAY_PAGE;
+      },
+
+      getPageById: (pageId: string) => {
+        const state = get();
+        return state.pages.find(p => p.id === pageId);
+      },
+
     }),
     {
       name: 'habitarcade-dashboard',
@@ -220,4 +352,4 @@ export const useDashboardStore = create<DashboardStore>()(
   )
 );
 
-export { DEFAULT_LAYOUT, COLLAPSED_HEIGHT };
+export { DEFAULT_LAYOUT, COLLAPSED_HEIGHT, DEFAULT_TODAY_PAGE };

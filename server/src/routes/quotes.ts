@@ -1,14 +1,14 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { quotes } from '../db/schema';
-import { eq, and, or, ilike, desc, sql } from 'drizzle-orm';
+import { quotes, quoteCollections, quoteCollectionAssignments } from '../db/schema';
+import { eq, and, or, ilike, desc, sql, inArray } from 'drizzle-orm';
 
 const router = Router();
 
 // GET /api/quotes - List all quotes (with optional filters)
 router.get('/', async (req, res) => {
   try {
-    const { category, favorites, search, limit, offset } = req.query;
+    const { category, collectionId, favorites, search, limit, offset } = req.query;
     const includeDeleted = req.query.includeDeleted === 'true';
 
     // Build where conditions
@@ -18,6 +18,7 @@ router.get('/', async (req, res) => {
       conditions.push(eq(quotes.isDeleted, false));
     }
 
+    // Legacy category filter (deprecated)
     if (category) {
       conditions.push(eq(quotes.category, category as string));
     }
@@ -35,6 +36,21 @@ router.get('/', async (req, res) => {
       );
     }
 
+    // If filtering by collection, get quote IDs first
+    let quoteIdsInCollection: string[] | undefined;
+    if (collectionId) {
+      const assignments = await db.query.quoteCollectionAssignments.findMany({
+        where: eq(quoteCollectionAssignments.collectionId, collectionId as string),
+      });
+      quoteIdsInCollection = assignments.map(a => a.quoteId);
+
+      if (quoteIdsInCollection.length === 0) {
+        // No quotes in this collection
+        return res.json({ data: [], count: 0, total: 0 });
+      }
+      conditions.push(inArray(quotes.id, quoteIdsInCollection));
+    }
+
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
     // Query with pagination
@@ -46,7 +62,21 @@ router.get('/', async (req, res) => {
       orderBy: [desc(quotes.createdAt)],
       limit: limitNum,
       offset: offsetNum,
+      with: {
+        collectionAssignments: {
+          with: {
+            collection: true,
+          },
+        },
+      },
     });
+
+    // Transform to include collections array
+    const quotesWithCollections = result.map(quote => ({
+      ...quote,
+      collections: quote.collectionAssignments?.map(a => a.collection).filter(Boolean) || [],
+      collectionAssignments: undefined, // Remove raw assignments
+    }));
 
     // Get total count for pagination
     const countResult = await db
@@ -55,8 +85,8 @@ router.get('/', async (req, res) => {
       .where(whereClause);
 
     res.json({
-      data: result,
-      count: result.length,
+      data: quotesWithCollections,
+      count: quotesWithCollections.length,
       total: Number(countResult[0]?.count || 0),
     });
   } catch (error) {
@@ -123,11 +153,26 @@ router.get('/:id', async (req, res) => {
   try {
     const result = await db.query.quotes.findFirst({
       where: eq(quotes.id, req.params.id),
+      with: {
+        collectionAssignments: {
+          with: {
+            collection: true,
+          },
+        },
+      },
     });
     if (!result) {
       return res.status(404).json({ error: 'Quote not found', code: 'QUOTE_NOT_FOUND' });
     }
-    res.json({ data: result });
+
+    // Transform to include collections array
+    const quoteWithCollections = {
+      ...result,
+      collections: result.collectionAssignments?.map(a => a.collection).filter(Boolean) || [],
+      collectionAssignments: undefined,
+    };
+
+    res.json({ data: quoteWithCollections });
   } catch (error) {
     console.error('Failed to fetch quote:', error);
     res.status(500).json({ error: 'Failed to fetch quote', code: 'INTERNAL_ERROR' });
@@ -137,7 +182,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/quotes - Create quote
 router.post('/', async (req, res) => {
   try {
-    const { text, author, source, category, isFavorite } = req.body;
+    const { text, author, source, category, isFavorite, collectionIds } = req.body;
 
     if (!text) {
       return res.status(400).json({ error: 'Quote text is required', code: 'VALIDATION_ERROR' });
@@ -147,11 +192,39 @@ router.post('/', async (req, res) => {
       text,
       author,
       source,
-      category,
+      category, // Legacy field
       isFavorite: isFavorite || false,
     }).returning();
 
-    res.status(201).json({ data: result });
+    // Create collection assignments if provided
+    if (collectionIds && Array.isArray(collectionIds) && collectionIds.length > 0) {
+      await db.insert(quoteCollectionAssignments).values(
+        collectionIds.map((collectionId: string) => ({
+          quoteId: result.id,
+          collectionId,
+        }))
+      );
+    }
+
+    // Fetch the quote with collections
+    const quoteWithCollections = await db.query.quotes.findFirst({
+      where: eq(quotes.id, result.id),
+      with: {
+        collectionAssignments: {
+          with: {
+            collection: true,
+          },
+        },
+      },
+    });
+
+    const response = {
+      ...quoteWithCollections,
+      collections: quoteWithCollections?.collectionAssignments?.map(a => a.collection).filter(Boolean) || [],
+      collectionAssignments: undefined,
+    };
+
+    res.status(201).json({ data: response });
   } catch (error) {
     console.error('Failed to create quote:', error);
     res.status(500).json({ error: 'Failed to create quote', code: 'INTERNAL_ERROR' });
@@ -197,7 +270,7 @@ router.post('/bulk', async (req, res) => {
 // PATCH /api/quotes/:id - Update quote
 router.patch('/:id', async (req, res) => {
   try {
-    const { text, author, source, category, isFavorite } = req.body;
+    const { text, author, source, category, isFavorite, collectionIds } = req.body;
 
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
     if (text !== undefined) updateData.text = text;
@@ -214,7 +287,43 @@ router.patch('/:id', async (req, res) => {
     if (!result) {
       return res.status(404).json({ error: 'Quote not found', code: 'QUOTE_NOT_FOUND' });
     }
-    res.json({ data: result });
+
+    // Update collection assignments if provided
+    if (collectionIds !== undefined && Array.isArray(collectionIds)) {
+      // Remove existing assignments
+      await db.delete(quoteCollectionAssignments)
+        .where(eq(quoteCollectionAssignments.quoteId, req.params.id));
+
+      // Add new assignments
+      if (collectionIds.length > 0) {
+        await db.insert(quoteCollectionAssignments).values(
+          collectionIds.map((collectionId: string) => ({
+            quoteId: req.params.id,
+            collectionId,
+          }))
+        );
+      }
+    }
+
+    // Fetch updated quote with collections
+    const quoteWithCollections = await db.query.quotes.findFirst({
+      where: eq(quotes.id, req.params.id),
+      with: {
+        collectionAssignments: {
+          with: {
+            collection: true,
+          },
+        },
+      },
+    });
+
+    const response = {
+      ...quoteWithCollections,
+      collections: quoteWithCollections?.collectionAssignments?.map(a => a.collection).filter(Boolean) || [],
+      collectionAssignments: undefined,
+    };
+
+    res.json({ data: response });
   } catch (error) {
     console.error('Failed to update quote:', error);
     res.status(500).json({ error: 'Failed to update quote', code: 'INTERNAL_ERROR' });

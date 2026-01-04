@@ -6,12 +6,12 @@ test.describe('Right Drawer', () => {
   });
 
   test('drawer toggle button is visible in header', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
     await expect(toggleButton).toBeVisible();
   });
 
   test('clicking toggle opens drawer with animation', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
     const drawer = page.getByTestId('right-drawer');
 
     // Drawer should initially be hidden (translated off-screen)
@@ -26,7 +26,7 @@ test.describe('Right Drawer', () => {
   });
 
   test('drawer can be closed via close button', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
     const drawer = page.getByTestId('right-drawer');
     const closeButton = page.getByTestId('drawer-close-button');
 
@@ -40,7 +40,7 @@ test.describe('Right Drawer', () => {
   });
 
   test('drawer can be closed via toggle button', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
     const drawer = page.getByTestId('right-drawer');
 
     // Open the drawer
@@ -53,7 +53,7 @@ test.describe('Right Drawer', () => {
   });
 
   test('drawer content displays correctly with tabs', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
     const drawer = page.getByTestId('right-drawer');
     const drawerContent = page.getByTestId('drawer-content');
 
@@ -72,7 +72,7 @@ test.describe('Right Drawer', () => {
   });
 
   test('clicking tabs changes drawer content', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
 
     // Open the drawer
     await toggleButton.click();
@@ -92,7 +92,7 @@ test.describe('Right Drawer', () => {
   });
 
   test('drawer can be closed with Escape key', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
     const drawer = page.getByTestId('right-drawer');
 
     // Open the drawer
@@ -105,7 +105,7 @@ test.describe('Right Drawer', () => {
   });
 
   test('toggle button shows different icon when drawer is open', async ({ page }) => {
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
 
     // Initial state - should have aria-expanded false
     await expect(toggleButton).toHaveAttribute('aria-expanded', 'false');
@@ -121,7 +121,7 @@ test.describe('Right Drawer', () => {
     // Set viewport to tablet size
     await page.setViewportSize({ width: 768, height: 1024 });
 
-    const toggleButton = page.getByTestId('right-drawer-toggle');
+    const toggleButton = page.getByTestId('right-sidebar-toggle');
     const drawer = page.getByTestId('right-drawer');
 
     // Toggle should still be visible

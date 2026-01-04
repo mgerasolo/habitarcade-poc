@@ -1,6 +1,6 @@
 import { memo, useMemo, useCallback } from 'react';
 import type { DateColumn, MatrixHabit } from './useHabitMatrix';
-import { getHabitStatus, getEffectiveHabitStatus, getBestChildStatus } from './useHabitMatrix';
+import { getHabitStatus, getEffectiveHabitStatus } from './useHabitMatrix';
 import { StatusCell } from './StatusCell';
 import { useUIStore } from '../../stores';
 import { useSettings } from '../../api';
@@ -88,6 +88,7 @@ interface HabitRowProps {
   dates: DateColumn[];
   habitNameWidth?: number;
   cellSize?: number;
+  cellHeight?: number; // Fixed height for cells (#47)
   index?: number;
   /** Compact vertical mode - tighter row spacing */
   compactVertical?: boolean;
@@ -102,6 +103,7 @@ export const HabitRow = memo(function HabitRow({
   dates,
   habitNameWidth = 120,
   cellSize,
+  cellHeight,
   index = 0,
   compactVertical = false,
 }: HabitRowProps) {
@@ -199,7 +201,7 @@ export const HabitRow = memo(function HabitRow({
           if (isParentHabit && habit.computedStatusByDate) {
             status = habit.computedStatusByDate.get(dateCol.date) || 'empty';
           } else {
-            status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
+            status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, dateCol.isFuture, autoMarkPink);
           }
 
           // Extract day of month from date string (YYYY-MM-DD format)
@@ -221,6 +223,7 @@ export const HabitRow = memo(function HabitRow({
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
               size={cellSize}
+              cellHeight={cellHeight}
               dailyTarget={habit.dailyTarget}
               currentCount={currentCount}
               isParentHabit={isParentHabit}
@@ -255,6 +258,7 @@ export const HabitRowCompact = memo(function HabitRowCompact({
   dates,
   habitNameWidth = 80,
   cellSize,
+  cellHeight,
   index = 0,
 }: HabitRowProps) {
   const { openModal } = useUIStore();
@@ -305,7 +309,7 @@ export const HabitRowCompact = memo(function HabitRowCompact({
           if (isParentHabit && habit.computedStatusByDate) {
             status = habit.computedStatusByDate.get(dateCol.date) || 'empty';
           } else {
-            status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, autoMarkPink);
+            status = getEffectiveHabitStatus(habit, dateCol.date, dateCol.isToday, dateCol.isFuture, autoMarkPink);
           }
 
           const dayOfMonth = dateCol.date.split('-')[2].replace(/^0/, '');
@@ -326,6 +330,7 @@ export const HabitRowCompact = memo(function HabitRowCompact({
               isToday={dateCol.isToday}
               isWeekend={dateCol.isWeekend}
               size={cellSize || 20}
+              cellHeight={cellHeight}
               dailyTarget={habit.dailyTarget}
               currentCount={currentCount}
               isParentHabit={isParentHabit}

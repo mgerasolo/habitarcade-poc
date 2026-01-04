@@ -28,12 +28,14 @@ import categoriesRouter from './routes/categories';
 import tasksRouter from './routes/tasks';
 import projectsRouter from './routes/projects';
 import tagsRouter from './routes/tags';
+import statusesRouter from './routes/statuses';
 import timeBlocksRouter from './routes/timeBlocks';
 import measurementsRouter from './routes/measurements';
 import parkingLotRouter from './routes/parkingLot';
 import settingsRouter from './routes/settings';
 import dashboardRouter from './routes/dashboard';
 import quotesRouter from './routes/quotes';
+import quoteCollectionsRouter from './routes/quoteCollections';
 import videosRouter from './routes/videos';
 
 const app = express();
@@ -53,12 +55,14 @@ app.use('/api/categories', categoriesRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/projects', projectsRouter);
 app.use('/api/tags', tagsRouter);
+app.use('/api/statuses', statusesRouter);
 app.use('/api/time-blocks', timeBlocksRouter);
 app.use('/api/measurements', measurementsRouter);
 app.use('/api/parking-lot', parkingLotRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/dashboard', dashboardRouter);
 app.use('/api/quotes', quotesRouter);
+app.use('/api/quote-collections', quoteCollectionsRouter);
 app.use('/api/videos', videosRouter);
 
 // Serve uploaded files

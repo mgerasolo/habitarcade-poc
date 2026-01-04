@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useUIStore, useDashboardStore } from '../../stores';
+import type { RightSidebarModuleType } from '../../stores';
 import { useTasks } from '../../api';
 import * as MuiIcons from '@mui/icons-material';
 import { PrioritiesList } from './PrioritiesList';
@@ -22,7 +23,8 @@ interface RightDrawerProps {
   overlay?: boolean;
 }
 
-type DrawerTab = 'parking-lot' | 'priorities' | 'quick-entry' | 'properties' | 'task-backlog' | 'components';
+// DrawerTab includes 'properties' which is local to this deprecated component
+type DrawerTab = RightSidebarModuleType | 'properties';
 
 const DRAWER_TABS: { id: DrawerTab; label: string; icon: keyof typeof MuiIcons; editModeOnly?: boolean }[] = [
   { id: 'components', label: 'Components', icon: 'Widgets', editModeOnly: true },
@@ -37,6 +39,11 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
   const { rightDrawerContent, setRightDrawerContent, closeRightDrawer } = useUIStore();
   const { isEditMode } = useDashboardStore();
   const drawerRef = useRef<HTMLDivElement>(null);
+  // Local state for 'properties' tab which is not in RightSidebarModuleType
+  const [localTab, setLocalTab] = useState<'properties' | null>(null);
+
+  // Computed active tab
+  const activeTab: DrawerTab = localTab || rightDrawerContent || 'parking-lot';
 
   // Filter tabs based on edit mode
   const visibleTabs = useMemo(() => {
@@ -82,7 +89,7 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
   }, [isOpen, closeRightDrawer]);
 
   const renderContent = () => {
-    switch (rightDrawerContent) {
+    switch (activeTab) {
       case 'components':
         return <ComponentPicker />;
       case 'parking-lot':
@@ -100,8 +107,17 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
     }
   };
 
+  const handleTabClick = (tabId: DrawerTab) => {
+    if (tabId === 'properties') {
+      setLocalTab('properties');
+    } else {
+      setLocalTab(null);
+      setRightDrawerContent(tabId);
+    }
+  };
+
   const getContentTitle = () => {
-    const tab = DRAWER_TABS.find(t => t.id === rightDrawerContent);
+    const tab = DRAWER_TABS.find(t => t.id === activeTab);
     return tab?.label || 'Drawer';
   };
 
@@ -156,12 +172,12 @@ export function RightDrawer({ isOpen, width = 320, overlay = true }: RightDrawer
         <div className="flex border-b border-slate-700/50 px-2 py-2 gap-1 overflow-x-auto">
           {visibleTabs.map((tab) => {
             const IconComponent = MuiIcons[tab.icon] as React.ComponentType<{ style?: React.CSSProperties; className?: string }>;
-            const isActive = rightDrawerContent === tab.id;
+            const isActive = activeTab === tab.id;
 
             return (
               <button
                 key={tab.id}
-                onClick={() => setRightDrawerContent(tab.id)}
+                onClick={() => handleTabClick(tab.id)}
                 className={`
                   flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium
                   transition-all duration-150 whitespace-nowrap

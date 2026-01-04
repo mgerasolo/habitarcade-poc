@@ -15,7 +15,8 @@ const HABIT_NAME_WIDTH_DESKTOP = 140;
 const HABIT_NAME_WIDTH_TABLET = 100;
 const HABIT_NAME_WIDTH_MOBILE = 80;
 const MIN_CELL_SIZE = 16;
-const MAX_CELL_SIZE = 36; // Increased to allow cells to fill more width
+const MAX_CELL_SIZE = 48; // Allow cells to fill more width for larger displays (#47)
+const FIXED_CELL_HEIGHT = 18; // Fixed height for condensed dense display (#47)
 
 interface HabitMatrixProps {
   /** Number of days to show. Auto-responsive if not specified */
@@ -225,9 +226,9 @@ export function HabitMatrix({
             {/* Date header row showing day numbers - hidden in compactVertical mode */}
             {!compactVertical && (
               isMobile ? (
-                <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
+                <DateHeaderCompact dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} cellHeight={FIXED_CELL_HEIGHT} />
               ) : (
-                <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} />
+                <DateHeader dates={dateColumns} habitNameWidth={habitNameWidth} cellSize={cellSize} cellHeight={FIXED_CELL_HEIGHT} />
               )
             )}
 
@@ -242,6 +243,7 @@ export function HabitMatrix({
                   habitNameWidth={habitNameWidth}
                   isCompact={isCompact}
                   cellSize={cellSize}
+                  cellHeight={FIXED_CELL_HEIGHT}
                   compactVertical={compactVertical}
                 />
               ))}

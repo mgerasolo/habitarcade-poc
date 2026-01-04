@@ -5,6 +5,7 @@ interface DateHeaderProps {
   dates: DateColumn[];
   habitNameWidth?: number;
   cellSize?: number;
+  cellHeight?: number; // Fixed height for cells (#47)
 }
 
 /**
@@ -27,9 +28,9 @@ export const DateHeader = memo(function DateHeader({
         {dates.map((dateCol) => (
           <div
             key={dateCol.date}
-            style={{ width: cellSize }}
+            style={{ maxWidth: 32 }}
             className={`
-              flex flex-col items-center justify-end relative
+              flex-1 flex flex-col items-center justify-end relative min-w-0
               font-condensed text-[10px] leading-tight
               transition-colors duration-150
               ${dateCol.isToday
@@ -74,6 +75,7 @@ export const DateHeaderCompact = memo(function DateHeaderCompact({
   dates,
   habitNameWidth = 80,
   cellSize = 20,
+  cellHeight = 18,
 }: DateHeaderProps) {
   return (
     <div className="flex items-end gap-1 mb-1 sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10 py-1">
@@ -85,9 +87,9 @@ export const DateHeaderCompact = memo(function DateHeaderCompact({
         {dates.map((dateCol) => (
           <div
             key={dateCol.date}
-            style={{ width: cellSize, height: cellSize }}
+            style={{ height: cellHeight, maxWidth: 32 }}
             className={`
-              flex items-center justify-center relative
+              flex-1 flex items-center justify-center relative min-w-0
               font-condensed text-xs rounded
               ${dateCol.isToday
                 ? 'bg-teal-500/20 text-teal-400 font-bold'

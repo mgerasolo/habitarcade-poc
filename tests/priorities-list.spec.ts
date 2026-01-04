@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 /**
  * Priorities List Tests
  *
- * Verifies the Priorities List feature in the right drawer:
+ * Verifies the Priorities List feature in the right sidebar:
  * - Displays tasks with priorities
  * - Priority badges show correct colors (P1=red, P2=orange, P3=yellow)
  * - Can toggle task completion
@@ -13,65 +13,95 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Priorities List', () => {
+  // Helper function to open priorities module
+  async function openPrioritiesModule(page: import('@playwright/test').Page) {
+    const sidebar = page.locator('[data-testid="right-sidebar"]');
+
+    // Check if sidebar is already open (has w-80 class)
+    const sidebarClass = await sidebar.getAttribute('class');
+    const isSidebarOpen = sidebarClass?.includes('w-80');
+
+    // Only click toggle if sidebar is closed
+    if (!isSidebarOpen) {
+      const toggleButton = page.locator('[data-testid="right-sidebar-toggle"]');
+      await toggleButton.click();
+      await expect(sidebar).toHaveClass(/w-80/, { timeout: 5000 });
+    }
+
+    // First, check if the priorities module even exists (it's not in default modules)
+    const moduleHeader = page.locator('[data-testid="module-header-priorities"]');
+    const moduleExists = await moduleHeader.count() > 0;
+
+    if (!moduleExists) {
+      // Need to add the priorities module via the add module button
+      const addModuleButton = page.locator('[data-testid="add-module-button"]');
+      await addModuleButton.click();
+      await page.waitForTimeout(300);
+
+      const addPrioritiesButton = page.locator('[data-testid="add-module-priorities"]');
+      await expect(addPrioritiesButton).toBeVisible({ timeout: 5000 });
+      await addPrioritiesButton.click();
+      await page.waitForTimeout(300);
+    }
+
+    // Now click on the Priorities module header to expand it (if not already expanded)
+    await expect(moduleHeader).toBeVisible({ timeout: 5000 });
+
+    // Check if content is already visible
+    const content = page.locator('[data-testid="priorities-list"], [data-testid="priorities-loading"], [data-testid="priorities-empty"]');
+    const isContentVisible = await content.isVisible();
+
+    if (!isContentVisible) {
+      await moduleHeader.click({ force: true });
+      await expect(content).toBeVisible({ timeout: 5000 });
+    }
+  }
+
   test.beforeEach(async ({ page }) => {
-    // Navigate to the dashboard
+    // Clear localStorage before navigating
     await page.goto('/');
+    await page.evaluate(() => {
+      localStorage.removeItem('habitarcade-ui');
+    });
+
+    // Navigate to the dashboard after clearing storage
+    await page.reload();
 
     // Wait for the page to load
-    await page.waitForSelector('[data-testid="right-drawer-toggle"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="right-sidebar-toggle"]', { timeout: 10000 });
   });
 
-  test('should open right drawer and show Priorities content', async ({ page }) => {
-    // Click the right drawer toggle button
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await expect(toggleButton).toBeVisible();
-    await toggleButton.click();
+  test('should open right sidebar and show Priorities content', async ({ page }) => {
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
-    // Wait for the drawer to open
-    const drawer = page.locator('[data-testid="right-drawer"]');
-    await expect(drawer).toHaveClass(/translate-x-0/);
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
-
-    // Wait for priorities content to appear (either list, loading, or empty state)
+    // Verify priorities content is visible (either list, loading, or empty state)
     const prioritiesList = page.locator('[data-testid="priorities-list"], [data-testid="priorities-loading"], [data-testid="priorities-empty"]');
-    await expect(prioritiesList).toBeVisible({ timeout: 5000 });
+    await expect(prioritiesList).toBeVisible();
   });
 
   test('should show empty state when no priorities exist', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
     // If there are no priority tasks, should show empty state
     const emptyState = page.locator('[data-testid="priorities-empty"]');
     const prioritiesList = page.locator('[data-testid="priorities-list"]');
 
-    // Wait for either empty state or list to appear
-    await expect(emptyState.or(prioritiesList)).toBeVisible({ timeout: 5000 });
+    // Either empty state or list should be visible
+    await expect(emptyState.or(prioritiesList)).toBeVisible();
   });
 
   test('should display priority items with correct structure', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
     // Wait for content
     const prioritiesList = page.locator('[data-testid="priorities-list"]');
     const emptyState = page.locator('[data-testid="priorities-empty"]');
 
     // Wait for either
-    await expect(prioritiesList.or(emptyState)).toBeVisible({ timeout: 5000 });
+    await expect(prioritiesList.or(emptyState)).toBeVisible();
 
     // If we have a list, check the structure
     if (await prioritiesList.isVisible()) {
@@ -90,19 +120,14 @@ test.describe('Priorities List', () => {
   });
 
   test('should show correct priority badge colors', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
     // Wait for content
     const prioritiesList = page.locator('[data-testid="priorities-list"]');
     const emptyState = page.locator('[data-testid="priorities-empty"]');
 
-    await expect(prioritiesList.or(emptyState)).toBeVisible({ timeout: 5000 });
+    await expect(prioritiesList.or(emptyState)).toBeVisible();
 
     if (await prioritiesList.isVisible()) {
       const badges = page.locator('[data-testid="priority-badge"]');
@@ -119,19 +144,14 @@ test.describe('Priorities List', () => {
   });
 
   test('should toggle task completion when clicking checkbox', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
     // Wait for content
     const prioritiesList = page.locator('[data-testid="priorities-list"]');
     const emptyState = page.locator('[data-testid="priorities-empty"]');
 
-    await expect(prioritiesList.or(emptyState)).toBeVisible({ timeout: 5000 });
+    await expect(prioritiesList.or(emptyState)).toBeVisible();
 
     if (await prioritiesList.isVisible()) {
       const items = page.locator('[data-testid="priority-item"]');
@@ -158,19 +178,14 @@ test.describe('Priorities List', () => {
   });
 
   test('should show "Show more" button when more than 3 items exist', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
     // Wait for content
     const prioritiesList = page.locator('[data-testid="priorities-list"]');
     const emptyState = page.locator('[data-testid="priorities-empty"]');
 
-    await expect(prioritiesList.or(emptyState)).toBeVisible({ timeout: 5000 });
+    await expect(prioritiesList.or(emptyState)).toBeVisible();
 
     if (await prioritiesList.isVisible()) {
       const items = page.locator('[data-testid="priority-item"]');
@@ -199,19 +214,14 @@ test.describe('Priorities List', () => {
   });
 
   test('should have drag handles visible on items', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
     // Wait for content
     const prioritiesList = page.locator('[data-testid="priorities-list"]');
     const emptyState = page.locator('[data-testid="priorities-empty"]');
 
-    await expect(prioritiesList.or(emptyState)).toBeVisible({ timeout: 5000 });
+    await expect(prioritiesList.or(emptyState)).toBeVisible();
 
     if (await prioritiesList.isVisible()) {
       const dragHandles = page.locator('[data-testid="priority-drag-handle"]');
@@ -227,19 +237,14 @@ test.describe('Priorities List', () => {
   });
 
   test('should show delete button on hover', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Click the priorities tab
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
+    // Open the priorities module
+    await openPrioritiesModule(page);
 
     // Wait for content
     const prioritiesList = page.locator('[data-testid="priorities-list"]');
     const emptyState = page.locator('[data-testid="priorities-empty"]');
 
-    await expect(prioritiesList.or(emptyState)).toBeVisible({ timeout: 5000 });
+    await expect(prioritiesList.or(emptyState)).toBeVisible();
 
     if (await prioritiesList.isVisible()) {
       const items = page.locator('[data-testid="priority-item"]');
@@ -263,28 +268,31 @@ test.describe('Priorities List', () => {
     }
   });
 
-  test('should switch between tabs correctly', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
+  test('should expand and collapse modules independently', async ({ page }) => {
+    // Open the priorities module (this will also add it if not present)
+    await openPrioritiesModule(page);
 
-    // Initially on parking lot tab
-    const parkingLotTab = page.locator('[data-testid="drawer-tab-parking-lot"]');
-    await expect(parkingLotTab).toHaveAttribute('aria-selected', 'true');
-
-    // Switch to priorities
-    const prioritiesTab = page.locator('[data-testid="drawer-tab-priorities"]');
-    await prioritiesTab.click();
-    await expect(prioritiesTab).toHaveAttribute('aria-selected', 'true');
-    await expect(parkingLotTab).toHaveAttribute('aria-selected', 'false');
-
-    // Verify priorities content is shown
+    // Priorities content should be visible
     const prioritiesContent = page.locator('[data-testid="priorities-list"], [data-testid="priorities-loading"], [data-testid="priorities-empty"]');
     await expect(prioritiesContent).toBeVisible({ timeout: 5000 });
 
-    // Switch back to parking lot
-    await parkingLotTab.click();
-    await expect(parkingLotTab).toHaveAttribute('aria-selected', 'true');
-    await expect(page.locator('[data-testid="parking-lot-content"]')).toBeVisible();
+    // The parking lot module should also be in the sidebar (it's in default modules)
+    // Parking lot is expanded by default, so content should already be visible
+    const parkingLotContent = page.locator('[data-testid="parking-lot-content"]');
+    await expect(parkingLotContent).toBeVisible({ timeout: 5000 });
+
+    // Both contents should now be visible simultaneously
+    await expect(prioritiesContent).toBeVisible();
+
+    // Now collapse parking lot and verify priorities remains visible
+    const parkingLotModule = page.locator('[data-testid="module-header-parking-lot"]');
+    await parkingLotModule.click({ force: true });
+    await page.waitForTimeout(300);
+
+    // Parking lot content should now be hidden
+    await expect(parkingLotContent).not.toBeVisible();
+
+    // But priorities should still be visible
+    await expect(prioritiesContent).toBeVisible();
   });
 });

@@ -22,6 +22,7 @@ export const PAGE_ROUTES: Record<PageType, string> = {
   'manage-quotes': '/manage/quotes',
   'manage-videos': '/manage/videos',
   'manage-tasks': '/manage/tasks',
+  'manage-statuses': '/manage/statuses',
   'settings': '/settings',
   'targets': '/targets',
   'time-blocks': '/time-blocks',

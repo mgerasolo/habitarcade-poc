@@ -12,7 +12,8 @@ interface StatusCellProps {
   status: HabitStatus;
   isToday: boolean;
   isWeekend?: boolean;
-  size?: number;
+  size?: number; // Cell width
+  cellHeight?: number; // Cell height (optional, defaults to size for square cells)
   // Count-based habit support
   dailyTarget?: number;
   currentCount?: number;
@@ -55,11 +56,14 @@ export function StatusCell({
   isToday,
   isWeekend = false,
   size = 16,
+  cellHeight,
   dailyTarget,
   currentCount = 0,
   isParentHabit = false,
   siblingCompleted = false,
 }: StatusCellProps) {
+  // Use cellHeight if provided, otherwise fall back to size for square cells
+  const height = cellHeight ?? size;
   // State
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState<'above' | 'below'>('below');
@@ -210,7 +214,7 @@ export function StatusCell({
   };
 
   return (
-    <div className="relative flex items-center justify-center">
+    <div className="relative flex-1 flex items-center justify-center min-w-0">
       <div
         ref={cellRef}
         className={`
@@ -220,12 +224,12 @@ export function StatusCell({
           ${isParentHabit ? 'cursor-default' : 'cursor-pointer'}
           ${isHovered ? 'scale-110 shadow-lg z-20' : ''}
           ${isToday ? 'ring-2 ring-teal-400 ring-offset-1 ring-offset-slate-800' : ''}
-          ${isWeekend && status === 'empty' ? 'opacity-70' : ''}
           ${updateEntry.isPending ? 'animate-pulse' : ''}
         `}
         style={{
-          width: size,
-          height: size,
+          width: '100%',
+          maxWidth: 32, // Cap cell width for readability
+          height: height,
           backgroundColor: getBackgroundColor(),
           boxShadow: getBoxShadow(),
           opacity: getOpacity(),
@@ -253,7 +257,7 @@ export function StatusCell({
           <span
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
-              fontSize: size > 20 ? '11px' : '9px',
+              fontSize: height > 20 ? '11px' : '9px',
               color: 'rgba(255, 255, 255, 0.95)',
               fontWeight: 700,
               lineHeight: 1,
@@ -270,7 +274,7 @@ export function StatusCell({
           <span
             style={{
               fontFamily: '"Arial Narrow", Arial, sans-serif',
-              fontSize: size > 20 ? '11px' : '9px',
+              fontSize: height > 20 ? '11px' : '9px',
               color: status === 'empty' ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.95)',
               fontWeight: status === 'empty' ? 600 : 700,
               lineHeight: 1,

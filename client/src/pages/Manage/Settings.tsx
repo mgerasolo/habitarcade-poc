@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS = {
   kanbanDays: 7,
   autoSyncInterval: 30000,
   notificationsEnabled: false,
-  autoMarkPink: true,
+  autoMarkPink: false,
 };
 
 // Days of the week

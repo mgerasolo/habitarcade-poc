@@ -10,7 +10,7 @@ const TOOLTIP_STATUSES: { status: HabitStatus; label: string; description: strin
   { status: 'exempt', label: 'Exempt', description: 'Excused from this day' },
   { status: 'na', label: 'N/A', description: 'Not applicable' },
   { status: 'extra', label: 'Extra', description: 'Bonus completion' },
-  { status: 'pink', label: 'Pink', description: 'Special marker' },
+  { status: 'pink', label: 'Likely Missed', description: 'Probably missed but not confirmed' },
   { status: 'empty', label: 'Clear', description: 'Remove status' },
 ];
 
@@ -104,7 +104,7 @@ export function StatusTooltip({
         top: coords.top,
         left: coords.left,
         transform: 'translateX(-50%)',
-        zIndex: 99999,
+        zIndex: 2147483647,
       }}
       className="
         bg-slate-950 rounded-lg shadow-2xl

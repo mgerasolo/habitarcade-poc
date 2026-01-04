@@ -166,3 +166,45 @@ export function useImportHabits() {
     },
   });
 }
+
+// Upload habit image
+export function useUploadHabitImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, file }: { id: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await fetch(`/api/habits/${id}/upload-image`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to upload image');
+      }
+
+      return response.json() as Promise<ApiResponse<Habit>>;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: habitKeys.all });
+      queryClient.invalidateQueries({ queryKey: habitKeys.detail(variables.id) });
+    },
+  });
+}
+
+// Delete habit image
+export function useDeleteHabitImage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      apiFetch<ApiResponse<Habit>>(`/habits/${id}/image`, {
+        method: 'DELETE',
+      }),
+    onSuccess: (_, id) => {
+      queryClient.invalidateQueries({ queryKey: habitKeys.all });
+      queryClient.invalidateQueries({ queryKey: habitKeys.detail(id) });
+    },
+  });
+}

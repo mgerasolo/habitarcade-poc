@@ -16,24 +16,52 @@ test.describe('Parking Lot', () => {
     await page.goto('/');
     await page.evaluate(() => {
       localStorage.removeItem('habitarcade-parking-lot');
+      localStorage.removeItem('habitarcade-ui');
     });
 
-    // Navigate to the dashboard
-    await page.goto('/');
+    // Navigate to the dashboard after clearing storage
+    await page.reload();
 
     // Wait for the page to load
-    await page.waitForSelector('[data-testid="right-drawer-toggle"]', { timeout: 10000 });
+    await page.waitForSelector('[data-testid="right-sidebar-toggle"]', { timeout: 10000 });
   });
 
-  test('should open right drawer and show Parking Lot content', async ({ page }) => {
-    // Click the right drawer toggle button
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await expect(toggleButton).toBeVisible();
-    await toggleButton.click();
+  // Helper function to open parking lot module
+  async function openParkingLotModule(page: import('@playwright/test').Page) {
+    const sidebar = page.locator('[data-testid="right-sidebar"]');
 
-    // Wait for the drawer to open and Parking Lot content to appear
+    // Check if sidebar is already open (has w-80 class)
+    const sidebarClass = await sidebar.getAttribute('class');
+    const isSidebarOpen = sidebarClass?.includes('w-80');
+
+    // Only click toggle if sidebar is closed
+    if (!isSidebarOpen) {
+      const toggleButton = page.locator('[data-testid="right-sidebar-toggle"]');
+      await toggleButton.click();
+      await expect(sidebar).toHaveClass(/w-80/, { timeout: 5000 });
+    }
+
+    // Click on the Parking Lot module header to expand it (if not already expanded)
+    const moduleHeader = page.locator('[data-testid="module-header-parking-lot"]');
+    await expect(moduleHeader).toBeVisible({ timeout: 5000 });
+
+    // Check if content is already visible
     const parkingLotContent = page.locator('[data-testid="parking-lot-content"]');
-    await expect(parkingLotContent).toBeVisible({ timeout: 5000 });
+    const isContentVisible = await parkingLotContent.isVisible();
+
+    if (!isContentVisible) {
+      await moduleHeader.click({ force: true });
+      await expect(parkingLotContent).toBeVisible({ timeout: 5000 });
+    }
+  }
+
+  test('should open right sidebar and show Parking Lot content', async ({ page }) => {
+    // Open the parking lot module
+    await openParkingLotModule(page);
+
+    // Verify the Parking Lot content is visible
+    const parkingLotContent = page.locator('[data-testid="parking-lot-content"]');
+    await expect(parkingLotContent).toBeVisible();
 
     // Verify the input field is visible
     const input = page.locator('[data-testid="parking-lot-input"]');
@@ -41,12 +69,8 @@ test.describe('Parking Lot', () => {
   });
 
   test('should add item when typing and pressing Enter', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Wait for content
-    await expect(page.locator('[data-testid="parking-lot-content"]')).toBeVisible({ timeout: 5000 });
+    // Open the parking lot module
+    await openParkingLotModule(page);
 
     // Type a test idea
     const input = page.locator('[data-testid="parking-lot-input"]');
@@ -59,12 +83,8 @@ test.describe('Parking Lot', () => {
   });
 
   test('should add item when clicking the add button', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Wait for content
-    await expect(page.locator('[data-testid="parking-lot-content"]')).toBeVisible({ timeout: 5000 });
+    // Open the parking lot module
+    await openParkingLotModule(page);
 
     // Type a test idea
     const input = page.locator('[data-testid="parking-lot-input"]');
@@ -80,21 +100,17 @@ test.describe('Parking Lot', () => {
   });
 
   test('should delete item when clicking delete button', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Wait for content
-    await expect(page.locator('[data-testid="parking-lot-content"]')).toBeVisible({ timeout: 5000 });
+    // Open the parking lot module
+    await openParkingLotModule(page);
 
     // Add an item first
     const input = page.locator('[data-testid="parking-lot-input"]');
     await input.fill('Item to delete');
     await input.press('Enter');
 
-    // Verify item exists
+    // Wait for item to appear
     const item = page.locator('[data-testid="parking-lot-item"]');
-    await expect(item).toBeVisible();
+    await expect(item).toBeVisible({ timeout: 5000 });
 
     // Hover over item to reveal delete button
     await item.hover();
@@ -108,12 +124,8 @@ test.describe('Parking Lot', () => {
   });
 
   test('should persist items in localStorage', async ({ page }) => {
-    // Open the drawer
-    const toggleButton = page.locator('[data-testid="right-drawer-toggle"]');
-    await toggleButton.click();
-
-    // Wait for content
-    await expect(page.locator('[data-testid="parking-lot-content"]')).toBeVisible({ timeout: 5000 });
+    // Open the parking lot module
+    await openParkingLotModule(page);
 
     // Add an item
     const input = page.locator('[data-testid="parking-lot-input"]');
@@ -126,9 +138,8 @@ test.describe('Parking Lot', () => {
     // Reload the page
     await page.reload();
 
-    // Open drawer again
-    await page.locator('[data-testid="right-drawer-toggle"]').click();
-    await expect(page.locator('[data-testid="parking-lot-content"]')).toBeVisible({ timeout: 5000 });
+    // Open parking lot module again
+    await openParkingLotModule(page);
 
     // Verify item persists
     await expect(page.locator('[data-testid="parking-lot-item-text"]')).toContainText('Persistent idea');
