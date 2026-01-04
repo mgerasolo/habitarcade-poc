@@ -22,7 +22,7 @@ import {
 } from './pages/Manage';
 import { Targets } from './pages/Targets';
 import { TimeBlocks } from './pages/TimeBlocks';
-import { StatusView } from './pages/Kanban';
+import { StatusView, CategoryView } from './pages/Kanban';
 import { ModalManager } from './components/ModalManager';
 import { useUIStore } from './stores';
 import { getPageFromPath } from './routes';
@@ -82,10 +82,11 @@ function PageRouter() {
     // Kanban views
     case 'kanban-status':
       return <StatusView />;
+    case 'kanban-category':
+      return <CategoryView />;
     // Future pages can be added here
     case 'tasks':
     case 'kanban-project':
-    case 'kanban-category':
     case 'projects':
     case 'analytics':
       // Placeholder - these pages can be implemented later
