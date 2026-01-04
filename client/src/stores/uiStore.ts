@@ -18,7 +18,7 @@ type ModalType =
   | 'status-form'
   | null;
 
-export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'manage-quotes' | 'manage-videos' | 'manage-tasks' | 'manage-statuses' | 'settings' | 'targets' | 'time-blocks';
+export type PageType = 'today' | 'dashboard' | 'habits' | 'tasks' | 'kanban' | 'kanban-day' | 'kanban-status' | 'kanban-project' | 'kanban-category' | 'projects' | 'analytics' | 'manage' | 'manage-habits' | 'manage-categories' | 'manage-projects' | 'manage-tags' | 'manage-priorities' | 'manage-quotes' | 'manage-videos' | 'manage-tasks' | 'manage-statuses' | 'manage-icons' | 'settings' | 'targets' | 'time-blocks';
 
 // Right sidebar module types
 export type RightSidebarModuleType =
