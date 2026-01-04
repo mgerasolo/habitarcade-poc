@@ -26,7 +26,7 @@ export const STATUS_COLORS: Record<HabitStatus, string> = {
   na: '#666666',       // Darker gray for visibility against weekend backgrounds (#56)
   exempt: '#3b82f6',   // Blue
   extra: '#047857',
-  pink: '#ffe0e7',  // Light pink for "Likely Missed"
+  pink: '#ffd3dc',  // Pink for "Likely Missed" - rgb(255, 211, 220)
 };
 
 // Category

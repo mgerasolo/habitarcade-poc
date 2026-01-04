@@ -99,10 +99,11 @@ function StatusColumn({
   tasks,
   icon,
   color,
-  isFirst,
+  isFirst: _isFirst,
   isLast,
   viewMode,
   onEditTask,
+  onAddTask,
 }: StatusColumnProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: statusId,
@@ -121,7 +122,14 @@ function StatusColumn({
       <div className="flex items-center gap-2 px-2 py-1.5 flex-shrink-0 border-b border-slate-600/30">
         <span style={{ color }} className="opacity-80">{icon}</span>
         <span className="font-condensed font-medium text-sm text-slate-300">{title}</span>
-        <span className="text-xs text-slate-500 ml-auto">{tasks.length}</span>
+        <span className="text-xs text-slate-500">{tasks.length}</span>
+        <button
+          onClick={() => onAddTask(statusId)}
+          className="ml-auto p-0.5 rounded hover:bg-slate-700/50 text-slate-500 hover:text-teal-400 transition-colors"
+          title={`Add task to ${title}`}
+        >
+          <MuiIcons.Add style={{ fontSize: 16 }} />
+        </button>
       </div>
 
       {/* Tasks list - scrollable */}
@@ -172,7 +180,7 @@ function DetailsTable({
   tasks,
   statuses,
   projects,
-  tags,
+  tags: _tags,
   onEditTask,
   onUpdateTask,
 }: {
@@ -470,6 +478,20 @@ export function StatusView() {
   // Modal state
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [isCreatingTask, setIsCreatingTask] = useState(false);
+  const [createStatusId, setCreateStatusId] = useState<string>('');
+
+  // Handler for adding a new task in a specific column
+  const handleAddTask = useCallback((statusId: string) => {
+    setCreateStatusId(statusId);
+    setIsCreatingTask(true);
+  }, []);
+
+  // Handler for closing the create modal
+  const handleCloseCreateModal = useCallback(() => {
+    setIsCreatingTask(false);
+    setCreateStatusId('');
+  }, []);
 
   // Fetch data
   const { data: tasksData, isLoading: tasksLoading } = useTasks();
@@ -740,6 +762,15 @@ export function StatusView() {
             <span className="text-xs text-slate-500 ml-2">
               {totalTasks} tasks
             </span>
+
+            {/* Add Task button */}
+            <button
+              onClick={() => handleAddTask(workflowStatuses[0]?.id || '')}
+              className="flex items-center gap-1 px-2 py-1 ml-2 bg-teal-600 hover:bg-teal-500 text-white text-xs font-medium rounded transition-colors"
+            >
+              <MuiIcons.Add style={{ fontSize: 14 }} />
+              Add Task
+            </button>
           </div>
         </div>
       </div>
@@ -770,6 +801,7 @@ export function StatusView() {
                     isLast={index === visibleStatuses.length - 1}
                     viewMode={viewMode}
                     onEditTask={setEditingTask}
+                    onAddTask={handleAddTask}
                   />
                 </div>
               ))}
@@ -799,6 +831,14 @@ export function StatusView() {
       {/* Task edit modal */}
       {editingTask && (
         <TaskModal task={editingTask} onClose={() => setEditingTask(null)} />
+      )}
+
+      {/* Task create modal */}
+      {isCreatingTask && (
+        <TaskModal
+          defaultStatusId={createStatusId}
+          onClose={handleCloseCreateModal}
+        />
       )}
     </div>
   );
