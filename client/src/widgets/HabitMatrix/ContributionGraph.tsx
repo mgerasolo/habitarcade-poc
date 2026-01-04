@@ -47,8 +47,12 @@ const STATUS_TO_VALUE: Record<HabitStatus, number> = {
   gray_missed: 8,
 };
 
+// Special value for future days (not yet reached)
+const FUTURE_VALUE = 9;
+const FUTURE_COLOR = 'rgba(255, 255, 255, 0.3)'; // 30% opaque white for future days
+
 // Reverse mapping for tooltip
-const VALUE_TO_STATUS: Record<number, HabitStatus> = {
+const VALUE_TO_STATUS: Record<number, HabitStatus | 'future'> = {
   0: 'empty',
   1: 'complete',
   2: 'missed',
@@ -58,6 +62,7 @@ const VALUE_TO_STATUS: Record<number, HabitStatus> = {
   6: 'extra',
   7: 'pink',
   8: 'gray_missed',
+  9: 'future',
 };
 
 interface ContributionGraphProps {
@@ -83,12 +88,12 @@ export function ContributionGraph({
   entries,
   className = '',
 }: ContributionGraphProps) {
-  // Calculate date range: January 1st of current year to today
-  const dateRange = useMemo(() => {
-    const today = new Date();
+  // Calculate date range: full year, but track today for future days
+  const { yearStart, today } = useMemo(() => {
+    const now = new Date();
     return {
-      start: startOfYear(today),
-      end: today,
+      yearStart: startOfYear(now),
+      today: now,
     };
   }, []);
 
@@ -112,21 +117,28 @@ export function ContributionGraph({
     return map;
   }, [entries, habitId]);
 
-  // Generate chart data
+  // Generate chart data for full year, marking future days
   const chartData = useMemo(() => {
-    const allDays = eachDayOfInterval({ start: dateRange.start, end: dateRange.end });
+    const yearEnd = new Date(today.getFullYear(), 11, 31); // Dec 31
+    const allDays = eachDayOfInterval({ start: yearStart, end: yearEnd });
+    const todayStr = format(today, 'yyyy-MM-dd');
 
     return allDays.map((date) => {
       const dateStr = format(date, 'yyyy-MM-dd');
+
+      // Future days get special "future" value
+      if (dateStr > todayStr) {
+        return [dateStr, FUTURE_VALUE];
+      }
+
       const status = statusByDate.get(dateStr) || 'empty';
       return [dateStr, STATUS_TO_VALUE[status]];
     });
-  }, [dateRange, statusByDate]);
+  }, [yearStart, today, statusByDate]);
 
   // ECharts options - GitHub style calendar heatmap
   const options = useMemo((): EChartsOption => {
-    const rangeStart = format(dateRange.start, 'yyyy-MM-dd');
-    const rangeEnd = format(dateRange.end, 'yyyy-MM-dd');
+    const year = today.getFullYear();
 
     return {
       tooltip: {
@@ -144,11 +156,22 @@ export function ContributionGraph({
 
           const [dateStr, statusValue] = p.value;
           const status = VALUE_TO_STATUS[statusValue] || 'empty';
-          const statusLabel = STATUS_LABELS[status];
-          const statusColor = STATUS_COLORS[status];
 
           const date = new Date(dateStr);
           const formattedDate = format(date, 'EEEE, MMMM d, yyyy');
+
+          // Handle future days
+          if (status === 'future') {
+            return `
+              <div style="padding: 4px 0;">
+                <div style="font-weight: 500; margin-bottom: 4px;">${formattedDate}</div>
+                <div style="color: #94a3b8;">Future</div>
+              </div>
+            `;
+          }
+
+          const statusLabel = STATUS_LABELS[status as HabitStatus];
+          const statusColor = STATUS_COLORS[status as HabitStatus];
 
           return `
             <div style="padding: 4px 0;">
@@ -174,6 +197,7 @@ export function ContributionGraph({
           { value: 6, color: STATUS_COLORS.extra },
           { value: 7, color: STATUS_COLORS.pink },
           { value: 8, color: STATUS_COLORS.gray_missed },
+          { value: FUTURE_VALUE, color: FUTURE_COLOR },
         ],
       },
       calendar: {
@@ -182,7 +206,7 @@ export function ContributionGraph({
         right: 10,
         bottom: 5,
         cellSize: [10, 10],
-        range: [rangeStart, rangeEnd],
+        range: year,
         orient: 'horizontal',
         itemStyle: {
           borderWidth: 1,
@@ -218,7 +242,7 @@ export function ContributionGraph({
         },
       ],
     };
-  }, [chartData, dateRange]);
+  }, [chartData, today]);
 
   return (
     <div

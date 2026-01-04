@@ -251,7 +251,7 @@ export function HabitDetailModal() {
       onClick={(e) => e.target === e.currentTarget && closeModal()}
     >
       <div
-        className="bg-slate-800 rounded-2xl w-full max-w-md shadow-2xl border border-slate-700 overflow-hidden"
+        className="bg-slate-800 rounded-2xl w-full max-w-2xl shadow-2xl border border-slate-700 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
