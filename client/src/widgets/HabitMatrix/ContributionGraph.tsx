@@ -48,8 +48,9 @@ const STATUS_TO_VALUE: Record<HabitStatus, number> = {
 };
 
 // Special value for future days (not yet reached)
+// 30% opaque white on slate-800 (#1e293b) = #616976
 const FUTURE_VALUE = 9;
-const FUTURE_COLOR = '#475569'; // slate-600 - distinguishable gray for future days
+const FUTURE_COLOR = '#616976'; // 30% white on dark background
 
 // Reverse mapping for tooltip
 const VALUE_TO_STATUS: Record<number, HabitStatus | 'future'> = {
