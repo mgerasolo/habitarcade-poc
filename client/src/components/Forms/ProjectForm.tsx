@@ -47,6 +47,10 @@ export function ProjectForm() {
   const [selectedIconOrImage, setSelectedIconOrImage] = useState<string | null>(
     selectedProject?.imageUrl || selectedProject?.icon || null
   );
+  // Separate icon color state for immediate preview updates (#67)
+  const [selectedIconColor, setSelectedIconColor] = useState<string>(
+    selectedProject?.iconColor || '#6366f1'
+  );
 
   // API hooks
   const createProject = useCreateProject();
@@ -78,11 +82,12 @@ export function ProjectForm() {
   const watchedIconColor = watch('iconColor');
   const watchedColor = watch('color');
 
-  // Sync selectedIconOrImage when selectedProject changes (for edit mode)
+  // Sync selectedIconOrImage and selectedIconColor when selectedProject changes (for edit mode)
   useEffect(() => {
     if (selectedProject) {
       const iconOrImage = selectedProject.imageUrl || selectedProject.icon || null;
       setSelectedIconOrImage(iconOrImage);
+      setSelectedIconColor(selectedProject.iconColor || '#6366f1');
     }
   }, [selectedProject]);
 
@@ -95,6 +100,7 @@ export function ProjectForm() {
   // Icon/image picker handler - receives either icon code or image URL
   const handleIconSelect = (iconOrImage: string, color: string) => {
     setSelectedIconOrImage(iconOrImage);
+    setSelectedIconColor(color || '#6366f1'); // Update local state immediately for preview (#67)
     if (isImageValue(iconOrImage)) {
       // It's an image - clear icon fields, set imageUrl via form state
       setValue('icon', '');
@@ -116,6 +122,7 @@ export function ProjectForm() {
   // Clear selected icon/image
   const handleClearSelection = () => {
     setSelectedIconOrImage(null);
+    setSelectedIconColor('#6366f1'); // Reset to default (#67)
     setValue('icon', '');
     setValue('iconColor', '');
   };
@@ -205,9 +212,10 @@ export function ProjectForm() {
           return (
             <div
               className="w-12 h-12 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: `${watchedIconColor}20` }}
+              style={{ backgroundColor: `${selectedIconColor}20` }}
+              data-testid="icon-preview"
             >
-              <IconComponent style={{ color: watchedIconColor || '#6366f1', fontSize: 28 }} />
+              <IconComponent style={{ color: selectedIconColor || '#6366f1', fontSize: 28 }} />
             </div>
           );
         }
@@ -217,11 +225,12 @@ export function ProjectForm() {
       return (
         <div
           className="w-12 h-12 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${watchedIconColor}20` }}
+          style={{ backgroundColor: `${selectedIconColor}20` }}
+          data-testid="icon-preview"
         >
           <i
             className={selectedIconOrImage}
-            style={{ color: watchedIconColor || '#6366f1', fontSize: 24 }}
+            style={{ color: selectedIconColor || '#6366f1', fontSize: 24 }}
             aria-hidden="true"
           />
         </div>
